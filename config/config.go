@@ -3,13 +3,19 @@ Copyright 2018 Idealnaya rabota LLC
 Licensed under Multy.io license.
 See LICENSE for details
 */
-package multyback
+package config
 
 import (
 	// "github.com/Multy-io/Multy-back-exchange-service/core"
 	"github.com/Multy-io/Multy-back/client"
 	"github.com/Multy-io/Multy-back/store"
+	"time"
 )
+
+type ConnectionRetryConfig struct {
+	RetriesCount int
+	RetryWait 	 time.Duration
+}
 
 // Configuration is a struct with all service options
 type Configuration struct {
@@ -28,4 +34,5 @@ type Configuration struct {
 	SupportedNodes []store.CoinType
 	DeviceVersions store.Versions
 	NSVersions     store.NodeVersion
+	ConnectionRetry ConnectionRetryConfig
 }

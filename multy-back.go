@@ -8,10 +8,12 @@ package multyback
 import (
 	"context"
 	"fmt"
+	"github.com/Multy-io/Multy-back/retry"
 
 	// exchanger "github.com/Multy-io/Multy-back-exchange-service"
 	"github.com/Multy-io/Multy-back/btc"
 	"github.com/Multy-io/Multy-back/client"
+	"github.com/Multy-io/Multy-back/config"
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
 	btcpb "github.com/Multy-io/Multy-back/node-streamer/btc"
@@ -41,7 +43,7 @@ const (
 
 // Multy is a main struct of service
 type Multy struct {
-	config     *Configuration
+	config     *config.Configuration
 	clientPool *client.SocketIOConnectedPool
 	route      *gin.Engine
 
@@ -55,10 +57,16 @@ type Multy struct {
 }
 
 // Init initializes Multy instance
-func Init(conf *Configuration) (*Multy, error) {
+func Init(conf *config.Configuration) (*Multy, error) {
 	multy := &Multy{
 		config: conf,
 	}
+
+	retrier := retry.NewRetrier(conf.ConnectionRetry.RetriesCount, conf.ConnectionRetry.RetryWait,
+		func(format string, args ...interface{}) {
+			log.Errorf(" RETRIER: " + format, args...)
+		})
+
 	// DB initialization
 	userStore, err := store.InitUserStore(conf.Database)
 	if err != nil {
@@ -72,7 +80,7 @@ func Init(conf *Configuration) (*Multy, error) {
 	// exchange.InitExchanger(conf.ExchangerConfiguration)
 
 	//BTC
-	btcCli, err := btc.InitHandlers(&conf.Database, conf.SupportedNodes, conf.NSQAddress)
+	btcCli, err := btc.InitHandlers(&conf.Database, conf.SupportedNodes, conf.NSQAddress, retrier)
 	if err != nil {
 		return nil, fmt.Errorf("Init: btc.InitHandlers: %s", err.Error())
 	}
@@ -285,7 +293,7 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 // - http
 // - socketio
 // - firebase
-func (multy *Multy) initHttpRoutes(conf *Configuration) error {
+func (multy *Multy) initHttpRoutes(conf *config.Configuration) error {
 	router := gin.Default()
 	multy.route = router
 	//

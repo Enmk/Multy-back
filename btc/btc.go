@@ -7,6 +7,7 @@ package btc
 
 import (
 	"fmt"
+	"github.com/Multy-io/Multy-back/retry"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -40,7 +41,7 @@ var log = slf.WithContext("btc")
 
 //InitHandlers init nsq mongo and ws connection to node
 // return main client , test client , err
-func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string) (*BTCConn, error) {
+func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string, retrier retry.Retrier) (*BTCConn, error) {
 	//declare pacakge struct
 	cli := &BTCConn{
 		BtcMempool:     sync.Map{},
@@ -68,7 +69,11 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 		Password: dbConf.Password,
 	}
 
-	db, err := mgo.DialWithInfo(mongoDBDial)
+	var db *mgo.Session
+	retrier.Do("MongoDB session", func() (err error) {
+		db, err = mgo.DialWithInfo(mongoDBDial)
+		return
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +104,7 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 		return cli, fmt.Errorf("fethCoinType: %s", err.Error())
 	}
 
-	cliMain, err := initGrpcClient(urlMain)
+	cliMain, err := initGrpcClient("BTC Main NS", urlMain, retrier)
 	if err != nil {
 		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
@@ -114,7 +119,7 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	if err != nil {
 		return cli, fmt.Errorf("fethCoinType: %s", err.Error())
 	}
-	cliTest, err := initGrpcClient(urlTest)
+	cliTest, err := initGrpcClient("BTC Test NS", urlTest, retrier)
 	if err != nil {
 		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
@@ -126,8 +131,12 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	return cli, nil
 }
 
-func initGrpcClient(url string) (pb.NodeCommuunicationsClient, error) {
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
+func initGrpcClient(context string, url string, retrier retry.Retrier) (pb.NodeCommuunicationsClient, error) {
+	var conn *grpc.ClientConn
+	err := retrier.Do(context, func() (err error) {
+		conn, err = grpc.Dial(url, grpc.WithInsecure())
+		return
+	})
 	if err != nil {
 		log.Errorf("initGrpcClient: grpc.Dial: %s", err.Error())
 		return nil, err

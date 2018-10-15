@@ -9,11 +9,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jekabolt/config"
 	_ "github.com/jekabolt/slflog"
 
 	multy "github.com/Multy-io/Multy-back"
+	multy_config "github.com/Multy-io/Multy-back/config"
 	"github.com/Multy-io/Multy-back/store"
 	"github.com/jekabolt/slf"
 	"fmt"
@@ -27,7 +29,7 @@ var (
 	buildtime string
 	lasttag   string
 	// TODO: add all default params
-	globalOpt = multy.Configuration{
+	globalOpt = multy_config.Configuration{
 		Name: "my-test-back",
 		Database: store.Conf{
 			Address:             "localhost:27017",
@@ -42,6 +44,7 @@ var (
 		SocketioAddr:   "localhost:7780",
 		NSQAddress:     "nsq:4150",
 		BTCNodeAddress: "localhost:18334",
+		ConnectionRetry: multy_config.ConnectionRetryConfig{5, time.Millisecond*100},
 		// Etherium: ethereum.Conf{
 		// 	Address: "88.198.47.112",
 		// 	RpcPort: ":18545",
