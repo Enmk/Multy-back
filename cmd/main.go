@@ -55,6 +55,7 @@ var (
 
 func main() {
 	config.ReadGlobalConfig(&globalOpt, "multy configuration")
+	log.Infof("Config: %v", globalOpt)
 
 	log.Error("--------------------------------new multy back server session")
 

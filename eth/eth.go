@@ -7,6 +7,7 @@ package eth
 
 import (
 	"fmt"
+	"github.com/Multy-io/Multy-back/retry"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -43,7 +44,7 @@ var log = slf.WithContext("eth")
 
 //InitHandlers init nsq mongo and ws connection to node
 // return main client , test client , err
-func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string) (*ETHConn, error) {
+func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string, retrier retry.Retrier) (*ETHConn, error) {
 	//declare pacakge struct
 	cli := &ETHConn{
 		Mempool:     sync.Map{},
@@ -95,7 +96,11 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 		return cli, fmt.Errorf("fethCoinType: %s", err.Error())
 	}
 
-	cliMain, err := initGrpcClient(urlMain)
+	var cliMain pb.NodeCommuunicationsClient
+	err = retrier.Do(log.WithField("net", "ETH MAIN"), func () (err error) {
+		cliMain, err = initGrpcClient(urlMain)
+		return
+	})
 	if err != nil {
 		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
@@ -109,7 +114,12 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	if err != nil {
 		return cli, fmt.Errorf("fethCoinType: %s", err.Error())
 	}
-	cliTest, err := initGrpcClient(urlTest)
+	var cliTest pb.NodeCommuunicationsClient
+	err = retrier.Do(log.WithField("net", "ETH TEST"), func () (err error) {
+		cliMain, err = initGrpcClient(urlTest)
+		return
+	})
+
 	if err != nil {
 		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
@@ -124,7 +134,7 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 func initGrpcClient(url string) (pb.NodeCommuunicationsClient, error) {
 	conn, err := grpc.Dial(url, grpc.WithInsecure())
 	if err != nil {
-		log.Errorf("initGrpcClient: grpc.Dial: %s", err.Error())
+		log.WithCaller(slf.CallerShort).WithError(err).Error("Failed to establish grpc connection")
 		return nil, err
 	}
 

@@ -70,7 +70,7 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	}
 
 	var db *mgo.Session
-	retrier.Do("MongoDB session", func() (err error) {
+	retrier.Do(log.WithCaller(slf.CallerShort), func() (err error) {
 		db, err = mgo.DialWithInfo(mongoDBDial)
 		return
 	})
@@ -104,7 +104,11 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 		return cli, fmt.Errorf("fethCoinType: %s", err.Error())
 	}
 
-	cliMain, err := initGrpcClient("BTC Main NS", urlMain, retrier)
+	var cliMain pb.NodeCommuunicationsClient
+	err = retrier.Do(log.WithField("net", "BTC MAIN"), func () (err error) {
+		cliMain, err = initGrpcClient(urlMain)
+		return
+	})
 	if err != nil {
 		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
@@ -119,7 +123,11 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	if err != nil {
 		return cli, fmt.Errorf("fethCoinType: %s", err.Error())
 	}
-	cliTest, err := initGrpcClient("BTC Test NS", urlTest, retrier)
+	var cliTest pb.NodeCommuunicationsClient
+	err = retrier.Do(log.WithField("net", "BTC TEST"), func () (err error) {
+		cliTest, err = initGrpcClient(urlTest)
+		return
+	})
 	if err != nil {
 		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
@@ -131,14 +139,10 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	return cli, nil
 }
 
-func initGrpcClient(context string, url string, retrier retry.Retrier) (pb.NodeCommuunicationsClient, error) {
-	var conn *grpc.ClientConn
-	err := retrier.Do(context, func() (err error) {
-		conn, err = grpc.Dial(url, grpc.WithInsecure())
-		return
-	})
+func initGrpcClient(url string) (pb.NodeCommuunicationsClient, error) {
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
 	if err != nil {
-		log.Errorf("initGrpcClient: grpc.Dial: %s", err.Error())
+		log.WithCaller(slf.CallerShort).WithError(err).Error("Failed to establish grpc connection")
 		return nil, err
 	}
 

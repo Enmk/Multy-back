@@ -62,10 +62,7 @@ func Init(conf *config.Configuration) (*Multy, error) {
 		config: conf,
 	}
 
-	retrier := retry.NewRetrier(conf.ConnectionRetry.RetriesCount, conf.ConnectionRetry.RetryWait,
-		func(format string, args ...interface{}) {
-			log.Errorf(" RETRIER: " + format, args...)
-		})
+	retrier := retry.NewRetrier(conf.ConnectionRetry.RetriesCount, conf.ConnectionRetry.RetryWait)
 
 	// DB initialization
 	userStore, err := store.InitUserStore(conf.Database)
@@ -105,7 +102,7 @@ func Init(conf *config.Configuration) (*Multy, error) {
 	}
 
 	// ETH
-	ethCli, err := eth.InitHandlers(&conf.Database, conf.SupportedNodes, conf.NSQAddress)
+	ethCli, err := eth.InitHandlers(&conf.Database, conf.SupportedNodes, conf.NSQAddress, retrier)
 	if err != nil {
 		return nil, fmt.Errorf("Init: btc.InitHandlers: %s", err.Error())
 	}
