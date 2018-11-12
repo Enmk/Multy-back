@@ -165,6 +165,7 @@ func InitUserStore(conf Conf) (UserStore, error) {
 		Addrs:    addr,
 		Username: conf.Username,
 		Password: conf.Password,
+		Timeout: time.Millisecond * 200,
 	}
 
 	session, err := mgo.DialWithInfo(mongoDBDial)

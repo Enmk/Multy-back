@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-
 	// exchanger "github.com/Multy-io/Multy-back-exchange-service"
 	btcpb "github.com/Multy-io/Multy-BTC-node-service/node-streamer"
 	ethpb "github.com/Multy-io/Multy-ETH-node-service/node-streamer"
@@ -19,6 +18,7 @@ import (
 	"github.com/Multy-io/Multy-back/client"
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
+	multy_status "github.com/Multy-io/Multy-back/status"
 	"github.com/Multy-io/Multy-back/store"
 	"github.com/gin-gonic/gin"
 	"github.com/jekabolt/slf"
@@ -62,9 +62,15 @@ func Init(conf *Configuration) (*Multy, error) {
 	multy := &Multy{
 		config: conf,
 	}
+
+	statsCollector := multy_status.NewCollector()
+	statsCollector.OnDatabaseStatus("connecting")
 	// DB initialization
+	log.Infof("Connecting to DB on %s...", conf.Database.Address)
 	userStore, err := store.InitUserStore(conf.Database)
 	if err != nil {
+		statsCollector.OnDatabaseStatus("failed")
+		log.WithError(err).Errorf("Failed to connect to db.")
 		return nil, fmt.Errorf("DB initialization: %s on port %s", err.Error(), conf.Database.Address)
 	}
 	multy.userStore = userStore
