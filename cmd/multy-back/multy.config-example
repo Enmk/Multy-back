@@ -96,6 +96,18 @@
         }
     ],
 
+    "Exchangers": [
+        {
+            "name": "changelly",
+            "isActive": true,
+            "config": {
+                "apiUrl": "https://api.changelly.com",
+                "apiKey": "testApiKey",
+                "apiSecret": "testApiSecret"
+            }
+        }
+    ],
+
     "Logs": {
         "Handlers": [{
                 "Type": "stderr",
