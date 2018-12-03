@@ -18,8 +18,10 @@ import (
 var (
 	log = slf.WithContext("main")
 
+	// Set externaly during build
 	branch    string
 	commit    string
+	lasttag   string
 	buildtime string
 )
 
@@ -29,11 +31,17 @@ var globalOpt = nsbtc.Configuration{
 }
 
 func main() {
-	config.ReadGlobalConfig(&globalOpt, "multy configuration")
-	log.Infof("CONFIGURATION=%+v", globalOpt)
+	log.Info("============================================================")
+	log.Info("Node service BTC starting")
 	log.Infof("branch: %s", branch)
 	log.Infof("commit: %s", commit)
 	log.Infof("build time: %s", buildtime)
+
+	log.Info("Reading configuration...")
+
+	config.ReadGlobalConfig(&globalOpt, "multy configuration")
+	log.Infof("CONFIGURATION=%+v", globalOpt)
+
 	globalOpt.ServiceInfo = store.ServiceInfo{
 		Branch:    branch,
 		Commit:    commit,

@@ -17,12 +17,14 @@ import (
 )
 
 var (
-	log = slf.WithContext("main")
+	log = slf.WithContext("multy-back")
 
+	// Set externaly during build
 	branch    string
 	commit    string
-	buildtime string
 	lasttag   string
+	buildtime string
+
 	// TODO: add all default params
 	globalOpt = multy.Configuration{
 		Name: "my-test-back",
@@ -43,13 +45,14 @@ var (
 )
 
 func main() {
-	config.ReadGlobalConfig(&globalOpt, "multy configuration")
-	log.Infof("CONFIGURATION=%+v", globalOpt.SupportedNodes)
-
+	log.Info("============================================================")
 	log.Infof("branch: %s", branch)
 	log.Infof("commit: %s", commit)
 	log.Infof("build time: %s", buildtime)
 	log.Infof("tag: %s", lasttag)
+
+	config.ReadGlobalConfig(&globalOpt, "multy configuration")
+	log.Infof("CONFIGURATION=%+v", globalOpt.SupportedNodes)
 
 	sc := store.ServerConfig{
 		BranchName: branch,

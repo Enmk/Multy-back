@@ -20,9 +20,12 @@ import (
 )
 
 var (
-	log       = slf.WithContext("main")
+	log = slf.WithContext("ns-eth")
+
+	// Set externaly during build
 	branch    string
 	commit    string
+	lasttag   string
 	buildtime string
 
 	memprofile = flag.String("memprofile", "", "write memory profile to `file`")
@@ -33,12 +36,16 @@ var globalOpt = ns.Configuration{
 }
 
 func main() {
-	config.ReadGlobalConfig(&globalOpt, "multy configuration")
-	log.Infof("CONFIGURATION=%+v", globalOpt)
-
+	log.Info("============================================================")
+	log.Info("Node service ETH starting")
 	log.Infof("branch: %s", branch)
 	log.Infof("commit: %s", commit)
 	log.Infof("build time: %s", buildtime)
+
+	log.Info("Reading configuration...")
+	config.ReadGlobalConfig(&globalOpt, "multy configuration")
+	log.Infof("CONFIGURATION=%+v", globalOpt)
+
 	globalOpt.ServiceInfo = store.ServiceInfo{
 		Branch:    branch,
 		Commit:    commit,

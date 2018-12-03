@@ -76,6 +76,9 @@ docker-retag-images:
 docker-push-images:
 	$(foreach docker_image,$(DOCKER_IMAGES), docker push $(DOCKERHUB_ACCOUNT)/$(docker_image):$(DOCKER_TAG);)
 
+docker-test-images: docker-build-images
+	$(foreach docker_image,$(DOCKER_IMAGES), docker run $(DOCKERHUB_ACCOUNT)/$(docker_image):$(DOCKER_TAG);)
+
 .PHONY: test
 test:
 	go test ./...
