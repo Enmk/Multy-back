@@ -2,11 +2,6 @@
 # multyio/multy-back-builder has all dependencies cached
 # Based on golang:1.9.4
 FROM multyio/multy-back-builder as builder
-# Get, build and install musl-gcc - a compiler that allows static builds for cgo on alpine
-RUN curl http://www.musl-libc.org/releases/musl-1.1.20.tar.gz > musl-1.1.20.tar.gz \
-    && tar -xf musl-1.1.20.tar.gz \
-    && cd ./musl-1.1.20 \
-    && ./configure --prefix=/usr && make && make install
 
 WORKDIR $GOPATH/src/github.com/Multy-io/Multy-back
 # Build an image from sources of local directory.

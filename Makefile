@@ -7,18 +7,8 @@ LASTTAG = $(shell git describe --tags --abbrev=0 --dirty)
 GOPATH = $(shell echo "$$GOPATH")
 LD_OPTS = -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.lasttag=${LASTTAG} -X main.buildtime=${BUILDTIME} -linkmode=external -w -s"
 
-
 # List of all binary targets we expect from make to produce
 TARGETS=cmd/multy-back/multy-back cmd/ns-btc/ns-btc cmd/ns-eth/ns-eth
-
-# List of all docker images to build and tag
-DOCKER_IMAGES=multy-back multy-btc-node-service multy-eth-node-service
-
-# The default tag, used for building images, to remove ambigulty of ':latest'
-DOCKER_BUILD_TAG=$(COMMIT)
-# The tag image is pushed with
-DOCKER_TAG?=$(DOCKER_BUILD_TAG)
-DOCKERHUB_ACCOUNT=multyio
 
 TARGET_OS=
 TARGET_ARCH=
@@ -27,8 +17,8 @@ all: proto build test
 
 all-with-deps: setup deps dist
 
-run:
-	cd cmd && ./$(NAME) && ../
+run: build
+	$(foreach target,$(TARGETS), ./$(target)&) true
 
 # memprofiler:
 # 	cd $(GOPATH)/src/github.com/Multy-io/Multy-back/cmd && rm -rf multy && cd .. && make build  && cd cmd && ./$(NAME) -memprofile mem.prof && ../
