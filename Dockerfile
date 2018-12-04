@@ -2,20 +2,23 @@
 # multyio/multy-back-builder has all dependencies cached
 # Based on golang:1.9.4
 FROM multyio/multy-back-builder as builder
+# Get, build and install musl-gcc - a compiler that allows static builds for cgo on alpine
+RUN curl http://www.musl-libc.org/releases/musl-1.1.20.tar.gz > musl-1.1.20.tar.gz \
+    && tar -xf musl-1.1.20.tar.gz \
+    && cd ./musl-1.1.20 \
+    && ./configure --prefix=/usr && make && make install
 
 WORKDIR $GOPATH/src/github.com/Multy-io/Multy-back
-# Build an image from sources of local directory
+# Build an image from sources of local directory.
 COPY . $GOPATH/src/github.com/Multy-io/Multy-back
 RUN go get -v -d ./...
-RUN make build -B
+RUN CC=musl-gcc make build -B
 
 # Base image for all images with executable application
 # Sets important arguments and labels.
-# As for Dec 3 2018 golang:1.10-alpine3.8 had no known vulnerabilities
+# As for Dec 3 2018 alpine:3.8 had no known vulnerabilities
 # golang:1.10-alpine3.8
-# alternatively, we can link our binaries to musl, but I'll let this excercise for the reader.
-# https://www.reddit.com/r/golang/comments/4cxrcv/whats_the_proper_way_to_build_golang_apps_for/
-FROM frolvlad/alpine-glibc as base
+FROM alpine:3.8 as base
 # Common stuff to put into all derived containers
 ONBUILD ARG BUILD_DATE
 ONBUILD ARG GIT_COMMIT

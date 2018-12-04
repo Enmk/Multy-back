@@ -5,7 +5,8 @@ COMMIT = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +%Y-%m-%dT%T%z)
 LASTTAG = $(shell git describe --tags --abbrev=0 --dirty)
 GOPATH = $(shell echo "$$GOPATH")
-LD_OPTS = -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.lasttag=${LASTTAG} -X main.buildtime=${BUILDTIME} -w "
+LD_OPTS = -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.lasttag=${LASTTAG} -X main.buildtime=${BUILDTIME} -linkmode=external -w -s"
+
 
 # List of all binary targets we expect from make to produce
 TARGETS=cmd/multy-back/multy-back cmd/ns-btc/ns-btc cmd/ns-eth/ns-eth
