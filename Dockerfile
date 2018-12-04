@@ -20,13 +20,13 @@ RUN CC=musl-gcc make build -B
 # golang:1.10-alpine3.8
 FROM alpine:3.8 as base
 # Common stuff to put into all derived containers
+ONBUILD LABEL org.label-schema.schema-version = "1.0"
+ONBUILD LABEL org.label-schema.url = "http://multy.io"
+ONBUILD LABEL org.label-schema.vcs-url = "https://github.com//multy-io/multy-back"
 ONBUILD ARG BUILD_DATE
 ONBUILD ARG GIT_COMMIT
 ONBUILD ARG GIT_BRANCH
 ONBUILD ARG GIT_TAG
-ONBUILD LABEL org.label-schema.schema-version = "1.0"
-ONBUILD LABEL org.label-schema.url = "http://multy.io"
-ONBUILD LABEL org.label-schema.vcs-url = "https://github.com//multy-io/multy-back"
 ONBUILD LABEL org.label-schema.build-date="$BUILD_DATE"
 ONBUILD LABEL org.label-schema.git-branch="$GIT_BRANCH"
 ONBUILD LABEL org.label-schema.vcs-ref="$GIT_COMMIT"

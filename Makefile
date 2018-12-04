@@ -51,9 +51,48 @@ $(TARGETS):
 	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) go build $(LD_OPTS) -o $(@F) . && \
 	cd -
 
+.PHONY: test
+test:
+	go test ./...
+
+proto-btc-ns:
+	cd ./ns-btc-protobuf && protoc --go_out=plugins=grpc:. *.proto
+	cd ./ns-eth-protobuf && protoc --go_out=plugins=grpc:. *.proto
+
+proto: proto-btc-ns
+
+# Show to-do items per file.
+todo:
+	@grep \
+		--exclude-dir=vendor \
+		--exclude-dir=node_modules \
+		--exclude=Makefile \
+		--text \
+		--color \
+		-nRo -E ' TODO:.*|SkipNow|nolint:.*' .
+.PHONY: todo
+
+# 'true' is to avoid failing the rule if any target file does not exist.
+clean:
+	$(foreach target,$(TARGETS), rm -v ./$(target);) true
+
+#################################################################################
+# Docker-related stuff goes beyond this line
+#################################################################################
+
+# List of all docker images to build and tag
+DOCKER_IMAGES=multy-back multy-btc-node-service multy-eth-node-service
+
+# The default tag, used for building images, to remove ambigulty of ':latest'
+DOCKER_BUILD_TAG=$(COMMIT)
+# The tag image is pushed with
+DOCKER_TAG?=$(DOCKER_BUILD_TAG)
+DOCKERHUB_ACCOUNT=multyio
+
 .PHONY: docker-build-images
 .PHONY: docker-retag-images
 .PHONY: docker-push-images
+.PHONY: docker-build-builder-image
 
 docker-all: docker-build-images docker-retag-images docker-push-images
 
@@ -80,23 +119,21 @@ docker-push-images:
 docker-test-images: docker-build-images
 	$(foreach docker_image,$(DOCKER_IMAGES), docker run $(DOCKERHUB_ACCOUNT)/$(docker_image):$(DOCKER_TAG);)
 
-.PHONY: test
-test:
-	go test ./...
+# Special case: a builder image, please note that it is not automatically retagged nor pushed to avoid 
+# accidentally breaking the builds on both CI/CD and developer machine.
+# Thus setting making a release tag and pushing that to docker hub must be done manually and with extra care
+docker-build-builder-image:
+	docker build --target multy-back-builder \
+		--file Dockerfile_multy-back-builder \
+		--tag $(DOCKERHUB_ACCOUNT)/multy-back-builder:$(DOCKER_BUILD_TAG) \
+		--build-arg BUILD_DATE=$(BUILDTIME) \
+		--build-arg GIT_COMMIT=$(COMMIT) \
+		--build-arg GIT_BRANCH=$(BRANCH) \
+		--build-arg GIT_TAG=$(LASTTAG) \
+		.
 
-proto-btc-ns:
-	cd ./ns-btc-protobuf && protoc --go_out=plugins=grpc:. *.proto
-	cd ./ns-eth-protobuf && protoc --go_out=plugins=grpc:. *.proto
+docker-retag-builder-image:
+	docker tag $(DOCKERHUB_ACCOUNT)/multy-back-builder:$(DOCKER_BUILD_TAG) $(DOCKERHUB_ACCOUNT)/multy-back-builder:$(DOCKER_TAG)
 
-proto: proto-btc-ns
-
-# Show to-do items per file.
-todo:
-	@grep \
-		--exclude-dir=vendor \
-		--exclude-dir=node_modules \
-		--exclude=Makefile \
-		--text \
-		--color \
-		-nRo -E ' TODO:.*|SkipNow|nolint:.*' .
-.PHONY: todo
+docker-push-builder-image:
+	docker push $(DOCKERHUB_ACCOUNT)/multy-back-builder:$(DOCKER_TAG)
