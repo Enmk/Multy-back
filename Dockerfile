@@ -1,7 +1,7 @@
 # Builder image that builds all the multy-back and all node services
 # multyio/multy-back-builder has all dependencies cached
 # Based on golang:1.9.4
-FROM multyio/multy-back-builder as builder
+FROM multyio/multy-back-builder:dev as builder
 
 WORKDIR $GOPATH/src/github.com/Multy-io/Multy-back
 # Build an image from sources of local directory.
