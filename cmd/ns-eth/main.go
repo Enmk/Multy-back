@@ -32,7 +32,8 @@ var (
 )
 
 var globalOpt = ns.Configuration{
-	Name: "eth-node-service",
+	CanaryTest: false,
+	Name:       "eth-node-service",
 }
 
 func main() {
@@ -45,6 +46,11 @@ func main() {
 	log.Info("Reading configuration...")
 	config.ReadGlobalConfig(&globalOpt, "multy configuration")
 	log.Infof("CONFIGURATION=%+v", globalOpt)
+
+	if globalOpt.CanaryTest == true {
+		log.Info("This is a CanaryTest run, quitting immediatelly...")
+		return
+	}
 
 	globalOpt.ServiceInfo = store.ServiceInfo{
 		Branch:    branch,

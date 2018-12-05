@@ -30,8 +30,8 @@ RUN curl http://www.musl-libc.org/releases/musl-1.1.20.tar.gz | tar -xz \
     && cd ./musl-1.1.20 \
     && ./configure --prefix=/usr && make && make install
 
-# Test that project can be built
-RUN make build -B && make test && make run
+# Check that project can be built and binaries appear to work Ok on this platform.
+RUN make build -B && make canary-test && make test
 
 # Cleanup
-RUN rm -rf .
+RUN rm -rf ./*

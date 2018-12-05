@@ -27,7 +27,8 @@ var (
 
 	// TODO: add all default params
 	globalOpt = multy.Configuration{
-		Name: "my-test-back",
+		CanaryTest: false,
+		Name:       "my-test-back",
 		Database: store.Conf{
 			Address:             "localhost:27017",
 			DBUsers:             "userDB-test",
@@ -53,6 +54,11 @@ func main() {
 
 	config.ReadGlobalConfig(&globalOpt, "multy configuration")
 	log.Infof("CONFIGURATION=%+v", globalOpt.SupportedNodes)
+
+	if globalOpt.CanaryTest == true {
+		log.Info("This is a CanaryTest run, quitting immediatelly...")
+		return
+	}
 
 	sc := store.ServerConfig{
 		BranchName: branch,

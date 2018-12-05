@@ -27,7 +27,8 @@ var (
 
 // TODO: add all default params
 var globalOpt = nsbtc.Configuration{
-	Name: "my-test-back",
+	CanaryTest: false,
+	Name:       "my-test-back",
 }
 
 func main() {
@@ -41,6 +42,11 @@ func main() {
 
 	config.ReadGlobalConfig(&globalOpt, "multy configuration")
 	log.Infof("CONFIGURATION=%+v", globalOpt)
+
+	if globalOpt.CanaryTest == true {
+		log.Info("This is a CanaryTest run, quitting immediatelly...")
+		return
+	}
 
 	globalOpt.ServiceInfo = store.ServiceInfo{
 		Branch:    branch,

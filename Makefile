@@ -20,6 +20,10 @@ all-with-deps: setup deps dist
 run: build
 	$(foreach target,$(TARGETS), ./$(target)&) true
 
+# Just test that built binaries can be run on this system.
+canary-test: build
+	$(foreach target,$(TARGETS), echo "Canary-testing $(target)" && ./$(target) --CanaryTest=true;) echo "Canary done"
+
 # memprofiler:
 # 	cd $(GOPATH)/src/github.com/Multy-io/Multy-back/cmd && rm -rf multy && cd .. && make build  && cd cmd && ./$(NAME) -memprofile mem.prof && ../
 
