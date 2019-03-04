@@ -79,8 +79,6 @@ func InitFirebaseConn(conf *FirebaseConf, c *gin.Engine, nsqAddr string) (*Fireb
 		// if txType == store.TxStatusAppearedInMempoolIncoming || txType == store.TxStatusAppearedInBlockIncoming || txType == store.TxStatusInBlockConfirmedIncoming {
 		if txType == store.TxStatusAppearedInMempoolIncoming {
 			topic := store.TopicTransaction + "-" + msg.UserID
-			// topic := "btcTransactionUpdate-" + msg.UserID
-			// topic := "btcTransactionUpdate-003b1e5227ce5f45b22676dc4b55ea00e1410c5f3cf8ae972724fa5d93ecc4585e"
 
 			messageKeys := map[string]string{
 				"score":           "1",

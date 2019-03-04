@@ -6,6 +6,5 @@ const (
 )
 
 var Dividers = map[int]int64{
-	Bitcoin: Satoshi,
-	Ether:   Wei,
+	Ether: Wei,
 }

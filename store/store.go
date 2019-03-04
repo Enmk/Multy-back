@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Multy-io/Multy-back/currencies"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -78,13 +78,8 @@ type UserStore interface {
 	GetExchangeRatesDay() ([]RatesAPIBitstamp, error)
 
 	//TODo update this method by eth
-	GetAllWalletTransactions(userid string, currencyID, networkID int, walletTxs *[]MultyTX) error
 	GetAllWalletEthTransactions(userid string, currencyID, networkID int, walletTxs *[]TransactionETH) error
-	GetAllAddressTransactions(address string, currencyID, networkID int, walletTxs *[]TransactionETH) error
-	GetAllMultisigEthTransactions(contractAddress string, currencyID, networkID int, walletTxs *[]TransactionETH) error
 
-	// GetAllSpendableOutputs(query bson.M) (error, []SpendableOutputs)
-	GetAddressSpendableOutputs(address string, currencyID, networkID int) ([]SpendableOutputs, error)
 	DeleteWallet(userid, address string, walletindex, currencyID, networkID, assetType int) error
 
 	FindAllUserETHTransactions(sel bson.M) ([]TransactionETH, error)
@@ -93,27 +88,10 @@ type UserStore interface {
 
 	FetchUserAddresses(currencyID, networkID int, userid string, addreses []string) (AddressExtended, error)
 
-	FindMultisig(userid, invitecode string) (*Multisig, error)
-	JoinMultisig(userid string, multisig *Multisig) error
-	LeaveMultisig(userid, invitecode string) error
-	KickMultisig(address, invitecode string) error
-	DeleteMultisig(invitecode string) error
-	CheckInviteCode(invitecode string) bool
-	InviteCodeInfo(invitecode string) InviteCodeInfo
-	IsRelatedAddress(userid, address string) bool
-	CheckMultisigCurrency(invitecode string, currencyid, networkid int) bool
-	ViewTransaction(txid, address string, currencyid, networkid int) error
-	DeclineTransaction(txid, address string, currencyid, networkid int) error
-
-	FindMultisigUsers(invitecode string) []User
-	UpdateMultisigOwners(userid, invitecode string, owners []AddressExtended, deployStatus int) error
-
 	DeleteHistory(CurrencyID, NetworkID int, Address string) error
 	ConvertToBroken(addresses []string, userid string)
 
 	FetchLastSyncBlockState(networkid, currencyid int) (int64, error)
-	// MsToUserData(addresses []string) map[string]User
-	// sToUserData(addresses []string) map[string]store.User
 
 	CheckAddWallet(wp *WalletParams, jwt string) error
 
@@ -126,16 +104,6 @@ type MongoUserStore struct {
 	session   *mgo.Session
 	usersData *mgo.Collection
 
-	// btc main
-	BTCMainTxsData          *mgo.Collection
-	BTCMainSpendableOutputs *mgo.Collection
-	BTCMainSpentOutputs     *mgo.Collection
-
-	// btc test
-	BTCTestTxsData          *mgo.Collection
-	BTCTestSpendableOutputs *mgo.Collection
-	BTCTestSpentOutputs     *mgo.Collection
-
 	//eth main
 	// ETHMainRatesData *mgo.Collection
 	ETHMainTxsData *mgo.Collection
@@ -143,12 +111,6 @@ type MongoUserStore struct {
 	//eth test
 	// ETHTestRatesData *mgo.Collection
 	ETHTestTxsData *mgo.Collection
-
-	//eth multisig test
-	ETHTestMultisigTxsData *mgo.Collection
-
-	//eth multisig main
-	ETHMainMultisigTxsData *mgo.Collection
 
 	stockExchangeRate *mgo.Collection
 	ethTxHistory      *mgo.Collection
@@ -186,27 +148,11 @@ func InitUserStore(conf Conf) (UserStore, error) {
 	uStore.usersData = uStore.session.DB(conf.DBUsers).C(TableUsers)
 	uStore.stockExchangeRate = uStore.session.DB(conf.DBStockExchangeRate).C(TableStockExchangeRate)
 
-	// BTC main
-	uStore.BTCMainTxsData = uStore.session.DB(conf.DBTx).C(conf.TableTxsDataBTCMain)
-	uStore.BTCMainSpendableOutputs = uStore.session.DB(conf.DBTx).C(conf.TableSpendableOutputsBTCMain)
-	uStore.BTCMainSpentOutputs = uStore.session.DB(conf.DBTx).C(conf.TableSpentOutputsBTCMain)
-
-	// BTC test
-	uStore.BTCTestTxsData = uStore.session.DB(conf.DBTx).C(conf.TableTxsDataBTCTest)
-	uStore.BTCTestSpendableOutputs = uStore.session.DB(conf.DBTx).C(conf.TableSpendableOutputsBTCTest)
-	uStore.BTCTestSpentOutputs = uStore.session.DB(conf.DBTx).C(conf.TableSpentOutputsBTCTest)
-
 	// ETH main
 	uStore.ETHMainTxsData = uStore.session.DB(conf.DBTx).C(conf.TableTxsDataETHMain)
 
 	// ETH test
 	uStore.ETHTestTxsData = uStore.session.DB(conf.DBTx).C(conf.TableTxsDataETHTest)
-
-	//eth multisig test
-	uStore.ETHTestMultisigTxsData = uStore.session.DB(conf.DBTx).C(conf.TableMultisigTxsTest)
-
-	//eth multisig main
-	uStore.ETHMainMultisigTxsData = uStore.session.DB(conf.DBTx).C(conf.TableMultisigTxsMain)
 
 	uStore.RestoreState = uStore.session.DB(conf.DBRestoreState).C(conf.TableState)
 
@@ -342,27 +288,6 @@ func (mStore *MongoUserStore) ConvertToBroken(addresses []string, userid string)
 func (mStore *MongoUserStore) DeleteHistory(CurrencyID, NetworkID int, Address string) error {
 
 	switch CurrencyID {
-	case currencies.Bitcoin:
-		if NetworkID == currencies.Main {
-			mStore.BTCMainTxsData.Remove(bson.M{"txaddress": Address})
-			mStore.BTCMainSpendableOutputs.RemoveAll(bson.M{
-				"address": Address,
-			})
-			mStore.BTCMainSpentOutputs.RemoveAll(bson.M{
-				"address": Address,
-			})
-			return nil
-		}
-		if NetworkID == currencies.Test {
-			mStore.BTCTestTxsData.RemoveAll(bson.M{"txaddress": Address})
-			mStore.BTCTestSpendableOutputs.RemoveAll(bson.M{
-				"address": Address,
-			})
-			mStore.BTCTestSpentOutputs.RemoveAll(bson.M{
-				"address": Address,
-			})
-			return nil
-		}
 	case currencies.Ether:
 		if NetworkID == currencies.ETHMain {
 
@@ -433,37 +358,6 @@ func (mStore *MongoUserStore) DeleteWallet(userid, address string, walletindex, 
 
 }
 
-// func (mStore *MongoUserStore) GetAllSpendableOutputs(query bson.M) (error, []SpendableOutputs) {
-// 	spOuts := []SpendableOutputs{}
-// 	err := mStore.spendableOutputs.Find(query).All(&spOuts)
-// 	return err, spOuts
-// }
-func (mStore *MongoUserStore) GetAddressSpendableOutputs(address string, currencyID, networkID int) ([]SpendableOutputs, error) {
-	spOuts := []SpendableOutputs{}
-	var err error
-
-	query := bson.M{"address": address}
-
-	switch currencyID {
-	case currencies.Bitcoin:
-		if networkID == currencies.Main {
-			err = mStore.BTCMainSpendableOutputs.Find(query).All(&spOuts)
-		}
-		if networkID == currencies.Test {
-			err = mStore.BTCTestSpendableOutputs.Find(query).All(&spOuts)
-		}
-	case currencies.Litecoin:
-		if networkID == currencies.Main {
-
-		}
-		if networkID == currencies.Test {
-
-		}
-	}
-
-	return spOuts, err
-}
-
 func (mStore *MongoUserStore) UpdateUser(sel bson.M, user *User) error {
 	return mStore.usersData.Update(sel, user)
 }
@@ -508,52 +402,6 @@ func (mStore *MongoUserStore) GetExchangeRatesDay() ([]RatesAPIBitstamp, error) 
 	return nil, nil
 }
 
-func (mStore *MongoUserStore) GetAllWalletTransactions(userid string, currencyID, networkID int, walletTxs *[]MultyTX) error {
-	switch currencyID {
-	case currencies.Bitcoin:
-		query := bson.M{"userid": userid}
-		if networkID == currencies.Main {
-			return mStore.BTCMainTxsData.Find(query).All(walletTxs)
-		}
-		if networkID == currencies.Test {
-			return mStore.BTCTestTxsData.Find(query).All(walletTxs)
-		}
-	}
-	return nil
-}
-
-// func (mStore *MongoUserStore) GetAllWalletEthTransactions(userid string, currencyID, networkID, walletIndex int, walletTxs *[]TransactionETH) (string, error) {
-// 	address := ""
-// 	var err error
-// 	switch currencyID {
-// 	case currencies.Ether:
-// 		user := User{}
-// 		query := bson.M{"userID": userid}
-
-// 		mStore.usersData.Find(query).One(&user)
-// 		for _, wallet := range user.Wallets {
-// 			if wallet.WalletIndex == walletIndex && wallet.CurrencyID == currencyID && wallet.NetworkID == networkID {
-// 				address = wallet.Adresses[0].Address
-// 				break
-// 			}
-// 		}
-// 		query = bson.M{
-// 			"$or": []bson.M{
-// 				bson.M{"to": address},
-// 				bson.M{"from": address},
-// 			},
-// 		}
-
-// 		if networkID == currencies.ETHMain {
-// 			err = mStore.ETHMainTxsData.Find(query).All(walletTxs)
-// 		}
-// 		if networkID == currencies.ETHTest {
-// 			err = mStore.ETHTestTxsData.Find(query).All(walletTxs)
-// 		}
-// 	}
-// 	return address, err
-// }
-
 func (mStore *MongoUserStore) GetAllWalletEthTransactions(userid string, currencyID, networkID int, walletTxs *[]TransactionETH) error {
 	switch currencyID {
 	case currencies.Ether:
@@ -569,271 +417,6 @@ func (mStore *MongoUserStore) GetAllWalletEthTransactions(userid string, currenc
 
 	}
 	return nil
-}
-
-func (mStore *MongoUserStore) GetAllAddressTransactions(address string, currencyID, networkID int, walletTxs *[]TransactionETH) error {
-	switch currencyID {
-	case currencies.Ether:
-		query := bson.M{
-			"$or": []bson.M{
-				bson.M{"to": address},
-				bson.M{"from": address},
-			},
-		}
-
-		if networkID == currencies.ETHMain {
-			err := mStore.ETHMainTxsData.Find(query).All(walletTxs)
-			return err
-		}
-		if networkID == currencies.ETHTest {
-			err := mStore.ETHTestTxsData.Find(query).All(walletTxs)
-			return err
-		}
-	}
-	return nil
-}
-
-func (mStore *MongoUserStore) GetAllMultisigEthTransactions(contractAddress string, currencyID, networkID int, multisigTxs *[]TransactionETH) error {
-	switch currencyID {
-	case currencies.Ether:
-		query := bson.M{
-			"$or": []bson.M{
-				bson.M{"to": contractAddress},
-				bson.M{"from": contractAddress},
-			},
-		}
-		if networkID == currencies.ETHMain {
-			return mStore.ETHMainMultisigTxsData.Find(query).All(multisigTxs)
-		}
-		if networkID == currencies.ETHTest {
-			err := mStore.ETHTestMultisigTxsData.Find(query).All(multisigTxs)
-			return err
-		}
-
-	}
-	return nil
-}
-
-func (mStore *MongoUserStore) FindMultisig(userid, invitecode string) (*Multisig, error) {
-
-	users := []User{}
-	multisig := Multisig{}
-
-	// // // only accept one address from one user in multisig
-	// sel := bson.M{"userID": userid, "multisig.inviteCode": invitecode}
-	// err := mStore.usersData.Find(sel).One(nil)
-	// if err == mgo.ErrNotFound {
-	// 	return &multisig, errors.New("User: " + userid + " don't have this multsig")
-	// }
-
-	sel := bson.M{"multisig.inviteCode": invitecode}
-	err := mStore.usersData.Find(sel).All(&users)
-	if err != nil {
-		fmt.Println("No such multisigs with this invite code")
-		return &multisig, errors.New("No such multisigs with this invite code")
-	}
-
-	if len(users) > 0 {
-		for _, mu := range users[0].Multisigs {
-			if mu.InviteCode == invitecode {
-				return &mu, nil
-			}
-		}
-	}
-	if len(users) == 0 {
-		return &multisig, errors.New("No such multisigs with this invite code")
-	}
-
-	return &multisig, nil
-}
-
-func (mStore *MongoUserStore) JoinMultisig(userid string, multisig *Multisig) error {
-	sel := bson.M{"userID": userid}
-	update := bson.M{"$push": bson.M{"multisig": multisig}}
-	return mStore.usersData.Update(sel, update)
-}
-func (mStore *MongoUserStore) LeaveMultisig(userid, invitecode string) error {
-	sel := bson.M{"userID": userid}
-	user := User{}
-
-	multisigs := []Multisig{}
-	err := mStore.usersData.Find(sel).One(&user)
-	if err != nil {
-		return err
-	}
-	for _, multisig := range user.Multisigs {
-		if multisig.InviteCode != invitecode {
-			multisigs = append(multisigs, multisig)
-		}
-	}
-	update := bson.M{"$set": bson.M{"multisig": multisigs}}
-	return mStore.usersData.Update(sel, update)
-}
-func (mStore *MongoUserStore) KickMultisig(address, invitecode string) error {
-	sel := bson.M{"wallets.addresses.address": address}
-	user := User{}
-
-	multisigs := []Multisig{}
-	err := mStore.usersData.Find(sel).One(&user)
-	if err != nil {
-		return err
-	}
-	for _, multisig := range user.Multisigs {
-		if multisig.InviteCode != invitecode {
-			multisigs = append(multisigs, multisig)
-		}
-	}
-	update := bson.M{"$set": bson.M{"multisig": multisigs}}
-	return mStore.usersData.Update(sel, update)
-}
-
-func (mStore *MongoUserStore) DeleteMultisig(invitecode string) error {
-	sel := bson.M{"multisig.inviteCode": invitecode}
-	users := []User{}
-	mStore.usersData.Find(sel).All(&users)
-	var err error
-	for _, user := range users {
-		okMultisigs := []Multisig{}
-		for _, multisig := range user.Multisigs {
-			if multisig.InviteCode != invitecode {
-				okMultisigs = append(okMultisigs, multisig)
-			}
-		}
-		sel = bson.M{"userID": user.UserID}
-		update := bson.M{"$set": bson.M{"multisig": okMultisigs}}
-		err = mStore.usersData.Update(sel, update)
-
-	}
-	return err
-}
-
-func (mStore *MongoUserStore) CheckInviteCode(invitecode string) bool {
-	sel := bson.M{"multisig.inviteCode": invitecode}
-	err := mStore.usersData.Find(sel).One(nil)
-	if err == mgo.ErrNotFound {
-		return true
-	}
-	return false
-}
-
-func (mStore *MongoUserStore) InviteCodeInfo(invitecode string) InviteCodeInfo {
-	sel := bson.M{"multisig.inviteCode": invitecode}
-	user := User{}
-	inCodeInfo := InviteCodeInfo{}
-	_ = mStore.usersData.Find(sel).One(&user)
-	for _, multisig := range user.Multisigs {
-		if multisig.InviteCode == invitecode {
-			inCodeInfo = InviteCodeInfo{
-				CurrencyID: multisig.CurrencyID,
-				NetworkID:  multisig.NetworkID,
-				Exists:     true,
-			}
-		}
-	}
-	return inCodeInfo
-}
-
-func (mStore *MongoUserStore) CheckMultisigCurrency(invitecode string, currencyid, networkid int) bool {
-	sel := bson.M{"multisig.inviteCode": invitecode}
-	user := User{}
-	inCodeInfo := InviteCodeInfo{}
-	_ = mStore.usersData.Find(sel).One(&user)
-	for _, multisig := range user.Multisigs {
-		if multisig.InviteCode == invitecode {
-			inCodeInfo = InviteCodeInfo{
-				CurrencyID: multisig.CurrencyID,
-				NetworkID:  multisig.NetworkID,
-				Exists:     true,
-			}
-		}
-	}
-
-	if inCodeInfo.Exists && inCodeInfo.NetworkID == networkid && inCodeInfo.CurrencyID == currencyid {
-		return true
-	}
-	return false
-}
-
-func (mStore *MongoUserStore) ViewTransaction(txid, address string, currencyid, networkid int) error {
-	switch currencyid {
-	case currencies.Ether:
-		update := bson.M{"$set": bson.M{
-			"multisig.owners.$.confirmationStatus": MultisigOwnerStatusSeen,
-			"multisig.owners.$.seenTime":           time.Now().Unix(),
-		}}
-		sel := bson.M{"hash": txid, "multisig.owners.address": address}
-		ms := TransactionETH{}
-		if networkid == currencies.ETHMain {
-			err := mStore.ETHMainMultisigTxsData.Find(sel).One(&ms)
-			if ms.Multisig != nil {
-				for _, owner := range ms.Multisig.Owners {
-					if owner.Address == address && owner.ConfirmationTime != 0 {
-						return errors.New("transaction already seen")
-					}
-				}
-			}
-
-			err = mStore.ETHMainMultisigTxsData.Update(sel, update)
-			return err
-		}
-		if networkid == currencies.ETHTest {
-			err := mStore.ETHTestMultisigTxsData.Find(sel).One(&ms)
-			if ms.Multisig.Owners != nil {
-				for _, owner := range ms.Multisig.Owners {
-					if owner.Address == address && owner.ConfirmationTime != 0 {
-						return errors.New("transaction already seen")
-					}
-				}
-			}
-			err = mStore.ETHTestMultisigTxsData.Update(sel, update)
-			return err
-		}
-	}
-	return nil
-}
-
-func (mStore *MongoUserStore) DeclineTransaction(txid, address string, currencyid, networkid int) error {
-	switch currencyid {
-	case currencies.Ether:
-		sel := bson.M{"hash": txid, "multisig.owners.address": address}
-		fmt.Println(sel)
-		update := bson.M{"$set": bson.M{
-			"multisig.owners.$.confirmationStatus": MultisigOwnerStatusDeclined,
-		}}
-		if networkid == currencies.ETHMain {
-			err := mStore.ETHMainMultisigTxsData.Update(sel, update)
-			return err
-		}
-		if networkid == currencies.ETHTest {
-			err := mStore.ETHTestMultisigTxsData.Update(sel, update)
-			return err
-		}
-	}
-	return nil
-}
-
-func (mStore *MongoUserStore) IsRelatedAddress(userid, address string) bool {
-	sel := bson.M{"userID": userid, "wallets.addresses.address": address}
-	err := mStore.usersData.Find(sel).One(nil)
-	if err == mgo.ErrNotFound {
-		return false
-	}
-	return true
-}
-
-func (mStore *MongoUserStore) FindMultisigUsers(invitecode string) []User {
-	sel := bson.M{"multisig.inviteCode": invitecode}
-	users := []User{}
-	mStore.usersData.Find(sel).All(&users)
-	return users
-}
-func (mStore *MongoUserStore) UpdateMultisigOwners(userid, invitecode string, owners []AddressExtended, deployStatus int) error {
-	sel := bson.M{"userID": userid, "multisig.inviteCode": invitecode}
-	update := bson.M{"$set": bson.M{
-		"multisig.$.owners":       owners,
-		"multisig.$.deployStatus": deployStatus,
-	}}
-	return mStore.usersData.Update(sel, update)
 }
 
 func (mStore *MongoUserStore) Close() error {
@@ -874,17 +457,6 @@ func (mStore *MongoUserStore) CheckAddWallet(wp *WalletParams, jwt string) error
 				return fmt.Errorf("maximum available wallets count")
 			}
 
-		case currencies.Bitcoin:
-			txs := []MultyTX{}
-			switch wp.NetworkID {
-			case currencies.Main:
-				mStore.BTCMainTxsData.Find(query).All(&txs)
-			case currencies.Test:
-				mStore.BTCTestTxsData.Find(query).All(&txs)
-			}
-			if len(txs) == 0 {
-				return fmt.Errorf("maximum available wallets count")
-			}
 		}
 	}
 

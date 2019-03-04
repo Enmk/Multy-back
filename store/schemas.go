@@ -48,7 +48,6 @@ const (
 	MsgSend    = "message:send"
 	MsgReceive = "message:recieve"
 
-	JoinMultisig       = 1
 	LeaveMultisig      = 2
 	DeleteMultisig     = 3
 	KickMultisig       = 4
@@ -281,14 +280,13 @@ type SpendableOutputs struct {
 }
 
 type WalletParams struct {
-	CurrencyID   int            `json:"currencyID"`
-	NetworkID    int            `json:"networkID"`
-	Address      string         `json:"address"`
-	AddressIndex int            `json:"addressIndex"`
-	WalletIndex  int            `json:"walletIndex"`
-	WalletName   string         `json:"walletName"`
-	IsImported   bool           `json:"isImported"`
-	Multisig     MultisigWallet `json:"multisig"`
+	CurrencyID   int    `json:"currencyID"`
+	NetworkID    int    `json:"networkID"`
+	Address      string `json:"address"`
+	AddressIndex int    `json:"addressIndex"`
+	WalletIndex  int    `json:"walletIndex"`
+	WalletName   string `json:"walletName"`
+	IsImported   bool   `json:"isImported"`
 }
 
 type MultisigWallet struct {
@@ -350,7 +348,6 @@ type TransactionETH struct {
 	BlockHeight       int64                 `json:"blockheight"`
 	Confirmations     int                   `json:"confirmations"`
 	IsInternal        bool                  `json:"isinternal"`
-	Multisig          *MultisigTx           `json:"multisig,omitempty"`
 	ERC20Token        *ERC20Tx              `json:"erc20Token,omitempty"`
 	StockExchangeRate []ExchangeRatesRecord `json:"stockexchangerate"`
 }
@@ -571,12 +568,6 @@ type MultisigMsg struct {
 	CurrencyID    int    `json:"currencyid"`
 	NetworkID     int    `json:"networkid"`
 	TxID          string `json:"txid,omitempty"`
-}
-
-type InviteCodeInfo struct {
-	CurrencyID int  `json:"currencyid"`
-	NetworkID  int  `json:"networkid"`
-	Exists     bool `json:"exists"`
 }
 
 type BtcComResp struct {

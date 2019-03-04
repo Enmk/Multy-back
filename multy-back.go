@@ -16,11 +16,10 @@ import (
 	"github.com/Multy-io/Multy-back/exchanger"
 
 	// exchanger "github.com/Multy-io/Multy-back-exchange-service"
-	"github.com/Multy-io/Multy-back/btc"
 	"github.com/Multy-io/Multy-back/client"
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
-	btcpb "github.com/Multy-io/Multy-back/ns-btc-protobuf"
+
 	ethpb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
 	"github.com/gin-gonic/gin"
@@ -56,7 +55,6 @@ type Multy struct {
 	restClient     *client.RestClient
 	firebaseClient *client.FirebaseClient
 
-	BTC *btc.BTCConn
 	ETH *eth.ETHConn
 
 	ExchangerFactory *exchanger.FactoryExchanger
@@ -76,19 +74,10 @@ func Init(conf *Configuration) (*Multy, error) {
 	multy.userStore = userStore
 	log.Infof("UserStore initialization done on %s √", conf.Database)
 
-	//BTC
-	btcCli, err := btc.InitHandlers(&conf.Database, conf.SupportedNodes, conf.NSQAddress)
-	if err != nil {
-		return nil, fmt.Errorf("Init: btc.InitHandlers: %s", err.Error())
-	}
-	btcVer, err := btcCli.CliMain.ServiceInfo(context.Background(), &btcpb.Empty{})
-	multy.BTC = btcCli
-	log.Infof(" BTC initialization done on %v √", btcVer)
-
 	// ETH
 	ethCli, err := eth.InitHandlers(&conf.Database, conf.SupportedNodes, conf.NSQAddress)
 	if err != nil {
-		return nil, fmt.Errorf("Init: btc.InitHandlers: %s", err.Error())
+		return nil, fmt.Errorf("Init: ETH.InitHandlers: %s", err.Error())
 	}
 	ethCli.ETHDefaultGasPrice = conf.ETHDefaultGasPrice
 	ethVer, err := ethCli.CliMain.ServiceInfo(context.Background(), &ethpb.Empty{})
@@ -156,46 +145,6 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 		}
 
 		switch conCred.СurrencyID {
-		case currencies.Bitcoin:
-			var cli btcpb.NodeCommunicationsClient
-			switch conCred.NetworkID {
-			case currencies.Main:
-				cli = m.BTC.CliMain
-			case currencies.Test:
-				cli = m.BTC.CliTest
-			default:
-				log.Errorf("setGRPCHandlers: wrong networkID:")
-			}
-
-			//TODO: Re State
-			go m.restoreState(conCred, cli)
-
-			genUd := btcpb.UsersData{
-				Map: map[string]*btcpb.AddressExtended{},
-			}
-			for address, ex := range usersData {
-				genUd.Map[address] = &btcpb.AddressExtended{
-					UserID:       ex.UserID,
-					WalletIndex:  int32(ex.WalletIndex),
-					AddressIndex: int32(ex.AddressIndex),
-				}
-			}
-			resp, err := cli.EventInitialAdd(context.Background(), &genUd)
-			if err != nil {
-				return servicesInfo, fmt.Errorf("SetUserData:  btcCli.CliMain.EventInitialAdd: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
-			}
-			log.Debugf("Btc EventInitialAdd: resp: %s", resp.Message)
-
-			sv, err := cli.ServiceInfo(context.Background(), &btcpb.Empty{})
-			if err != nil {
-				return servicesInfo, fmt.Errorf("SetUserData:  cli.ServiceInfo: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
-			}
-			servicesInfo = append(servicesInfo, store.ServiceInfo{
-				Branch:    sv.Branch,
-				Commit:    sv.Commit,
-				Buildtime: sv.Buildtime,
-				Lasttag:   sv.Lasttag,
-			})
 
 		case currencies.Ether:
 			var cli ethpb.NodeCommunicationsClient
@@ -279,7 +228,7 @@ func (multy *Multy) initHttpRoutes(conf *Configuration) error {
 		multy.userStore,
 		router,
 		conf.DonationAddresses,
-		multy.BTC,
+		//	multy.BTC,
 		multy.ETH,
 		conf.MultyVerison,
 		conf.Secretkey,
@@ -295,13 +244,14 @@ func (multy *Multy) initHttpRoutes(conf *Configuration) error {
 
 	// socketIO server initialization. server -> mobile client
 	socketIORoute := router.Group("/socketio")
-	socketIOPool, err := client.SetSocketIOHandlers(multy.restClient, multy.BTC, multy.ETH, socketIORoute, conf.SocketioAddr, conf.NSQAddress, multy.userStore)
+	// socketIOPool, err := client.SetSocketIOHandlers(multy.restClient, multy.BTC, multy.ETH, socketIORoute, conf.SocketioAddr, conf.NSQAddress, multy.userStore)
+	socketIOPool, err := client.SetSocketIOHandlers(multy.restClient, socketIORoute, conf.SocketioAddr, conf.NSQAddress, multy.userStore)
 	if err != nil {
 		return err
 	}
 	multy.clientPool = socketIOPool
 	multy.ETH.WsServer = multy.clientPool.Server
-	multy.BTC.WsServer = multy.clientPool.Server
+	// multy.BTC.WsServer = multy.clientPool.Server
 
 	firebaseClient, err := client.InitFirebaseConn(&conf.Firebase, multy.route, conf.NSQAddress)
 	if err != nil {
@@ -353,17 +303,7 @@ func (m *Multy) restoreState(coinType store.CoinType, ncClient interface{}) {
 					log.Errorf("SetUserData:  Contains err : curID :%d netID :%d err =%s", coinType.СurrencyID, coinType.NetworkID, err.Error())
 				}
 				log.Debugf("Restored state processing on curid =%v netid =%v", coinType.СurrencyID, coinType.NetworkID)
-			case currencies.Bitcoin:
-				var cli btcpb.NodeCommunicationsClient
-				cli = ncClient.(btcpb.NodeCommunicationsClient)
-				rp, err := cli.SyncState(context.Background(), &btcpb.BlockHeight{Height: height})
-				if err != nil {
-					log.Errorf("SetUserData:  btcCli.CliMain.cli.SyncState: curID :%d netID :%d err =%s", coinType.СurrencyID, coinType.NetworkID, err.Error())
-				}
-				if strings.Contains("err:", rp.GetMessage()) {
-					log.Errorf("SetUserData:  Contains err : curID :%d netID :%d err =%s", coinType.СurrencyID, coinType.NetworkID, err.Error())
-				}
-				log.Debugf("Restored state processing on curid =%v netid =%v", coinType.СurrencyID, coinType.NetworkID)
+
 			default:
 				log.Errorf("setGRPCHandlers: wrong СurrencyID")
 			}
