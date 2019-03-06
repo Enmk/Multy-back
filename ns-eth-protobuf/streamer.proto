@@ -16,9 +16,6 @@ service NodeCommunications {
     rpc EventAddNewAddress (WatchAddress) returns (ReplyInfo){
     }
     
-    rpc EventAddNewMultisig (WatchAddress) returns (ReplyInfo){
-    }
-
     rpc EventGetBlockHeight (Empty) returns (BlockHeight){
     }
 
@@ -49,19 +46,8 @@ service NodeCommunications {
     rpc SyncState (BlockHeight) returns (ReplyInfo){
     }
 
-    //  Multisig methods
-    rpc AddMultisig (Empty) returns (stream Multisig){
-    }
-
-    rpc GetMultisigInfo (AddressToResync) returns (ContractInfo){
-    }
-    
     // erc20 methods
     rpc GetERC20Info (ERC20Address) returns (ERC20Info){
-    }
-
-    // import external seed 
-    rpc IsEmptyAddress (AddressToResync) returns (IsEmpty){
     }
 
 }

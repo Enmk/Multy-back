@@ -56,25 +56,6 @@ services:
       - "${NSQD_DATA_DIR}:/data/nsqd"
     command: nsqd --broadcast-address nsq --lookupd-tcp-address=nsqlookup:4160 -data-path=/data
 
-  btc-ns-mainnet:
-    image: multyio/multy-btc-node-service:${MULTY_NS_BTC_VERSION}
-    restart: on-failure
-    volumes:
-      # LOGS? MULTY_NS_BTC_LOG_DIR
-      - "${MULTY_NS_BTC_MAINNET_NODE_CERT}:/multy/rpc.cert"
-      - "${MULTY_NS_BTC_MAINNET_CONFIG}:/multy/ns-btc.config"
-    expose: 
-      - "7755"
-
-  btc-ns-testnet:
-    image: multyio/multy-btc-node-service:${MULTY_NS_BTC_VERSION}
-    restart: on-failure
-    volumes:
-      - "${MULTY_NS_BTC_TESTNET_CONFIG}:/multy/ns-btc.config"
-      - "${MULTY_NS_BTC_TESTNET_NODE_CERT}:/multy/rpc.cert"
-    expose:
-      - "6655"
-
   eth-ns-mainnet:
     image: multyio/multy-eth-node-service:${MULTY_NS_ETH_VERSION}
 

@@ -36,14 +36,6 @@ RUN ["/multy/multy-back", "--CanaryTest=true"]
 ENTRYPOINT ["/multy/multy-back"]
 
 
-FROM base as multy-btc-node-service
-LABEL org.label-schema.name = "Multy BTC Node service"
-WORKDIR /multy
-COPY --from=builder /go/src/github.com/Multy-io/Multy-back/cmd/ns-btc/ns-btc /multy/ns-btc
-RUN ["/multy/ns-btc", "--CanaryTest=true"]
-ENTRYPOINT ["/multy/ns-btc"]
-
-
 FROM base as multy-eth-node-service
 LABEL org.label-schema.name = "Multy ETH Node service"
 WORKDIR /multy

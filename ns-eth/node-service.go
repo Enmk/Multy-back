@@ -23,11 +23,10 @@ var log = slf.WithContext("NodeClient").WithCaller(slf.CallerShort)
 
 // NodeClient is a main struct of service
 type NodeClient struct {
-	Config      *Configuration
-	Instance    *Client
-	GRPCserver  *Server
-	Clients     *sync.Map // address to userid
-	CliMultisig *Multisig
+	Config     *Configuration
+	Instance   *Client
+	GRPCserver *Server
+	Clients    *sync.Map // address to userid
 }
 
 // Init initializes Multy instance
@@ -49,17 +48,6 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 	// initail initialization of clients data
 	nc.Clients = &usersData
 
-	//TODO: init contract clients
-	multisig := Multisig{
-		FactoryAddress: conf.MultisigFactory,
-		UsersContracts: sync.Map{},
-	}
-
-	multisig.UsersContracts.Store("0x7d2d50791f839aea9b3ebe2c1dfd4dea13bc12ca", "0x116FfA11DD8829524767f561da5d33D3D170E17d")
-
-	// initail initialization of clients contracts data
-	nc.CliMultisig = &multisig
-
 	log.Infof("Users data initialization done")
 
 	// init gRPC server
@@ -69,7 +57,7 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 	}
 
 	// Creates a new gRPC server
-	ethCli := NewClient(&conf.EthConf, nc.Clients, nc.CliMultisig)
+	ethCli := NewClient(&conf.EthConf, nc.Clients) //, nc.CliMultisig)
 	if err != nil {
 		return nil, fmt.Errorf("eth.NewClient initialization: %s", err.Error())
 	}
@@ -88,7 +76,6 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 		UsersData:       nc.Clients,
 		EthCli:          nc.Instance,
 		Info:            &conf.ServiceInfo,
-		Multisig:        nc.CliMultisig,
 		NetworkID:       conf.NetworkID,
 		ResyncUrl:       resyncUrl,
 		EtherscanAPIKey: conf.EtherscanAPIKey,

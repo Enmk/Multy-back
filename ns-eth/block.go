@@ -1,8 +1,6 @@
 package nseth
 
 import (
-	"strings"
-
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 
 	"github.com/onrik/ethrpc"
@@ -40,16 +38,9 @@ func (c *Client) BlockTransaction(hash string) {
 	}
 
 	for _, rawTx := range txs {
-		c.parseETHMultisig(rawTx, int64(*rawTx.BlockNumber), false)
 		c.parseETHTransaction(rawTx, int64(*rawTx.BlockNumber), false)
 		c.DeleteTxpoolTransaction(rawTx.Hash)
 
-		if strings.ToLower(rawTx.To) == strings.ToLower(c.Multisig.FactoryAddress) {
-			log.Debugf("%v %s %v", strings.ToLower(rawTx.To), ":", strings.ToLower(c.Multisig.FactoryAddress))
-			go func(hash string) {
-				go c.FactoryContract(hash)
-			}(rawTx.Hash)
-		}
 	}
 }
 
@@ -65,12 +56,5 @@ func (c *Client) ResyncBlock(block *ethrpc.Block) {
 
 	for _, rawTx := range txs {
 		c.parseETHTransaction(rawTx, int64(*rawTx.BlockNumber), false)
-		c.parseETHMultisig(rawTx, int64(*rawTx.BlockNumber), false)
-		if strings.ToLower(rawTx.To) == strings.ToLower(c.Multisig.FactoryAddress) {
-			log.Debugf("%v %s %v", strings.ToLower(rawTx.To), ":", strings.ToLower(c.Multisig.FactoryAddress))
-			go func(hash string) {
-				go c.FactoryContract(hash)
-			}(rawTx.Hash)
-		}
 	}
 }

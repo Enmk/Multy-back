@@ -14,7 +14,6 @@ type Configuration struct {
 	CanaryTest      bool
 	Name            string
 	GrpcPort        string
-	MultisigFactory string
 	EthConf         Conf
 	ServiceInfo     store.ServiceInfo
 	NetworkID       int

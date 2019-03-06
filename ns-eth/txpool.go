@@ -10,10 +10,8 @@ import (
 	"math"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 
-	"github.com/Multy-io/Multy-back/store"
 	"github.com/Multy-io/Multy-back/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -47,24 +45,11 @@ func (c *Client) AddTransactionToTxpool(txHash string) {
 	}
 	c.parseETHTransaction(*rawTx, -1, false)
 
-	c.parseETHMultisig(*rawTx, -1, false)
+	//c.parseETHMultisig(*rawTx, -1, false)
 
 	// add txpool record
 	if rawTx.GasPrice.IsUint64() {
 		c.Mempool.Store(rawTx.Hash, rawTx.GasPrice.Uint64())
-	}
-
-	if strings.ToLower(rawTx.To) == strings.ToLower(c.Multisig.FactoryAddress) {
-		go func() {
-			fi, err := parseFactoryInput(rawTx.Input)
-			if err != nil {
-				log.Errorf("txpoolTransaction:parseFactoryInput: %s", err.Error())
-			}
-			fi.TxOfCreation = txHash
-			fi.FactoryAddress = c.Multisig.FactoryAddress
-			fi.DeployStatus = int64(store.MultisigStatusDeployPending)
-			c.NewMultisigStream <- *fi
-		}()
 	}
 
 }

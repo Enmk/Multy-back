@@ -24,7 +24,6 @@ import (
 // Server implements streamer interface and is a gRPC server
 type Server struct {
 	UsersData       *sync.Map
-	Multisig        *Multisig
 	EthCli          *Client
 	Info            *store.ServiceInfo
 	NetworkID       int
@@ -55,45 +54,6 @@ func (s *Server) EventGetGasPrice(ctx context.Context, in *pb.Empty) (*pb.GasPri
 		Fast:     gasPriceEstimate.Fast,
 		VeryFast: gasPriceEstimate.VeryFast,
 	}, nil
-}
-
-func (s *Server) IsEmptyAddress(ctx context.Context, in *pb.AddressToResync) (*pb.IsEmpty, error) {
-	balance, err := s.EthCli.GetAddressBalance(in.GetAddress())
-	if err != nil {
-		return nil, fmt.Errorf("IsEmptyAddress: GetAddressBalance err: %v", err.Error())
-	}
-	if balance.Int64() != 0 {
-		return &pb.IsEmpty{
-			Empty: false,
-		}, nil
-	}
-
-	url := s.ResyncUrl + in.GetAddress() + "&action=txlist&module=account"
-	request := gorequest.New()
-	resp, _, errs := request.Get(url).Retry(5, 1*time.Second, http.StatusForbidden, http.StatusBadRequest, http.StatusInternalServerError).End()
-	if len(errs) > 0 {
-		return nil, fmt.Errorf("IsEmptyAddress: request.Get: err: %v", errs[0].Error())
-	}
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("IsEmptyAddress: ioutil.ReadAll err: %v", err.Error())
-	}
-
-	reTx := resyncTx{}
-	if err := json.Unmarshal(respBody, &reTx); err != nil {
-		return nil, fmt.Errorf("IsEmptyAddress: json.Unmarshal err: %v", err.Error())
-	}
-
-	if len(reTx.Result) == 0 {
-		return &pb.IsEmpty{
-			Empty: true,
-		}, nil
-	}
-
-	return &pb.IsEmpty{
-		Empty: false,
-	}, nil
-
 }
 
 func (s *Server) GetERC20Info(ctx context.Context, in *pb.ERC20Address) (*pb.ERC20Info, error) {
@@ -128,7 +88,7 @@ func (s *Server) GetERC20Info(ctx context.Context, in *pb.ERC20Address) (*pb.ERC
 	for contract := range tokens {
 		token, err := NewToken(common.HexToAddress(contract), s.ABIcli)
 		if err != nil {
-			log.Errorf("GetMultisigInfo - %v", err)
+			log.Errorf("GetERC20ContractInfo - %v", err)
 			return nil, err
 		}
 		balance, err := token.BalanceOf(&bind.CallOpts{}, common.HexToAddress(in.GetAddress()))
@@ -153,36 +113,6 @@ func (s *Server) GetERC20Info(ctx context.Context, in *pb.ERC20Address) (*pb.ERC
 	return addressInfo, nil
 }
 
-func (s *Server) GetMultisigInfo(ctx context.Context, in *pb.AddressToResync) (*pb.ContractInfo, error) {
-
-	contract, err := NewMultiSigWallet(common.HexToAddress(in.GetAddress()), s.ABIcli)
-	if err != nil {
-		log.Errorf("GetMultisigInfo - %v", err)
-		return nil, err
-	}
-	contractOwners, err := contract.GetOwners(&bind.CallOpts{})
-	if err != nil {
-		log.Errorf("GetMultisigInfo contract.GetOwners - %v", err)
-		return nil, err
-	}
-	owners := []string{}
-	for _, owner := range contractOwners {
-		owners = append(owners, strings.ToLower(owner.String()))
-	}
-
-	required, err := contract.Required(&bind.CallOpts{})
-	if err != nil {
-		log.Errorf("GetMultisigInfo contract.Required - %v", err)
-		return nil, err
-	}
-
-	return &pb.ContractInfo{
-		ConfirmationsRequired: required.Int64(),
-		ContractOwners:        owners,
-	}, err
-
-}
-
 func (s *Server) EventInitialAdd(c context.Context, ud *pb.UsersData) (*pb.ReplyInfo, error) {
 	log.Debugf("EventInitialAdd len - %v", len(ud.Map))
 
@@ -196,10 +126,6 @@ func (s *Server) EventInitialAdd(c context.Context, ud *pb.UsersData) (*pb.Reply
 	}
 
 	*s.UsersData = udMap
-
-	for key, value := range ud.GetUsersContracts() {
-		s.Multisig.UsersContracts.Store(key, value)
-	}
 
 	return &pb.ReplyInfo{
 		Message: "ok",
@@ -227,63 +153,6 @@ func (s *Server) EventAddNewAddress(c context.Context, wa *pb.WatchAddress) (*pb
 	*s.UsersData = newMap
 
 	log.Debugf("EventAddNewAddress - %v", newMap)
-
-	return &pb.ReplyInfo{
-		Message: "ok",
-	}, nil
-
-}
-
-func (s *Server) EventAddNewMultisig(ctx context.Context, address *pb.WatchAddress) (*pb.ReplyInfo, error) {
-	log.Debugf("EventAddNewMultisig")
-
-	// store multisig adddress in map
-	s.Multisig.UsersContracts.Store(address.GetAddress(), "")
-
-	// resync multisig transacttions
-	addr := address.GetAddress()
-	url := s.ResyncUrl + addr + "&action=txlist&module=account"
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventAddNewMultisig: http.NewRequest = %s", err.Error()),
-		}, nil
-	}
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventAddNewMultisig: http.DefaultClient.Do = %s", err.Error()),
-		}, nil
-	}
-	defer res.Body.Close()
-
-	reTx := resyncTx{}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventAddNewMultisig: ioutil.ReadAll = %s", err.Error()),
-		}, nil
-	}
-
-	if err := json.Unmarshal(body, &reTx); err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventAddNewMultisig: json.Unmarshal = %s", err.Error()),
-		}, nil
-	}
-
-	if !strings.Contains(reTx.Message, "OK") {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventAddNewMultisig: !strings.Contains OK a.k.a. bad response form 3-party"),
-		}, nil
-	}
-
-	log.Debugf("EventAddNewMultisig %d", len(reTx.Result))
-
-	for _, hash := range reTx.Result {
-		s.EthCli.ResyncMultisig(hash.Hash)
-	}
 
 	return &pb.ReplyInfo{
 		Message: "ok",
@@ -460,20 +329,6 @@ func (s *Server) EventNewBlock(_ *pb.Empty, stream pb.NodeCommunications_EventNe
 		err := stream.Send(&h)
 		if err != nil && err.Error() == ErrGrpcTransport {
 			log.Warnf("EventNewBlock:stream.Send() %v ", err.Error())
-			s.ReloadChan <- struct{}{}
-			return nil
-		}
-	}
-	return nil
-}
-
-func (s *Server) AddMultisig(_ *pb.Empty, stream pb.NodeCommunications_AddMultisigServer) error {
-	for m := range s.EthCli.NewMultisigStream {
-		log.Infof("AddMultisig new contract address - %v", m.GetContract())
-		err := stream.Send(&m)
-		log.Warnf("Multisig sent on address contract %v", m.Contract)
-		if err != nil && err.Error() == ErrGrpcTransport {
-			log.Warnf("AddMultisig:stream.Send() %v ", err.Error())
 			s.ReloadChan <- struct{}{}
 			return nil
 		}

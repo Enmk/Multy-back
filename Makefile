@@ -8,7 +8,7 @@ GOPATH = $(shell echo "$$GOPATH")
 LD_OPTS = -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.lasttag=${LASTTAG} -X main.buildtime=${BUILDTIME} -linkmode=external -w -s"
 
 # List of all binary targets we expect from make to produce
-TARGETS=cmd/multy-back/multy-back cmd/ns-btc/ns-btc cmd/ns-eth/ns-eth
+TARGETS=cmd/multy-back/multy-back  cmd/ns-eth/ns-eth 
 
 TARGET_OS=
 TARGET_ARCH=
@@ -49,11 +49,8 @@ $(TARGETS):
 test:
 	go test ./...
 
-proto-btc-ns:
-	cd ./ns-btc-protobuf && protoc --go_out=plugins=grpc:. *.proto
+proto: 
 	cd ./ns-eth-protobuf && protoc --go_out=plugins=grpc:. *.proto
-
-proto: proto-btc-ns
 
 # Show to-do items per file.
 todo:
@@ -75,7 +72,7 @@ clean:
 #################################################################################
 
 # List of all docker images to build and tag
-DOCKER_IMAGES=multy-back multy-btc-node-service multy-eth-node-service
+DOCKER_IMAGES=multy-back multy-eth-node-service
 
 # The default tag, used for building images, to remove ambigulty of ':latest'
 DOCKER_BUILD_TAG=$(COMMIT)

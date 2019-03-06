@@ -8,7 +8,6 @@ package eth
 import (
 	"context"
 	"io"
-	"time"
 
 	"github.com/Multy-io/Multy-back/currencies"
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
@@ -32,93 +31,6 @@ func (ethcli *ETHConn) setGRPCHandlers(networkID int, accuracyRange int) {
 		wa = ethcli.WatchAddressTest
 
 	}
-
-	go func() {
-		stream, err := client.AddMultisig(context.Background(), &pb.Empty{})
-		if err != nil {
-			log.Errorf("setGRPCHandlers: cli.AddMultisig: %s", err.Error())
-		}
-
-		// Loop:
-		for {
-			multisigTx, err := stream.Recv()
-			if err == io.EOF {
-				break
-			}
-			// Add or notify about error
-			if err != nil {
-				log.Errorf("initGrpcClient: cli.AddMultisig:stream.Recv: %s", err.Error())
-			}
-			log.Debugf("initGrpcClient: cli.AddMultisig:stream.Recv:")
-
-			log.Warnf("Multisig received on address contract %v ", multisigTx.Contract)
-
-			multisig := generatedMultisigTxToStore(multisigTx, currencies.Ether, networkID)
-
-			log.Warnf("\n\n\n\n\n multisigTx.DeployStatus = %v", multisigTx.DeployStatus)
-
-			users := msToUserData(multisigTx.Addresses, usersData)
-
-			invitecode := fetchInviteUndeployed(users)
-			log.Warnf("\ninvitecode %v", invitecode)
-
-			emptyCode := false
-			if invitecode == "" {
-				log.Errorf("cli.AddMultisig:stream.Recv:not found contract transaction %v", multisigTx.Addresses)
-				emptyCode = true
-			}
-
-			msUser := store.User{}
-			err = usersData.Find(bson.M{"multisig.inviteCode": invitecode}).One(&msUser)
-			doubleInvited := false
-			for _, checkMs := range msUser.Multisigs {
-				if checkMs.InviteCode == invitecode {
-					if checkMs.ContractAddress != "" {
-						doubleInvited = true
-					}
-				}
-			}
-
-			if !doubleInvited && !emptyCode {
-				for _, user := range users {
-					addrs, err := FetchUserAddresses(currencies.Ether, multisig.NetworkID, user, multisigTx.Addresses)
-					if err != nil {
-						log.Errorf("createMultisig:FetchUserAddresses: %v", err.Error())
-					}
-
-					for _, addr := range addrs {
-						log.Warnf("addr :%v AddressIndex: %v Associated: %v UserID: %v \n", addr.Address, addr.AddressIndex, addr.Associated, addr.UserID)
-					}
-
-					multisig.Owners = addrs
-
-					sel := bson.M{"userID": user.UserID, "multisig.inviteCode": invitecode}
-					update := bson.M{"$set": bson.M{
-						"multisig.$.confirmations":   multisig.Confirmations,
-						"multisig.$.contractAddress": multisig.ContractAddress,
-						"multisig.$.txOfCreation":    multisig.TxOfCreation,
-						"multisig.$.factoryAddress":  multisig.FactoryAddress,
-						"multisig.$.lastActionTime":  multisig.LastActionTime,
-						"multisig.$.deployStatus":    multisig.DeployStatus,
-					}}
-
-					err = usersData.Update(sel, update)
-					if err != nil {
-						log.Errorf("cli.AddMultisig:stream.Recv:userStore.Update: %s", err.Error())
-					}
-					multisig.InviteCode = invitecode
-					msg := store.WsMessage{
-						Type:    store.NotifyDeploy,
-						To:      user.UserID,
-						Date:    time.Now().Unix(),
-						Payload: multisig,
-					}
-					ethcli.WsServer.BroadcastToAll(store.MsgReceive+":"+user.UserID, msg)
-				}
-			}
-		}
-		log.Panicf("AddMultisig")
-	}()
 
 	// add to transaction history record and send ws notification on tx
 	go func() {
@@ -150,32 +62,6 @@ func (ethcli *ETHConn) setGRPCHandlers(networkID int, accuracyRange int) {
 			if !gTx.GetResync() {
 				sendNotifyToClients(tx, nsqProducer, networkID)
 			}
-			// process multisig txs
-			if gTx.Multisig {
-				methodInvoked, err := processMultisig(&tx, networkID, nsqProducer, ethcli)
-				log.Warnf("methodInvoked %v tx.Multisig.Return %v ", methodInvoked, tx.Multisig.Return)
-				// ws notify about all kinds of ms transactions
-				sel := bson.M{"multisig.contractAddress": tx.Multisig.Contract}
-				users := []store.User{}
-				err = usersData.Find(sel).All(&users)
-				if err != nil {
-					log.Errorf("initGrpcClient:gTx.Multisig:usersData.Find: %s", err.Error())
-				}
-				for _, user := range users {
-					msg := store.WsMessage{
-						Type:    signatuteToStatus(methodInvoked),
-						To:      user.UserID,
-						Date:    time.Now().Unix(),
-						Payload: gTx,
-					}
-					ethcli.WsServer.BroadcastToAll(store.MsgReceive+":"+user.UserID, msg)
-				}
-
-				if err != nil {
-					log.Errorf("initGrpcClient: processMultisig: %s", err.Error())
-				}
-			}
-
 		}
 	}()
 

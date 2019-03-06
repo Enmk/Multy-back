@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	MultiSigFactory    = "0xf8f73808"
+	// MultiSigFactory    = "0xf8f73808"
 	submitTransaction  = "0xc6427474"
 	confirmTransaction = "0xc01a8c84"
 	revokeConfirmation = "0x20ea8d86"
@@ -36,11 +36,11 @@ var (
 	exRate    *mgo.Collection
 	usersData *mgo.Collection
 
-	txsData      *mgo.Collection
-	multisigData *mgo.Collection
+	txsData *mgo.Collection
+	// multisigData *mgo.Collection
 
-	txsDataTest      *mgo.Collection
-	multisigDataTest *mgo.Collection
+	txsDataTest *mgo.Collection
+	// multisigDataTest *mgo.Collection
 
 	restoreState *mgo.Collection
 )
@@ -176,7 +176,7 @@ func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, net
 				WalletIndex:     tx.WalletIndex,
 				From:            tx.From,
 				To:              tx.To,
-				Multisig:        tx.Multisig.Contract,
+				//	Multisig:        tx.Multisig.Contract,
 			},
 		}
 		if len(userid) > 0 {
@@ -198,7 +198,7 @@ func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, net
 				WalletIndex:     tx.WalletIndex,
 				From:            tx.From,
 				To:              tx.To,
-				Multisig:        tx.Multisig.Contract,
+				//	Multisig:        tx.Multisig.Contract,
 			},
 		}
 		sendNotify(&txMsq, nsqProducer)
@@ -236,13 +236,13 @@ func generatedTxDataToStore(tx *ethpb.ETHTransaction) store.TransactionETH {
 		BlockTime:    tx.GetBlockTime(),
 		PoolTime:     tx.GetTxpoolTime(),
 		BlockHeight:  tx.GetBlockHeight(),
-		Multisig: &store.MultisigTx{
-			Contract:         tx.GetContract(),
-			MethodInvoked:    tx.GetMethodInvoked(),
-			InvocationStatus: tx.GetInvocationStatus(),
-			Return:           tx.GetReturn(),
-			Input:            tx.GetInput(),
-		},
+		// Multisig: &store.MultisigTx{
+		// 	Contract:         tx.GetContract(),
+		// 	MethodInvoked:    tx.GetMethodInvoked(),
+		// 	InvocationStatus: tx.GetInvocationStatus(),
+		// 	Return:           tx.GetReturn(),
+		// 	Input:            tx.GetInput(),
+		// },
 	}
 }
 
@@ -318,479 +318,6 @@ func saveTransaction(tx store.TransactionETH, networtkID int, resync bool) error
 	return nil
 }
 
-func processMultisig(tx *store.TransactionETH, networtkID int, nsqProducer *nsq.Producer, ethcli *ETHConn) (string, error) {
-
-	multisigStore := &mgo.Collection{}
-	txStore := &mgo.Collection{}
-	switch networtkID {
-	case currencies.ETHMain:
-		multisigStore = multisigData
-		txStore = txsData
-	case currencies.ETHTest:
-		multisigStore = multisigDataTest
-		txStore = txsDataTest
-	default:
-		return "", errors.New("processMultisig: wrong networkID")
-	}
-
-	tx.Multisig.Contract = tx.To
-	multyTX := &store.TransactionETH{}
-	if tx.Status == store.TxStatusAppearedInBlockIncoming || tx.Status == store.TxStatusAppearedInMempoolIncoming || tx.Status == store.TxStatusInBlockConfirmedIncoming {
-		log.Debugf("saveTransaction new incoming tx to %v", tx.To)
-
-		sel := bson.M{"hash": tx.Hash}
-		err := multisigStore.Find(sel).One(nil)
-		if err == mgo.ErrNotFound {
-			multyTX = ParseMultisigInput(tx, networtkID, multisigStore, txStore, nsqProducer, ethcli)
-			if multyTX.Multisig.MethodInvoked == submitTransaction && multyTX.Status == store.TxStatusAppearedInBlockIncoming {
-				multyTX.Status = store.TxStatusInBlockConfirmedOutcoming
-			}
-			err := multisigStore.Insert(multyTX)
-			return "", err
-		}
-
-		multyTX = ParseMultisigInput(tx, networtkID, multisigStore, txStore, nsqProducer, ethcli)
-		if multyTX.Multisig.MethodInvoked == submitTransaction && multyTX.Status == store.TxStatusAppearedInBlockIncoming {
-			multyTX.Status = store.TxStatusInBlockConfirmedOutcoming
-		}
-
-		if err != nil && err != mgo.ErrNotFound {
-			return "", err
-		}
-
-		update := bson.M{
-			"$set": bson.M{
-				"from":                      tx.From,
-				"to":                        tx.To,
-				"txstatus":                  tx.Status,
-				"blockheight":               tx.BlockHeight,
-				"blocktime":                 tx.BlockTime,
-				"amount":                    tx.Amount,
-				"multisig.requestid":        tx.Multisig.RequestID,
-				"multisig.return":           tx.Multisig.Return,
-				"multisig.invocationstatus": tx.Multisig.InvocationStatus,
-				"multisig.confirmed":        tx.Multisig.Confirmed,
-			},
-		}
-
-		err = multisigStore.Update(sel, update)
-
-		return tx.Multisig.MethodInvoked, err
-	}
-	return "", nil
-}
-
-func ParseMultisigInput(tx *store.TransactionETH, networtkID int, multisigStore, txStore *mgo.Collection, nsqProducer *nsq.Producer, ethcli *ETHConn) *store.TransactionETH { // method
-
-	owners, _ := FetchContractOwners(currencies.Ether, networtkID, tx.Multisig.Contract)
-	tx.Multisig.Owners = owners
-	tx.Multisig.MethodInvoked = fetchMethod(tx.Multisig.Input)
-
-	users := findContractOwners(tx.To)
-	contract, err := fetchMultisig(users, tx.To)
-	if err != nil {
-		log.Errorf("ParseMultisigInput:fetchMultisig: %v", err.Error())
-	}
-
-	switch tx.Multisig.MethodInvoked {
-	case submitTransaction: // "c6427474": "submitTransaction(address,uint256,bytes)"
-		// Fetch contract owners, send notfy to owners about transation. status: waiting for confirmations
-		// find in db if one one confirmation needed DONE internal transaction
-		log.Debugf("submitTransaction:  Input :%v Return :%v ", tx.Multisig.Input, tx.Multisig.Return)
-		if tx.BlockTime != 0 {
-			i, _ := new(big.Int).SetString(tx.Multisig.Return, 16)
-			if i == nil || tx.Multisig.Return == "" {
-				log.Errorf("ParseMultisigInput:confirmTransaction:empty return from contract %v", tx.Hash)
-				tx.Multisig.InvocationStatus = false
-				return tx
-			}
-
-			if !tx.Multisig.InvocationStatus {
-				tx.Status = store.TxStatusInBlockMethodInvocationFail
-				sel := bson.M{"txhash": tx.Hash}
-				update := bson.M{
-					"$set": bson.M{
-						"txstatus": store.TxStatusInBlockMethodInvocationFail,
-					},
-				}
-				txStore.UpdateAll(sel, update)
-			}
-			tx.Multisig.RequestID = i.Int64()
-
-			address, amount := parseSubmitInput(tx.Multisig.Input)
-
-			tx.Amount = amount
-
-			// fakeit intrrnal transaction history
-			if contract.Confirmations == 1 {
-				tx.Multisig.Confirmed = true
-				sel := bson.M{"txhash": tx.Hash}
-				err := txStore.Find(sel).One(nil)
-				if err == mgo.ErrNotFound {
-					// initial insertion
-					user := store.User{}
-					txToUser := *tx
-					txToUser.From = contract.ContractAddress
-					txToUser.To = address
-
-					sel := bson.M{"wallets.addresses.address": address}
-					_ = usersData.Find(sel).One(&user)
-
-					isOurUser := false
-					// internal tansaction to wallet
-					for _, wallet := range user.Wallets {
-						for _, adr := range wallet.Adresses {
-							if adr.Address == address {
-								txToUser.From = contract.ContractAddress
-								txToUser.To = adr.Address
-								txToUser.PoolTime = time.Now().Unix()
-								txToUser.Multisig.MethodInvoked = executeTransaction
-								isOurUser = true
-								txToUser.UserID = user.UserID
-								txToUser.WalletIndex = wallet.WalletIndex
-								txToUser.AddressIndex = adr.AddressIndex
-								txToUser.Amount = amount
-								txToUser.Hash = tx.Hash
-								txToUser.Status = store.TxStatusInBlockConfirmedOutcoming
-								txToUser.IsInternal = true
-								break
-							}
-						}
-					}
-
-					if isOurUser {
-						txToUser.Multisig = nil
-						_ = txStore.Insert(txToUser)
-					}
-					isOurUser = false
-
-					sel = bson.M{"multisig.contractAddress": address}
-					usersData.Find(sel).One(&user)
-					// internal transaction to multisig
-					for _, multisig := range user.Multisigs {
-						if multisig.ContractAddress == address {
-							txToUser.From = contract.ContractAddress
-							txToUser.To = multisig.ContractAddress
-							txToUser.PoolTime = time.Now().Unix()
-							txToUser.Multisig.MethodInvoked = executeTransaction
-							isOurUser = true
-							txToUser.Amount = amount
-							txToUser.Hash = tx.Hash
-							txToUser.Status = store.TxStatusInBlockConfirmedIncoming
-							txToUser.IsInternal = true
-							txToUser.Multisig.Contract = multisig.ContractAddress
-							break
-						}
-					}
-
-					if isOurUser {
-						_ = multisigStore.Insert(txToUser)
-					}
-
-				}
-
-				if err != nil && err != mgo.ErrNotFound {
-					// database error
-					log.Errorf("ParseMultisigInput:confirmTransaction:multisigStore.Find %v", err.Error())
-				}
-
-				// notify on submit transaction
-
-				for _, user := range users {
-					msg := store.WsMessage{
-						Type:    store.NotifyTxSubmitted,
-						To:      user.UserID,
-						Date:    time.Now().Unix(),
-						Payload: "ok",
-					}
-					ethcli.WsServer.BroadcastToAll(store.MsgReceive+":"+user.UserID, msg)
-				}
-
-			}
-		}
-
-		// update confirmations history
-		ownerHistorys := []store.OwnerHistory{}
-		for _, ownerHistory := range tx.Multisig.Owners {
-			if ownerHistory.Address == tx.From {
-				ownerHistorys = append(ownerHistorys, store.OwnerHistory{
-					Address:            tx.From,
-					ConfirmationTX:     tx.Hash,
-					ConfirmationStatus: store.MultisigOwnerStatusConfirmed,
-					ConfirmationTime:   time.Now().Unix(),
-					SeenTime:           time.Now().Unix(),
-				})
-			} else {
-				ownerHistorys = append(ownerHistorys, ownerHistory)
-			}
-		}
-
-		tx.Multisig.Owners = ownerHistorys
-
-		address, amount := parseSubmitInput(tx.Multisig.Input)
-		tx.From = tx.To
-		tx.To = address
-		tx.Amount = amount
-
-		return tx
-
-	case confirmTransaction: // "c01a8c84": "confirmTransaction(uint256)"
-		log.Warnf("confirmTransaction: %v", tx.Multisig.Input)
-		i, _ := new(big.Int).SetString(tx.Multisig.Input[10:], 16)
-		sel := bson.M{"multisig.requestid": i.Int64(), "multisig.contract": tx.Multisig.Contract, "multisig.methodinvoked": submitTransaction}
-		log.Warnf("confirmTransaction:sel %v", sel)
-
-		originTx := store.TransactionETH{}
-		err := multisigStore.Find(sel).One(&originTx)
-		if err != nil {
-			log.Errorf("ParseMultisigInput:confirmTransaction:multisigStore.Find %v requestid:%v  contract:%v ", err.Error(), i.Int64(), contract.ContractAddress)
-			return tx
-		}
-
-		//todo update only on block and exec true
-		ownerHistorys := []store.OwnerHistory{}
-
-		for _, ownerHistory := range originTx.Multisig.Owners {
-			if ownerHistory.Address == tx.From {
-				ownerHistorys = append(ownerHistorys, store.OwnerHistory{
-					Address:            tx.From,
-					ConfirmationTX:     tx.Hash,
-					ConfirmationStatus: store.MultisigOwnerStatusConfirmed,
-					ConfirmationTime:   time.Now().Unix(),
-					SeenTime:           time.Now().Unix(),
-				})
-			} else {
-				ownerHistorys = append(ownerHistorys, ownerHistory)
-			}
-		}
-
-		update := bson.M{
-			"$set": bson.M{
-				"multisig.owners": ownerHistorys,
-			},
-		}
-
-		// update confirmations history
-		_, err = multisigStore.UpdateAll(sel, update)
-		if err != nil {
-			log.Errorf("ParseMultisigInput:confirmTransaction:multisigStore.Update %v requestid:%v  contract:%v ", err.Error(), originTx.Multisig.RequestID, contract.ContractAddress)
-		}
-
-		tx.Multisig.Owners = []store.OwnerHistory{}
-
-		confirmations := 0
-		for _, oh := range ownerHistorys {
-			if oh.ConfirmationStatus == store.MultisigOwnerStatusConfirmed {
-				confirmations++
-			}
-		}
-
-		// Internal transaction contract to user
-		if contract.Confirmations <= confirmations && tx.BlockTime != 0 {
-			tx.Multisig.Confirmed = true
-			//update owners history
-			sel := bson.M{"hash": originTx.Hash}
-			update := bson.M{
-				"$set": bson.M{
-					"multisig.owners":    ownerHistorys,
-					"multisig.confirmed": true,
-				},
-			}
-			_, err = multisigStore.UpdateAll(sel, update)
-			if err != nil {
-				log.Errorf("ParseMultisigInput:confirmTransaction:multisigStore.Update:contract.Confirmations %v contract:%v ", err.Error(), contract.ContractAddress)
-			}
-
-			sel = bson.M{"hash": originTx.Hash, "isinternal": true}
-			err := txStore.Find(sel).One(nil)
-			txToUser := tx
-			if err == mgo.ErrNotFound {
-				// initial insertion
-
-				log.Debugf("Internal transaction:", MultiSigFactory)
-
-				isOurUser := false
-
-				user := store.User{}
-				outputAddress, amount := parseSubmitInput(originTx.Multisig.Input)
-
-				// internal transaction contract to addres
-				sel := bson.M{"wallets.addresses.address": outputAddress}
-				_ = usersData.Find(sel).One(&user)
-				for _, wallet := range user.Wallets {
-					for _, adr := range wallet.Adresses {
-						if adr.Address == outputAddress {
-							txToUser.From = contract.ContractAddress
-							txToUser.To = adr.Address
-							txToUser.PoolTime = time.Now().Unix()
-							txToUser.Multisig.MethodInvoked = executeTransaction
-							isOurUser = true
-							txToUser.UserID = user.UserID
-							txToUser.WalletIndex = wallet.WalletIndex
-							txToUser.AddressIndex = adr.AddressIndex
-							txToUser.Amount = amount
-							txToUser.Hash = tx.Hash
-							txToUser.Status = store.TxStatusInBlockConfirmedIncoming
-							txToUser.IsInternal = true
-							break
-						}
-					}
-				}
-
-				if isOurUser {
-					log.Warnf("not our user")
-					_ = txStore.Insert(txToUser)
-				}
-
-				// contract to contract history
-				isOurUser = false
-				sel = bson.M{"multisig.contractAddress": outputAddress}
-				usersData.Find(sel).One(&user)
-				// internal transaction to multisig
-				for _, multisig := range user.Multisigs {
-					if multisig.ContractAddress == outputAddress {
-						tx.Status = store.TxStatusAppearedInBlockIncoming
-						txToUser.From = contract.ContractAddress
-						txToUser.To = multisig.ContractAddress
-						txToUser.PoolTime = time.Now().Unix()
-						txToUser.Multisig.MethodInvoked = executeTransaction
-						isOurUser = true
-						txToUser.Amount = amount
-						txToUser.Hash = tx.Hash
-						txToUser.Status = store.TxStatusInBlockConfirmedIncoming
-						txToUser.IsInternal = true
-						txToUser.Multisig.Contract = multisig.ContractAddress
-						txToUser.Multisig.MethodInvoked = store.SubmitTransaction
-						break
-					}
-				}
-
-				if isOurUser {
-					_ = multisigStore.Insert(txToUser)
-				}
-			}
-			if err != nil && err != mgo.ErrNotFound {
-				// database error
-				log.Errorf("ParseMultisigInput:confirmTransaction:multisigStore.Find %v", err.Error())
-			}
-
-			// notify on submit transaction
-			for _, user := range users {
-				msg := store.WsMessage{
-					Type:    store.NotifyTxSubmitted,
-					To:      user.UserID,
-					Date:    time.Now().Unix(),
-					Payload: "ok",
-				}
-				ethcli.WsServer.BroadcastToAll(store.MsgReceive+":"+user.UserID, msg)
-			}
-		}
-
-		if tx.BlockTime != 0 && !tx.Multisig.InvocationStatus {
-			tx.Status = store.TxStatusInBlockMethodInvocationFail
-			sel := bson.M{"txhash": tx.Hash}
-			update := bson.M{
-				"$set": bson.M{
-					"txstatus": store.TxStatusInBlockMethodInvocationFail,
-				},
-			}
-			txStore.UpdateAll(sel, update)
-		}
-
-		return tx
-
-	case revokeConfirmation: // "20ea8d86": "revokeConfirmation(uint256)"
-		// TODO: send notfy to owners about -1 confirmation. store confirmations in db
-
-		tx.Multisig.Owners = []store.OwnerHistory{}
-		log.Debugf("revokeConfirmation: %v", tx.Multisig.Input)
-
-		requestid, err := parseRevokeInput(tx.Multisig.Input)
-		if err != nil {
-			log.Errorf("ParseMultisigInput:revokeConfirmation: parseRevokeInput %v requestid:%v  contract:%v ", err.Error(), requestid, contract.ContractAddress)
-		} else {
-			sel := bson.M{"multisig.requestid": requestid, "multisig.contract": contract.ContractAddress}
-
-			originTx := store.TransactionETH{}
-			err = multisigStore.Find(sel).One(&originTx)
-			if err != nil {
-				log.Errorf("ParseMultisigInput:revokeConfirmation:multisigStore.Find %v requestid:%v  contract:%v ", err.Error(), requestid, contract.ContractAddress)
-			}
-			ownerHistorys := []store.OwnerHistory{}
-			for _, ownerHistory := range tx.Multisig.Owners {
-				if ownerHistory.Address == originTx.From {
-					ownerHistorys = append(ownerHistorys, store.OwnerHistory{
-						Address:            tx.From,
-						ConfirmationStatus: store.MultisigOwnerStatusRevoked,
-						ConfirmationTime:   time.Now().Unix(),
-						SeenTime:           time.Now().Unix(),
-					})
-				}
-				ownerHistorys = append(ownerHistorys, ownerHistory)
-			}
-
-			update := bson.M{
-				"$set": bson.M{
-					"multisig.owners": ownerHistorys,
-				},
-			}
-
-			_, err = multisigStore.UpdateAll(sel, update)
-			if err != nil {
-				log.Errorf("ParseMultisigInput:revokeConfirmation:multisigStore.Update %v requestid:%v  contract:%v ", err.Error(), requestid, contract.ContractAddress)
-			}
-		}
-
-		if tx.BlockTime != 0 && !tx.Multisig.InvocationStatus {
-			tx.Status = store.TxStatusInBlockMethodInvocationFail
-			sel := bson.M{"txhash": tx.Hash}
-			update := bson.M{
-				"$set": bson.M{
-					"txstatus": store.TxStatusInBlockMethodInvocationFail,
-				},
-			}
-			txStore.UpdateAll(sel, update)
-		}
-
-		return tx
-	case "0x": // incoming transaction
-		if tx.BlockTime != 0 && !tx.Multisig.InvocationStatus {
-			tx.Status = store.TxStatusInBlockMethodInvocationFail
-			sel := bson.M{"txhash": tx.Hash}
-			update := bson.M{
-				"$set": bson.M{
-					"txstatus": store.TxStatusInBlockMethodInvocationFail,
-				},
-			}
-			txStore.UpdateAll(sel, update)
-		}
-		// TODO: notify owners about new transation
-		log.Debugf("incoming transaction: %v", tx.Multisig.Input)
-		return tx
-
-	default:
-		log.Errorf("wrong method: ", tx.Multisig.Input)
-		return tx
-		// wrong method
-	}
-
-}
-
-func generatedMultisigTxToStore(mul *ethpb.Multisig, currenyid, networkid int) store.Multisig {
-	return store.Multisig{
-		CurrencyID:      currenyid,
-		NetworkID:       networkid,
-		Confirmations:   int(mul.GetConfirmations()),
-		ContractAddress: mul.GetContract(),
-		TxOfCreation:    mul.GetTxOfCreation(),
-		FactoryAddress:  mul.GetFactoryAddress(),
-		LastActionTime:  time.Now().Unix(),
-		DateOfCreation:  time.Now().Unix(),
-		DeployStatus:    int(mul.GetDeployStatus()),
-		Status:          store.WalletStatusOK,
-	}
-}
-
 func FetchUserAddresses(currencyID, networkID int, user store.User, addreses []string) ([]store.AddressExtended, error) {
 	addresses := []store.AddressExtended{}
 	fetched := map[string]store.AddressExtended{}
@@ -825,25 +352,6 @@ func FetchUserAddresses(currencyID, networkID int, user store.User, addreses []s
 	return addresses, nil
 }
 
-func FetchContractOwners(currencyID, networkID int, contractaddress string) ([]store.OwnerHistory, error) {
-	oh := []store.OwnerHistory{}
-
-	sel := bson.M{"multisig.contractAddress": contractaddress}
-	user := store.User{}
-	_ = usersData.Find(sel).One(&user)
-
-	for _, multisig := range user.Multisigs {
-		for _, owner := range multisig.Owners {
-			if multisig.CurrencyID == currencyID && multisig.NetworkID == networkID && multisig.ContractAddress == contractaddress {
-				oh = append(oh, store.OwnerHistory{
-					Address: owner.Address,
-				})
-			}
-		}
-	}
-	return oh, nil
-}
-
 func fetchMethod(input string) string {
 	method := input
 	if len(input) < 10 {
@@ -853,27 +361,6 @@ func fetchMethod(input string) string {
 	}
 
 	return method
-}
-
-func fetchMultisig(users []store.User, contract string) (*store.Multisig, error) {
-	if len(users) > 0 {
-		for _, m := range users[0].Multisigs {
-			if m.ContractAddress == contract {
-				return &m, nil
-			}
-		}
-	}
-
-	return &store.Multisig{}, errors.New("fetchMultisig: contract have no multy users :" + contract)
-}
-
-func findContractOwners(contractAddress string) []store.User {
-	users := []store.User{}
-	err := usersData.Find(bson.M{"multisig.contractAddress": strings.ToLower(contractAddress)}).All(&users)
-	if err != nil {
-		log.Errorf("cli.AddMultisig:stream.Recv:usersData.Find: not multy user in contrat %v  %v", err.Error(), contractAddress)
-	}
-	return users
 }
 
 func parseSubmitInput(input string) (string, string) {
@@ -945,28 +432,4 @@ func msToUserData(addresses []string, usersData *mgo.Collection) map[string]stor
 		users[strings.ToLower(address)] = user
 	}
 	return users
-}
-
-// Fetch invite code from undeployed multisigs
-func fetchInviteUndeployed(users map[string]store.User) string {
-	invitecode := ""
-	ownersCount := 0
-	for _, msUser := range users {
-		for _, ms := range msUser.Multisigs {
-			for _, owner := range ms.Owners {
-				for addres := range users {
-					if addres == owner.Address {
-						ownersCount++
-						if ownersCount == ms.OwnersCount {
-							invitecode = ms.InviteCode
-							break
-						}
-					}
-				}
-			}
-			ownersCount = 0
-		}
-	}
-	return invitecode
-
 }
