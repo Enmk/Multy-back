@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	addressCollectionName = "address"
-	blockCollectionName = "block"
-	transactionCollectionName = "transaction"
+	addressCollectionName = "addresses"
+	blockCollectionName = "blocks"
+	transactionCollectionName = "transactions"
 )
 
 type Storage struct {
@@ -25,14 +25,18 @@ type Config struct {
 	Database string
 }
 
+func (self *Storage) getErrorContext() string {
+	return self.db.Name
+}
+
 func NewStorage(config Config) (*Storage, error) {
-	mongoDBDial := &mgo.DialInfo{
+	mongoDBDial := mgo.DialInfo{
 		Addrs:    []string{config.Address},
 		Username: config.Username,
 		Password: config.Password,
 	}
 
-	dbSession, err := mgo.DialWithInfo(mongoDBDial)
+	dbSession, err := mgo.DialWithInfo(&mongoDBDial)
 	if err != nil {
 		return nil, err
 	}

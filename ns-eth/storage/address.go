@@ -15,6 +15,10 @@ import (
 
 type addressSet map[eth.Address]struct{}
 
+const (
+	addressFieldName = "addresses"
+)
+
 type AddressStorage struct {
 	addressCollection *mgo.Collection
 
@@ -37,7 +41,8 @@ func (self *AddressStorage) AddAddress(newAddress eth.Address) error {
 	self.m.Lock()
 	defer self.m.Unlock()
 
-	err := self.addressCollection.Insert(bson.M{"_id": newAddress})
+	// storing this as address => address 
+	_, err := self.addressCollection.UpsertId(newAddress, bson.M{"_id": newAddress})
 	if err != nil {
 		return reportError(self, err, "adding address failed")
 	}
@@ -76,13 +81,14 @@ func (self *AddressStorage) LoadAllAddresses() error {
 	iter := self.addressCollection.Find(nil).Iter()
 	defer iter.Close()
 
-	var address eth.Address
-	for iter.Next(&address) {
-		newAddresses[address] = struct{}{}
+	// var address eth.Address
+	var addressDoc bson.M
+	for iter.Next(&addressDoc) {
+		newAddresses[(eth.Address)(addressDoc["_id"].(string))] = struct{}{}
 	}
 
 	err := iter.Err()
-	if err != nil {
+	if err != nil && err != mgo.ErrNotFound {
 		return reportError(self, err, "reading all addresseds failed")
 	}
 

@@ -15,7 +15,8 @@ type TransactionPayload []byte
 
 type TransactionNonce uint64
 
-type Amount big.Int
+// surprisingly hard to work with type aliases
+// type Amount big.Int
 
 // Transaction is an Ethereun blockchain transaction
 type Transaction struct {
@@ -23,7 +24,7 @@ type Transaction struct {
 	Sender Address				`json:"sender" bson:"sender"`
 	Receiver Address			`json:"received" bson:"received"`
 	Payload TransactionPayload	`json:"payload" bson:"payload"`
-	Amount Amount				`json:"amount" bson:"amount"`
+	Amount *big.Int				`json:"amount" bson:"amount"`
 	Nonce TransactionNonce		`json:"nonce" bson:"nonce"`
 }
 
@@ -51,7 +52,7 @@ const (
 type BlockHeader struct {
 	ID BlockHash		`json:"_id" bson:"_id"`
 	Height uint64		`json:"height" bson:"height"`
-	Parent BlockHash 	`json:"parent" bson:"parent"`
+	Parent BlockHash 	`json:"parent_id" bson:"parent_id"`
 }
 
 // Block is an Ethereum blockchain block

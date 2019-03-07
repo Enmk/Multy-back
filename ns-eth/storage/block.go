@@ -1,8 +1,9 @@
-
 package storage
 
 import (
 	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+
 	eth "github.com/Multy-io/Multy-back/types/eth"
 )
 
@@ -33,9 +34,18 @@ func (self *BlockStorage) getErrorContext() string {
 }
 
 func (self *BlockStorage) AddBlock(newBlock eth.Block) error {
-	err := self.blockCollection.Insert(newBlock)
+	err := self.blockCollection.Insert(&newBlock)
 	if err != nil {
 		return reportError(self, err, "write block failed")
+	}
+
+	return nil
+}
+
+func (self *BlockStorage) RemoveBlock(blockId eth.BlockHash) error {
+	err := self.blockCollection.RemoveId(blockId)
+	if err != nil && err != mgo.ErrNotFound {
+		return reportError(self, err, "delete block failed")
 	}
 
 	return nil
@@ -52,14 +62,18 @@ func (self *BlockStorage) GetBlock(blockId eth.BlockHash) (*eth.Block, error) {
 }
 
 func (self *BlockStorage) SetImmutableBlockId(imutableBlockId eth.BlockHash) error {
-	_, err := self.blockCollection.UpsertId(immutableBlockDocumentId, imutableBlockId)
+	_, err := self.blockCollection.UpsertId(immutableBlockDocumentId, bson.M{"immutable_block": imutableBlockId})
 
 	return reportError(self, err, "write immutable block id failed")
 }
 
 func (self *BlockStorage) GetImmutableBlockId() (*eth.BlockHash, error) {
-	var immutableBlockId eth.BlockHash
-	err := self.blockCollection.FindId(immutableBlockDocumentId).One(immutableBlockId)
+	var immutableBlockDoc bson.M
+	err := self.blockCollection.FindId(immutableBlockDocumentId).One(&immutableBlockDoc)
+	if err != nil {
+		return nil, reportError(self, err, "read immutable block id failed")
+	}
 
-	return nil, reportError(self, err, "read immutable block id failed")
+	blockHash := (eth.BlockHash)(immutableBlockDoc["immutable_block"].(string))
+	return &blockHash, nil
 }
