@@ -53,7 +53,7 @@ func (self *BlockStorage) RemoveBlock(blockId eth.BlockHash) error {
 
 func (self *BlockStorage) GetBlock(blockId eth.BlockHash) (*eth.Block, error) {
 	block := eth.Block{}
-	err := self.blockCollection.FindId(blockId).One(block)
+	err := self.blockCollection.FindId(blockId).One(&block)
 	if err != nil {
 		return nil, reportError(self, err, "read block failed")
 	}

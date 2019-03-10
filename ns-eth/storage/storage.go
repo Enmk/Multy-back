@@ -2,6 +2,7 @@ package storage
 
 import (
 	mgo "gopkg.in/mgo.v2"
+	"time"
 )
 
 const (
@@ -23,6 +24,7 @@ type Config struct {
 	Password string
 	Username string
 	Database string
+	Timeout  time.Duration
 }
 
 func (self *Storage) getErrorContext() string {
@@ -31,9 +33,10 @@ func (self *Storage) getErrorContext() string {
 
 func NewStorage(config Config) (*Storage, error) {
 	mongoDBDial := mgo.DialInfo{
-		Addrs:    []string{config.Address},
-		Username: config.Username,
-		Password: config.Password,
+		Addrs:		[]string{config.Address},
+		Username:	config.Username,
+		Password:	config.Password,
+		Timeout:	config.Timeout,
 	}
 
 	dbSession, err := mgo.DialWithInfo(&mongoDBDial)
