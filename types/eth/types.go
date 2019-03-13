@@ -2,6 +2,7 @@ package eth
 
 import (
 	"math/big"
+
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -12,8 +13,10 @@ type BlockHash string
 // Hash of the Transaction, often used as ID
 type TransactionHash string
 
-// Blockchain address of the sender/recepient 
+// Blockchain address of the sender/recepient
 type Address string
+
+type RawTransaction string
 
 type TransactionPayload []byte
 
@@ -27,13 +30,13 @@ type Amount struct {
 // Transaction is an Ethereun blockchain transaction
 
 type Transaction struct {
-	ID TransactionHash			`json:"_id" bson:"_id"`
-	Sender Address				`json:"sender" bson:"sender"`
-	Receiver Address			`json:"receiver" bson:"receiver"`
-	Payload TransactionPayload	`json:"payload" bson:"payload"`
-	Amount *Amount				`json:"amount" bson:"amount"`
-	Nonce TransactionNonce		`json:"nonce" bson:"nonce"`
-	Fee TransactionFee			`json:"fee" bson:"fee"`
+	ID       TransactionHash    `json:"_id" bson:"_id"`
+	Sender   Address            `json:"sender" bson:"sender"`
+	Receiver Address            `json:"receiver" bson:"receiver"`
+	Payload  TransactionPayload `json:"payload" bson:"payload"`
+	Amount   *Amount            `json:"amount" bson:"amount"`
+	Nonce    TransactionNonce   `json:"nonce" bson:"nonce"`
+	Fee      TransactionFee     `json:"fee" bson:"fee"`
 }
 
 type GasLimit uint64
@@ -44,10 +47,11 @@ type TransactionFee struct {
 	GasPrice GasPrice
 }
 
-const GWei = 1000*1000*1000
+const GWei = 1000 * 1000 * 1000
+
 type TransactionWithStatus struct {
-	Transaction					`json:",inline" bson:",inline"`
-	Status TransactionStatus	`json:"status" bson:"status"`
+	Transaction `json:",inline" bson:",inline"`
+	Status      TransactionStatus `json:"status" bson:"status"`
 }
 
 // Positive values mean non-error statuses, Negative mean different error conditions
@@ -55,29 +59,29 @@ type TransactionStatus int
 
 const (
 	// Happy path:
-	TransactionStatusInMempool			TransactionStatus = 1
-	TransactionStatusInBlock			TransactionStatus = 2
-	TransactionStatusInImmutableBlock	TransactionStatus = 3
+	TransactionStatusInMempool        TransactionStatus = 1
+	TransactionStatusInBlock          TransactionStatus = 2
+	TransactionStatusInImmutableBlock TransactionStatus = 3
 
 	// Errors:
-	TransactionStatusError 				TransactionStatus = -1
-	TransactionStatusErrorRejected 		TransactionStatus = -2
-	TransactionStatusErrorReplaced 		TransactionStatus = -3
+	TransactionStatusError         TransactionStatus = -1
+	TransactionStatusErrorRejected TransactionStatus = -2
+	TransactionStatusErrorReplaced TransactionStatus = -3
 	// Transaction was mined, but the SC call that was performed by this transaction failed.
 	TransactionStatusErrorSmartContractCallFailed TransactionStatus = -4
 )
 
 // BlockHeader is a header of the Ethereum blockchain block
 type BlockHeader struct {
-	ID BlockHash		`json:"_id" bson:"_id"`
-	Height uint64		`json:"height" bson:"height"`
-	Parent BlockHash 	`json:"parent_id" bson:"parent_id"`
+	ID     BlockHash `json:"_id" bson:"_id"`
+	Height uint64    `json:"height" bson:"height"`
+	Parent BlockHash `json:"parent_id" bson:"parent_id"`
 }
 
 // Block is an Ethereum blockchain block
 type Block struct {
-	BlockHeader					`json:",inline" bson:",inline"`
-	Transactions []Transaction	`json:"transactions" bson:"transactions"`
+	BlockHeader  `json:",inline" bson:",inline"`
+	Transactions []Transaction `json:"transactions" bson:"transactions"`
 }
 
 func NewAmountFromInt64(value int64) *Amount {
