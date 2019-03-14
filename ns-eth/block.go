@@ -38,7 +38,7 @@ func (c *Client) BlockTransaction(hash string) {
 	}
 
 	for _, rawTx := range txs {
-		c.parseETHTransaction(rawTx, int64(*rawTx.BlockNumber), false)
+		c.parseETHTransaction(rawTx, rawTx.BlockNumber, false)
 		c.DeleteTxpoolTransaction(rawTx.Hash)
 
 	}
@@ -55,6 +55,6 @@ func (c *Client) ResyncBlock(block *ethrpc.Block) {
 	}
 
 	for _, rawTx := range txs {
-		c.parseETHTransaction(rawTx, int64(*rawTx.BlockNumber), false)
+		c.parseETHTransaction(rawTx, rawTx.BlockNumber, false)
 	}
 }

@@ -32,7 +32,7 @@ func NewEventHandler(nsqAddr string, blockHandler BlockHandler, txStatusHandler 
 	if txStatusHandler == nil {
 		return nil, errors.New("Not set TxStatus Handler")
 	}
-	if blockHandler != nil {
+	if blockHandler == nil {
 		return nil, errors.New("not set blockHandler")
 	}
 

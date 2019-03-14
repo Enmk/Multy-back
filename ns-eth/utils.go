@@ -68,7 +68,7 @@ func (client *Client) GetCode(address string) (string, error) {
 	return client.Rpc.EthGetCode(address, "latest")
 }
 
-func (client *Client) GetAddressNonce(address string) (int, error) {
+func (client *Client) GetAddressNonce(address string) (big.Int, error) {
 	return client.Rpc.EthGetTransactionCount(address, "latest")
 }
 
@@ -78,24 +78,24 @@ func (client *Client) ResyncAddress(txid string) error {
 		return err
 	}
 	if tx != nil {
-		client.parseETHTransaction(*tx, int64(*tx.BlockNumber), true)
+		client.parseETHTransaction(*tx, tx.BlockNumber, true)
 	}
 	return nil
 }
 
 func (client *Client) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) {
-	var fromUser store.AddressExtended
-	var toUser store.AddressExtended
+	var fromUser string
+	var toUser string
 
 	if udFrom, ok := client.UsersData.Load(rawTX.From); ok {
-		fromUser = udFrom.(store.AddressExtended)
+		fromUser = udFrom.(string)
 	}
 
 	if udTo, ok := client.UsersData.Load(rawTX.To); ok {
-		toUser = udTo.(store.AddressExtended)
+		toUser = udTo.(string)
 	}
 
-	if fromUser.UserID == toUser.UserID && fromUser.UserID == "" {
+	if toUser == "" && fromUser == "" {
 		// not our users tx
 		return
 	}
@@ -126,47 +126,53 @@ func (client *Client) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight 
 		Fetching tx status and send
 	*/
 	// from v1 to v1
-	if fromUser.UserID == toUser.UserID && fromUser.UserID != "" {
-		tx.UserID = fromUser.UserID
-		tx.WalletIndex = int32(fromUser.WalletIndex)
-		tx.AddressIndex = int32(fromUser.AddressIndex)
+	// if fromUser == toUser && fromUser != "" {
+	// tx.UserID = fromUser.UserID
+	// tx.WalletIndex = int32(fromUser.WalletIndex)
+	// tx.AddressIndex = int32(fromUser.AddressIndex)
 
-		tx.Status = store.TxStatusAppearedInBlockOutcoming
-		if blockHeight == -1 {
-			tx.Status = store.TxStatusAppearedInMempoolOutcoming
-		}
+	// **********
+	// **** TODO: Send transacton with NSQ
+	// **********
+	// tx.Status = store.TxStatusAppearedInBlockOutcoming
+	// if blockHeight == -1 {
+	// 	tx.Status = store.TxStatusAppearedInMempoolOutcoming
+	// }
+	// // send to multy-back
+	// client.TransactionsStream <- tx
+	// // }
 
-		// send to multy-back
-		client.TransactionsStream <- tx
-	}
+	// **********
+	// **** TODO: Send transacton with NSQ
+	// **********
 
 	// from v1 to v2 outgoing
-	if fromUser.UserID != "" {
-		tx.UserID = fromUser.UserID
-		tx.WalletIndex = int32(fromUser.WalletIndex)
-		tx.AddressIndex = int32(fromUser.AddressIndex)
-		tx.Status = store.TxStatusAppearedInBlockOutcoming
-		if blockHeight == -1 {
-			tx.Status = store.TxStatusAppearedInMempoolOutcoming
-		}
-		log.Warnf("outgoing ----- for uid %v ", fromUser.UserID)
-		// send to multy-back
-		client.TransactionsStream <- tx
-	}
+	// if fromUser.UserID != "" {
+	// 	tx.UserID = fromUser.UserID
+	// 	tx.WalletIndex = int32(fromUser.WalletIndex)
+	// 	tx.AddressIndex = int32(fromUser.AddressIndex)
+	// 	tx.Status = store.TxStatusAppearedInBlockOutcoming
+	// 	if blockHeight == -1 {
+	// 		tx.Status = store.TxStatusAppearedInMempoolOutcoming
+	// 	}
+	// 	log.Warnf("outgoing ----- for uid %v ", fromUser.UserID)
+	// 	// send to multy-back
+	// 	client.TransactionsStream <- tx
+	// }
 
 	// from v1 to v2 incoming
-	if toUser.UserID != "" {
-		tx.UserID = toUser.UserID
-		tx.WalletIndex = int32(toUser.WalletIndex)
-		tx.AddressIndex = int32(toUser.AddressIndex)
-		tx.Status = store.TxStatusAppearedInBlockIncoming
-		if blockHeight == -1 {
-			tx.Status = store.TxStatusAppearedInMempoolIncoming
-		}
-		log.Warnf("incoming ----- for uid %v ", toUser.UserID)
-		// send to multy-back
-		client.TransactionsStream <- tx
-	}
+	// if toUser.UserID != "" {
+	// 	tx.UserID = toUser.UserID
+	// 	tx.WalletIndex = int32(toUser.WalletIndex)
+	// 	tx.AddressIndex = int32(toUser.AddressIndex)
+	// 	tx.Status = store.TxStatusAppearedInBlockIncoming
+	// 	if blockHeight == -1 {
+	// 		tx.Status = store.TxStatusAppearedInMempoolIncoming
+	// 	}
+	// 	log.Warnf("incoming ----- for uid %v ", toUser.UserID)
+	// 	// send to multy-back
+	// 	client.TransactionsStream <- tx
+	// }
 
 }
 
@@ -176,10 +182,10 @@ func rawToGenerated(rawTX ethrpc.Transaction) pb.ETHTransaction {
 		From:     rawTX.From,
 		To:       rawTX.To,
 		Amount:   rawTX.Value.String(),
-		GasPrice: int64(rawTX.GasPrice.Int64()),
-		GasLimit: int64(rawTX.Gas),
-		Nonce:    int32(rawTX.Nonce),
-		Input:    rawTX.Input,
+		GasPrice: uint64(rawTX.GasPrice.Int64()),
+		GasLimit: uint64(rawTX.Gas),
+		Nonce:    uint64(rawTX.Nonce),
+		Payload:  rawTX.Input,
 	}
 }
 

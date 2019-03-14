@@ -79,8 +79,10 @@ func Init(conf *Configuration) (*Multy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Init: ETH.InitHandlers: %s", err.Error())
 	}
+
 	ethCli.ETHDefaultGasPrice = conf.ETHDefaultGasPrice
-	ethVer, err := ethCli.CliMain.ServiceInfo(context.Background(), &ethpb.Empty{})
+	ethVer, err := ethCli.GetSeviceInfo()
+	//	ethVer, err := ethCli.CliMain.ServiceInfo(context.Background(), &ethpb.Empty{})
 	multy.ETH = ethCli
 	log.Infof(" ETH initialization done on %v √", ethVer)
 
@@ -150,9 +152,9 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 			var cli ethpb.NodeCommunicationsClient
 			switch conCred.NetworkID {
 			case currencies.ETHMain:
-				cli = m.ETH.CliMain
-			case currencies.ETHTest:
-				cli = m.ETH.CliTest
+				cli = m.ETH.GRPCClient
+			// case currencies.ETHTest:
+			// 	cli = m.ETH.CliTest
 			default:
 				log.Errorf("setGRPCHandlers: wrong networkID:")
 			}
@@ -161,24 +163,22 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 			go m.restoreState(conCred, cli)
 
 			genUd := ethpb.UsersData{
-				Map:            map[string]*ethpb.AddressExtended{},
-				UsersContracts: usersContracts,
+				Map: map[string]*ethpb.Address{},
+				// UsersContracts: usersContracts,
 			}
 
-			for address, ex := range usersData {
-				if ex.WalletIndex == -1 {
-					genUd.Map[address] = &ethpb.AddressExtended{
-						UserID:       "imported",
-						WalletIndex:  int32(ex.WalletIndex),
-						AddressIndex: int32(ex.AddressIndex),
-					}
-				} else {
-					genUd.Map[address] = &ethpb.AddressExtended{
-						UserID:       ex.UserID,
-						WalletIndex:  int32(ex.WalletIndex),
-						AddressIndex: int32(ex.AddressIndex),
-					}
+			for address := range usersData {
+				// if ex.WalletIndex == -1 {
+				// 	genUd.Map[address] = &ethpb.AddressExtended{
+				// 		UserID:       "imported",
+				// 		WalletIndex:  int32(ex.WalletIndex),
+				// 		AddressIndex: int32(ex.AddressIndex),
+				// 	}
+				// } else {
+				genUd.Map[address] = &ethpb.Address{
+					Address: address,
 				}
+				// }
 			}
 			resp, err := cli.EventInitialAdd(context.Background(), &genUd)
 			if err != nil {

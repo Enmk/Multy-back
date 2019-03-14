@@ -18,6 +18,7 @@ import (
 	"github.com/Multy-io/Multy-back/currencies"
 	ethpb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
+	typeseth "github.com/Multy-io/Multy-back/types/eth"
 	nsq "github.com/bitly/go-nsq"
 	_ "github.com/jekabolt/slflog"
 	mgo "gopkg.in/mgo.v2"
@@ -160,6 +161,7 @@ func setExchangeRates(tx *store.TransactionETH, isReSync bool, TxTime int64) {
 	}
 }
 
+// TODO: refactor this method where rewrite notify user about transaction
 func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, netid int, userid ...string) {
 	//TODO: make correct notify
 
@@ -220,11 +222,24 @@ func sendNotify(txMsq *store.TransactionWithUserID, nsqProducer *nsq.Producer) {
 	return
 }
 
-func generatedTxDataToStore(tx *ethpb.ETHTransaction) store.TransactionETH {
+func generatedTxDataToStore(tx *ethpb.ETHTransaction, TransactionStatus int) store.TransactionETH {
+	sel := bson.M{"wallets.addresses.address": tx.GetFrom()}
+	user := store.User{}
+	usersData.Find(sel).One(&user)
+	var walletIndex, addressIndex int
+	for _, wallet := range user.Wallets {
+		for _, address := range wallet.Adresses {
+			if tx.GetFrom() == address.Address {
+				walletIndex = wallet.WalletIndex
+				addressIndex = address.AddressIndex
+			}
+		}
+	}
+
 	return store.TransactionETH{
-		UserID:       tx.GetUserID(),
-		WalletIndex:  int(tx.GetWalletIndex()),
-		AddressIndex: int(tx.GetAddressIndex()),
+		UserID:       user.UserID,  // tx.GetUserID(),
+		WalletIndex:  walletIndex,  //int(tx.GetWalletIndex()),
+		AddressIndex: addressIndex, // int(tx.GetAddressIndex()),
 		Hash:         tx.GetHash(),
 		From:         tx.GetFrom(),
 		To:           tx.GetTo(),
@@ -232,17 +247,10 @@ func generatedTxDataToStore(tx *ethpb.ETHTransaction) store.TransactionETH {
 		GasPrice:     tx.GetGasPrice(),
 		GasLimit:     tx.GetGasLimit(),
 		Nonce:        int(tx.GetNonce()),
-		Status:       int(tx.GetStatus()),
+		Status:       TransactionStatus, // int(tx.GetStatus()),
 		BlockTime:    tx.GetBlockTime(),
 		PoolTime:     tx.GetTxpoolTime(),
 		BlockHeight:  tx.GetBlockHeight(),
-		// Multisig: &store.MultisigTx{
-		// 	Contract:         tx.GetContract(),
-		// 	MethodInvoked:    tx.GetMethodInvoked(),
-		// 	InvocationStatus: tx.GetInvocationStatus(),
-		// 	Return:           tx.GetReturn(),
-		// 	Input:            tx.GetInput(),
-		// },
 	}
 }
 
@@ -432,4 +440,8 @@ func msToUserData(addresses []string, usersData *mgo.Collection) map[string]stor
 		users[strings.ToLower(address)] = user
 	}
 	return users
+}
+
+func EthAddressFromString(address string) typeseth.Address {
+	return typeseth.Address(address)
 }

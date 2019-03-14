@@ -12,7 +12,6 @@ import (
 	"time"
 
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/store"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jekabolt/slf"
 	_ "github.com/jekabolt/slflog"
@@ -39,11 +38,13 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 
 	var usersData sync.Map
 
-	usersData.Store("address", store.AddressExtended{
-		UserID:       "kek",
-		WalletIndex:  1,
-		AddressIndex: 2,
-	})
+	usersData.Store("address", "address")
+	// store.AddressExtended{
+	// 	UserID:       "kek",
+	// 	WalletIndex:  1,
+	// 	AddressIndex: 2,
+	// }
+	// )
 
 	// initail initialization of clients data
 	nc.Clients = &usersData

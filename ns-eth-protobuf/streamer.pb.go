@@ -6,9 +6,10 @@ package nsethprotobuf
 import (
 	context "context"
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -22,451 +23,177 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type IsEmpty struct {
-	Empty                bool     `protobuf:"varint,1,opt,name=Empty,proto3" json:"Empty,omitempty"`
+type TransactionHash struct {
+	Hash                 string   `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *IsEmpty) Reset()         { *m = IsEmpty{} }
-func (m *IsEmpty) String() string { return proto.CompactTextString(m) }
-func (*IsEmpty) ProtoMessage()    {}
-func (*IsEmpty) Descriptor() ([]byte, []int) {
+func (m *TransactionHash) Reset()         { *m = TransactionHash{} }
+func (m *TransactionHash) String() string { return proto.CompactTextString(m) }
+func (*TransactionHash) ProtoMessage()    {}
+func (*TransactionHash) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8b26ab11ddf9501b, []int{0}
 }
 
-func (m *IsEmpty) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IsEmpty.Unmarshal(m, b)
+func (m *TransactionHash) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TransactionHash.Unmarshal(m, b)
 }
-func (m *IsEmpty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IsEmpty.Marshal(b, m, deterministic)
+func (m *TransactionHash) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TransactionHash.Marshal(b, m, deterministic)
 }
-func (m *IsEmpty) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IsEmpty.Merge(m, src)
+func (m *TransactionHash) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TransactionHash.Merge(m, src)
 }
-func (m *IsEmpty) XXX_Size() int {
-	return xxx_messageInfo_IsEmpty.Size(m)
+func (m *TransactionHash) XXX_Size() int {
+	return xxx_messageInfo_TransactionHash.Size(m)
 }
-func (m *IsEmpty) XXX_DiscardUnknown() {
-	xxx_messageInfo_IsEmpty.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IsEmpty proto.InternalMessageInfo
-
-func (m *IsEmpty) GetEmpty() bool {
-	if m != nil {
-		return m.Empty
-	}
-	return false
+func (m *TransactionHash) XXX_DiscardUnknown() {
+	xxx_messageInfo_TransactionHash.DiscardUnknown(m)
 }
 
-type ContractInfo struct {
-	ConfirmationsRequired int64    `protobuf:"varint,1,opt,name=ConfirmationsRequired,proto3" json:"ConfirmationsRequired,omitempty"`
-	ContractOwners        []string `protobuf:"bytes,2,rep,name=ContractOwners,proto3" json:"ContractOwners,omitempty"`
-	XXX_NoUnkeyedLiteral  struct{} `json:"-"`
-	XXX_unrecognized      []byte   `json:"-"`
-	XXX_sizecache         int32    `json:"-"`
-}
+var xxx_messageInfo_TransactionHash proto.InternalMessageInfo
 
-func (m *ContractInfo) Reset()         { *m = ContractInfo{} }
-func (m *ContractInfo) String() string { return proto.CompactTextString(m) }
-func (*ContractInfo) ProtoMessage()    {}
-func (*ContractInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{1}
-}
-
-func (m *ContractInfo) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ContractInfo.Unmarshal(m, b)
-}
-func (m *ContractInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ContractInfo.Marshal(b, m, deterministic)
-}
-func (m *ContractInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ContractInfo.Merge(m, src)
-}
-func (m *ContractInfo) XXX_Size() int {
-	return xxx_messageInfo_ContractInfo.Size(m)
-}
-func (m *ContractInfo) XXX_DiscardUnknown() {
-	xxx_messageInfo_ContractInfo.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ContractInfo proto.InternalMessageInfo
-
-func (m *ContractInfo) GetConfirmationsRequired() int64 {
-	if m != nil {
-		return m.ConfirmationsRequired
-	}
-	return 0
-}
-
-func (m *ContractInfo) GetContractOwners() []string {
-	if m != nil {
-		return m.ContractOwners
-	}
-	return nil
-}
-
-type TokenInfo struct {
-	ContractAddress      string   `protobuf:"bytes,1,opt,name=ContractAddress,proto3" json:"ContractAddress,omitempty"`
-	Balance              string   `protobuf:"bytes,2,opt,name=Balance,proto3" json:"Balance,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *TokenInfo) Reset()         { *m = TokenInfo{} }
-func (m *TokenInfo) String() string { return proto.CompactTextString(m) }
-func (*TokenInfo) ProtoMessage()    {}
-func (*TokenInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{2}
-}
-
-func (m *TokenInfo) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_TokenInfo.Unmarshal(m, b)
-}
-func (m *TokenInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_TokenInfo.Marshal(b, m, deterministic)
-}
-func (m *TokenInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TokenInfo.Merge(m, src)
-}
-func (m *TokenInfo) XXX_Size() int {
-	return xxx_messageInfo_TokenInfo.Size(m)
-}
-func (m *TokenInfo) XXX_DiscardUnknown() {
-	xxx_messageInfo_TokenInfo.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_TokenInfo proto.InternalMessageInfo
-
-func (m *TokenInfo) GetContractAddress() string {
-	if m != nil {
-		return m.ContractAddress
-	}
-	return ""
-}
-
-func (m *TokenInfo) GetBalance() string {
-	if m != nil {
-		return m.Balance
-	}
-	return ""
-}
-
-type RejectedTxs struct {
-	RejectedTxs          []string `protobuf:"bytes,1,rep,name=RejectedTxs,proto3" json:"RejectedTxs,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RejectedTxs) Reset()         { *m = RejectedTxs{} }
-func (m *RejectedTxs) String() string { return proto.CompactTextString(m) }
-func (*RejectedTxs) ProtoMessage()    {}
-func (*RejectedTxs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{3}
-}
-
-func (m *RejectedTxs) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RejectedTxs.Unmarshal(m, b)
-}
-func (m *RejectedTxs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RejectedTxs.Marshal(b, m, deterministic)
-}
-func (m *RejectedTxs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RejectedTxs.Merge(m, src)
-}
-func (m *RejectedTxs) XXX_Size() int {
-	return xxx_messageInfo_RejectedTxs.Size(m)
-}
-func (m *RejectedTxs) XXX_DiscardUnknown() {
-	xxx_messageInfo_RejectedTxs.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RejectedTxs proto.InternalMessageInfo
-
-func (m *RejectedTxs) GetRejectedTxs() []string {
-	if m != nil {
-		return m.RejectedTxs
-	}
-	return nil
-}
-
-type TxsToCheck struct {
-	Hash                 []string `protobuf:"bytes,1,rep,name=Hash,proto3" json:"Hash,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *TxsToCheck) Reset()         { *m = TxsToCheck{} }
-func (m *TxsToCheck) String() string { return proto.CompactTextString(m) }
-func (*TxsToCheck) ProtoMessage()    {}
-func (*TxsToCheck) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{4}
-}
-
-func (m *TxsToCheck) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_TxsToCheck.Unmarshal(m, b)
-}
-func (m *TxsToCheck) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_TxsToCheck.Marshal(b, m, deterministic)
-}
-func (m *TxsToCheck) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TxsToCheck.Merge(m, src)
-}
-func (m *TxsToCheck) XXX_Size() int {
-	return xxx_messageInfo_TxsToCheck.Size(m)
-}
-func (m *TxsToCheck) XXX_DiscardUnknown() {
-	xxx_messageInfo_TxsToCheck.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_TxsToCheck proto.InternalMessageInfo
-
-func (m *TxsToCheck) GetHash() []string {
+func (m *TransactionHash) GetHash() string {
 	if m != nil {
 		return m.Hash
 	}
-	return nil
-}
-
-type Multisig struct {
-	Confirmations        int64    `protobuf:"varint,1,opt,name=Confirmations,proto3" json:"Confirmations,omitempty"`
-	FactoryAddress       string   `protobuf:"bytes,2,opt,name=FactoryAddress,proto3" json:"FactoryAddress,omitempty"`
-	TxOfCreation         string   `protobuf:"bytes,3,opt,name=TxOfCreation,proto3" json:"TxOfCreation,omitempty"`
-	Contract             string   `protobuf:"bytes,4,opt,name=Contract,proto3" json:"Contract,omitempty"`
-	DeployStatus         int64    `protobuf:"varint,5,opt,name=DeployStatus,proto3" json:"DeployStatus,omitempty"`
-	Addresses            []string `protobuf:"bytes,6,rep,name=Addresses,proto3" json:"Addresses,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Multisig) Reset()         { *m = Multisig{} }
-func (m *Multisig) String() string { return proto.CompactTextString(m) }
-func (*Multisig) ProtoMessage()    {}
-func (*Multisig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{5}
-}
-
-func (m *Multisig) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Multisig.Unmarshal(m, b)
-}
-func (m *Multisig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Multisig.Marshal(b, m, deterministic)
-}
-func (m *Multisig) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Multisig.Merge(m, src)
-}
-func (m *Multisig) XXX_Size() int {
-	return xxx_messageInfo_Multisig.Size(m)
-}
-func (m *Multisig) XXX_DiscardUnknown() {
-	xxx_messageInfo_Multisig.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Multisig proto.InternalMessageInfo
-
-func (m *Multisig) GetConfirmations() int64 {
-	if m != nil {
-		return m.Confirmations
-	}
-	return 0
-}
-
-func (m *Multisig) GetFactoryAddress() string {
-	if m != nil {
-		return m.FactoryAddress
-	}
 	return ""
 }
 
-func (m *Multisig) GetTxOfCreation() string {
-	if m != nil {
-		return m.TxOfCreation
-	}
-	return ""
-}
-
-func (m *Multisig) GetContract() string {
-	if m != nil {
-		return m.Contract
-	}
-	return ""
-}
-
-func (m *Multisig) GetDeployStatus() int64 {
-	if m != nil {
-		return m.DeployStatus
-	}
-	return 0
-}
-
-func (m *Multisig) GetAddresses() []string {
-	if m != nil {
-		return m.Addresses
-	}
-	return nil
-}
-
-type Balance struct {
+type AddressInfo struct {
 	Balance              string   `protobuf:"bytes,1,opt,name=Balance,proto3" json:"Balance,omitempty"`
 	PendingBalance       string   `protobuf:"bytes,2,opt,name=PendingBalance,proto3" json:"PendingBalance,omitempty"`
+	Nonce                uint64   `protobuf:"varint,3,opt,name=Nonce,proto3" json:"Nonce,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Balance) Reset()         { *m = Balance{} }
-func (m *Balance) String() string { return proto.CompactTextString(m) }
-func (*Balance) ProtoMessage()    {}
-func (*Balance) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{6}
+func (m *AddressInfo) Reset()         { *m = AddressInfo{} }
+func (m *AddressInfo) String() string { return proto.CompactTextString(m) }
+func (*AddressInfo) ProtoMessage()    {}
+func (*AddressInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8b26ab11ddf9501b, []int{1}
 }
 
-func (m *Balance) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Balance.Unmarshal(m, b)
+func (m *AddressInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AddressInfo.Unmarshal(m, b)
 }
-func (m *Balance) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Balance.Marshal(b, m, deterministic)
+func (m *AddressInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AddressInfo.Marshal(b, m, deterministic)
 }
-func (m *Balance) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Balance.Merge(m, src)
+func (m *AddressInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AddressInfo.Merge(m, src)
 }
-func (m *Balance) XXX_Size() int {
-	return xxx_messageInfo_Balance.Size(m)
+func (m *AddressInfo) XXX_Size() int {
+	return xxx_messageInfo_AddressInfo.Size(m)
 }
-func (m *Balance) XXX_DiscardUnknown() {
-	xxx_messageInfo_Balance.DiscardUnknown(m)
+func (m *AddressInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_AddressInfo.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Balance proto.InternalMessageInfo
+var xxx_messageInfo_AddressInfo proto.InternalMessageInfo
 
-func (m *Balance) GetBalance() string {
+func (m *AddressInfo) GetBalance() string {
 	if m != nil {
 		return m.Balance
 	}
 	return ""
 }
 
-func (m *Balance) GetPendingBalance() string {
+func (m *AddressInfo) GetPendingBalance() string {
 	if m != nil {
 		return m.PendingBalance
 	}
 	return ""
 }
 
-type Nonce struct {
-	Nonce                int64    `protobuf:"varint,1,opt,name=Nonce,proto3" json:"Nonce,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Nonce) Reset()         { *m = Nonce{} }
-func (m *Nonce) String() string { return proto.CompactTextString(m) }
-func (*Nonce) ProtoMessage()    {}
-func (*Nonce) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{7}
-}
-
-func (m *Nonce) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Nonce.Unmarshal(m, b)
-}
-func (m *Nonce) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Nonce.Marshal(b, m, deterministic)
-}
-func (m *Nonce) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Nonce.Merge(m, src)
-}
-func (m *Nonce) XXX_Size() int {
-	return xxx_messageInfo_Nonce.Size(m)
-}
-func (m *Nonce) XXX_DiscardUnknown() {
-	xxx_messageInfo_Nonce.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Nonce proto.InternalMessageInfo
-
-func (m *Nonce) GetNonce() int64 {
+func (m *AddressInfo) GetNonce() uint64 {
 	if m != nil {
 		return m.Nonce
 	}
 	return 0
 }
 
-type GasPriceEstimation struct {
+type FeeRateEstimation struct {
 	VerySlow             uint64   `protobuf:"varint,1,opt,name=VerySlow,proto3" json:"VerySlow,omitempty"`
 	Slow                 uint64   `protobuf:"varint,2,opt,name=Slow,proto3" json:"Slow,omitempty"`
 	Medium               uint64   `protobuf:"varint,3,opt,name=Medium,proto3" json:"Medium,omitempty"`
 	Fast                 uint64   `protobuf:"varint,4,opt,name=Fast,proto3" json:"Fast,omitempty"`
 	VeryFast             uint64   `protobuf:"varint,5,opt,name=VeryFast,proto3" json:"VeryFast,omitempty"`
+	IsContract           bool     `protobuf:"varint,6,opt,name=isContract,proto3" json:"isContract,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GasPriceEstimation) Reset()         { *m = GasPriceEstimation{} }
-func (m *GasPriceEstimation) String() string { return proto.CompactTextString(m) }
-func (*GasPriceEstimation) ProtoMessage()    {}
-func (*GasPriceEstimation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{8}
+func (m *FeeRateEstimation) Reset()         { *m = FeeRateEstimation{} }
+func (m *FeeRateEstimation) String() string { return proto.CompactTextString(m) }
+func (*FeeRateEstimation) ProtoMessage()    {}
+func (*FeeRateEstimation) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8b26ab11ddf9501b, []int{2}
 }
 
-func (m *GasPriceEstimation) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GasPriceEstimation.Unmarshal(m, b)
+func (m *FeeRateEstimation) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_FeeRateEstimation.Unmarshal(m, b)
 }
-func (m *GasPriceEstimation) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GasPriceEstimation.Marshal(b, m, deterministic)
+func (m *FeeRateEstimation) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_FeeRateEstimation.Marshal(b, m, deterministic)
 }
-func (m *GasPriceEstimation) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GasPriceEstimation.Merge(m, src)
+func (m *FeeRateEstimation) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FeeRateEstimation.Merge(m, src)
 }
-func (m *GasPriceEstimation) XXX_Size() int {
-	return xxx_messageInfo_GasPriceEstimation.Size(m)
+func (m *FeeRateEstimation) XXX_Size() int {
+	return xxx_messageInfo_FeeRateEstimation.Size(m)
 }
-func (m *GasPriceEstimation) XXX_DiscardUnknown() {
-	xxx_messageInfo_GasPriceEstimation.DiscardUnknown(m)
+func (m *FeeRateEstimation) XXX_DiscardUnknown() {
+	xxx_messageInfo_FeeRateEstimation.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GasPriceEstimation proto.InternalMessageInfo
+var xxx_messageInfo_FeeRateEstimation proto.InternalMessageInfo
 
-func (m *GasPriceEstimation) GetVerySlow() uint64 {
+func (m *FeeRateEstimation) GetVerySlow() uint64 {
 	if m != nil {
 		return m.VerySlow
 	}
 	return 0
 }
 
-func (m *GasPriceEstimation) GetSlow() uint64 {
+func (m *FeeRateEstimation) GetSlow() uint64 {
 	if m != nil {
 		return m.Slow
 	}
 	return 0
 }
 
-func (m *GasPriceEstimation) GetMedium() uint64 {
+func (m *FeeRateEstimation) GetMedium() uint64 {
 	if m != nil {
 		return m.Medium
 	}
 	return 0
 }
 
-func (m *GasPriceEstimation) GetFast() uint64 {
+func (m *FeeRateEstimation) GetFast() uint64 {
 	if m != nil {
 		return m.Fast
 	}
 	return 0
 }
 
-func (m *GasPriceEstimation) GetVeryFast() uint64 {
+func (m *FeeRateEstimation) GetVeryFast() uint64 {
 	if m != nil {
 		return m.VeryFast
 	}
 	return 0
+}
+
+func (m *FeeRateEstimation) GetIsContract() bool {
+	if m != nil {
+		return m.IsContract
+	}
+	return false
 }
 
 type BlockHeight struct {
@@ -480,7 +207,7 @@ func (m *BlockHeight) Reset()         { *m = BlockHeight{} }
 func (m *BlockHeight) String() string { return proto.CompactTextString(m) }
 func (*BlockHeight) ProtoMessage()    {}
 func (*BlockHeight) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{9}
+	return fileDescriptor_8b26ab11ddf9501b, []int{3}
 }
 
 func (m *BlockHeight) XXX_Unmarshal(b []byte) error {
@@ -509,27 +236,21 @@ func (m *BlockHeight) GetHeight() int64 {
 }
 
 type ETHTransaction struct {
-	UserID               string   `protobuf:"bytes,1,opt,name=UserID,proto3" json:"UserID,omitempty"`
-	WalletIndex          int32    `protobuf:"varint,2,opt,name=WalletIndex,proto3" json:"WalletIndex,omitempty"`
-	AddressIndex         int32    `protobuf:"varint,3,opt,name=AddressIndex,proto3" json:"AddressIndex,omitempty"`
-	Hash                 string   `protobuf:"bytes,4,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	From                 string   `protobuf:"bytes,5,opt,name=From,proto3" json:"From,omitempty"`
-	To                   string   `protobuf:"bytes,6,opt,name=To,proto3" json:"To,omitempty"`
-	Amount               string   `protobuf:"bytes,7,opt,name=Amount,proto3" json:"Amount,omitempty"`
-	Input                string   `protobuf:"bytes,8,opt,name=input,proto3" json:"input,omitempty"`
-	GasPrice             int64    `protobuf:"varint,9,opt,name=GasPrice,proto3" json:"GasPrice,omitempty"`
-	GasLimit             int64    `protobuf:"varint,10,opt,name=GasLimit,proto3" json:"GasLimit,omitempty"`
-	Nonce                int32    `protobuf:"varint,11,opt,name=Nonce,proto3" json:"Nonce,omitempty"`
-	Status               int32    `protobuf:"varint,12,opt,name=Status,proto3" json:"Status,omitempty"`
-	BlockTime            int64    `protobuf:"varint,13,opt,name=BlockTime,proto3" json:"BlockTime,omitempty"`
-	TxpoolTime           int64    `protobuf:"varint,14,opt,name=TxpoolTime,proto3" json:"TxpoolTime,omitempty"`
-	BlockHeight          int64    `protobuf:"varint,15,opt,name=BlockHeight,proto3" json:"BlockHeight,omitempty"`
-	Resync               bool     `protobuf:"varint,16,opt,name=Resync,proto3" json:"Resync,omitempty"`
-	Multisig             bool     `protobuf:"varint,17,opt,name=Multisig,proto3" json:"Multisig,omitempty"`
+	Hash                 string   `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
+	From                 string   `protobuf:"bytes,2,opt,name=From,proto3" json:"From,omitempty"`
+	To                   string   `protobuf:"bytes,3,opt,name=To,proto3" json:"To,omitempty"`
+	Amount               string   `protobuf:"bytes,4,opt,name=Amount,proto3" json:"Amount,omitempty"`
+	Payload              string   `protobuf:"bytes,5,opt,name=Payload,proto3" json:"Payload,omitempty"`
+	GasPrice             uint64   `protobuf:"varint,6,opt,name=GasPrice,proto3" json:"GasPrice,omitempty"`
+	GasLimit             uint64   `protobuf:"varint,7,opt,name=GasLimit,proto3" json:"GasLimit,omitempty"`
+	Nonce                uint64   `protobuf:"varint,8,opt,name=Nonce,proto3" json:"Nonce,omitempty"`
+	BlockTime            int64    `protobuf:"varint,9,opt,name=BlockTime,proto3" json:"BlockTime,omitempty"`
+	TxpoolTime           int64    `protobuf:"varint,10,opt,name=TxpoolTime,proto3" json:"TxpoolTime,omitempty"`
+	BlockHeight          int64    `protobuf:"varint,11,opt,name=BlockHeight,proto3" json:"BlockHeight,omitempty"`
+	Resync               bool     `protobuf:"varint,12,opt,name=Resync,proto3" json:"Resync,omitempty"`
 	Contract             string   `protobuf:"bytes,18,opt,name=Contract,proto3" json:"Contract,omitempty"`
-	MethodInvoked        string   `protobuf:"bytes,19,opt,name=MethodInvoked,proto3" json:"MethodInvoked,omitempty"`
+	Method               string   `protobuf:"bytes,19,opt,name=Method,proto3" json:"Method,omitempty"`
 	Return               string   `protobuf:"bytes,20,opt,name=return,proto3" json:"return,omitempty"`
-	InvocationStatus     bool     `protobuf:"varint,21,opt,name=InvocationStatus,proto3" json:"InvocationStatus,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -539,7 +260,7 @@ func (m *ETHTransaction) Reset()         { *m = ETHTransaction{} }
 func (m *ETHTransaction) String() string { return proto.CompactTextString(m) }
 func (*ETHTransaction) ProtoMessage()    {}
 func (*ETHTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{10}
+	return fileDescriptor_8b26ab11ddf9501b, []int{4}
 }
 
 func (m *ETHTransaction) XXX_Unmarshal(b []byte) error {
@@ -559,27 +280,6 @@ func (m *ETHTransaction) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_ETHTransaction proto.InternalMessageInfo
-
-func (m *ETHTransaction) GetUserID() string {
-	if m != nil {
-		return m.UserID
-	}
-	return ""
-}
-
-func (m *ETHTransaction) GetWalletIndex() int32 {
-	if m != nil {
-		return m.WalletIndex
-	}
-	return 0
-}
-
-func (m *ETHTransaction) GetAddressIndex() int32 {
-	if m != nil {
-		return m.AddressIndex
-	}
-	return 0
-}
 
 func (m *ETHTransaction) GetHash() string {
 	if m != nil {
@@ -609,37 +309,30 @@ func (m *ETHTransaction) GetAmount() string {
 	return ""
 }
 
-func (m *ETHTransaction) GetInput() string {
+func (m *ETHTransaction) GetPayload() string {
 	if m != nil {
-		return m.Input
+		return m.Payload
 	}
 	return ""
 }
 
-func (m *ETHTransaction) GetGasPrice() int64 {
+func (m *ETHTransaction) GetGasPrice() uint64 {
 	if m != nil {
 		return m.GasPrice
 	}
 	return 0
 }
 
-func (m *ETHTransaction) GetGasLimit() int64 {
+func (m *ETHTransaction) GetGasLimit() uint64 {
 	if m != nil {
 		return m.GasLimit
 	}
 	return 0
 }
 
-func (m *ETHTransaction) GetNonce() int32 {
+func (m *ETHTransaction) GetNonce() uint64 {
 	if m != nil {
 		return m.Nonce
-	}
-	return 0
-}
-
-func (m *ETHTransaction) GetStatus() int32 {
-	if m != nil {
-		return m.Status
 	}
 	return 0
 }
@@ -672,13 +365,6 @@ func (m *ETHTransaction) GetResync() bool {
 	return false
 }
 
-func (m *ETHTransaction) GetMultisig() bool {
-	if m != nil {
-		return m.Multisig
-	}
-	return false
-}
-
 func (m *ETHTransaction) GetContract() string {
 	if m != nil {
 		return m.Contract
@@ -686,9 +372,9 @@ func (m *ETHTransaction) GetContract() string {
 	return ""
 }
 
-func (m *ETHTransaction) GetMethodInvoked() string {
+func (m *ETHTransaction) GetMethod() string {
 	if m != nil {
-		return m.MethodInvoked
+		return m.Method
 	}
 	return ""
 }
@@ -700,584 +386,43 @@ func (m *ETHTransaction) GetReturn() string {
 	return ""
 }
 
-func (m *ETHTransaction) GetInvocationStatus() bool {
-	if m != nil {
-		return m.InvocationStatus
-	}
-	return false
-}
-
-type ERC20Info struct {
-	History              []*ERC20History  `protobuf:"bytes,1,rep,name=History,proto3" json:"History,omitempty"`
-	Balances             []*ERC20Balances `protobuf:"bytes,2,rep,name=Balances,proto3" json:"Balances,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
-	XXX_unrecognized     []byte           `json:"-"`
-	XXX_sizecache        int32            `json:"-"`
-}
-
-func (m *ERC20Info) Reset()         { *m = ERC20Info{} }
-func (m *ERC20Info) String() string { return proto.CompactTextString(m) }
-func (*ERC20Info) ProtoMessage()    {}
-func (*ERC20Info) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{11}
-}
-
-func (m *ERC20Info) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ERC20Info.Unmarshal(m, b)
-}
-func (m *ERC20Info) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ERC20Info.Marshal(b, m, deterministic)
-}
-func (m *ERC20Info) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ERC20Info.Merge(m, src)
-}
-func (m *ERC20Info) XXX_Size() int {
-	return xxx_messageInfo_ERC20Info.Size(m)
-}
-func (m *ERC20Info) XXX_DiscardUnknown() {
-	xxx_messageInfo_ERC20Info.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ERC20Info proto.InternalMessageInfo
-
-func (m *ERC20Info) GetHistory() []*ERC20History {
-	if m != nil {
-		return m.History
-	}
-	return nil
-}
-
-func (m *ERC20Info) GetBalances() []*ERC20Balances {
-	if m != nil {
-		return m.Balances
-	}
-	return nil
-}
-
-type ERC20Balances struct {
-	Address              string   `protobuf:"bytes,1,opt,name=Address,proto3" json:"Address,omitempty"`
-	Balance              string   `protobuf:"bytes,2,opt,name=Balance,proto3" json:"Balance,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ERC20Balances) Reset()         { *m = ERC20Balances{} }
-func (m *ERC20Balances) String() string { return proto.CompactTextString(m) }
-func (*ERC20Balances) ProtoMessage()    {}
-func (*ERC20Balances) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{12}
-}
-
-func (m *ERC20Balances) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ERC20Balances.Unmarshal(m, b)
-}
-func (m *ERC20Balances) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ERC20Balances.Marshal(b, m, deterministic)
-}
-func (m *ERC20Balances) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ERC20Balances.Merge(m, src)
-}
-func (m *ERC20Balances) XXX_Size() int {
-	return xxx_messageInfo_ERC20Balances.Size(m)
-}
-func (m *ERC20Balances) XXX_DiscardUnknown() {
-	xxx_messageInfo_ERC20Balances.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ERC20Balances proto.InternalMessageInfo
-
-func (m *ERC20Balances) GetAddress() string {
-	if m != nil {
-		return m.Address
-	}
-	return ""
-}
-
-func (m *ERC20Balances) GetBalance() string {
-	if m != nil {
-		return m.Balance
-	}
-	return ""
-}
-
-type ERC20History struct {
-	BlockNumber          string   `protobuf:"bytes,1,opt,name=BlockNumber,proto3" json:"BlockNumber,omitempty"`
-	TimeStamp            string   `protobuf:"bytes,2,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
-	Hash                 string   `protobuf:"bytes,3,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	Nonce                string   `protobuf:"bytes,4,opt,name=Nonce,proto3" json:"Nonce,omitempty"`
-	From                 string   `protobuf:"bytes,5,opt,name=From,proto3" json:"From,omitempty"`
-	To                   string   `protobuf:"bytes,6,opt,name=To,proto3" json:"To,omitempty"`
-	ContractAddress      string   `protobuf:"bytes,7,opt,name=ContractAddress,proto3" json:"ContractAddress,omitempty"`
-	Value                string   `protobuf:"bytes,8,opt,name=Value,proto3" json:"Value,omitempty"`
-	GasPrice             string   `protobuf:"bytes,9,opt,name=GasPrice,proto3" json:"GasPrice,omitempty"`
-	Gas                  string   `protobuf:"bytes,10,opt,name=Gas,proto3" json:"Gas,omitempty"`
-	Input                string   `protobuf:"bytes,11,opt,name=Input,proto3" json:"Input,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ERC20History) Reset()         { *m = ERC20History{} }
-func (m *ERC20History) String() string { return proto.CompactTextString(m) }
-func (*ERC20History) ProtoMessage()    {}
-func (*ERC20History) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{13}
-}
-
-func (m *ERC20History) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ERC20History.Unmarshal(m, b)
-}
-func (m *ERC20History) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ERC20History.Marshal(b, m, deterministic)
-}
-func (m *ERC20History) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ERC20History.Merge(m, src)
-}
-func (m *ERC20History) XXX_Size() int {
-	return xxx_messageInfo_ERC20History.Size(m)
-}
-func (m *ERC20History) XXX_DiscardUnknown() {
-	xxx_messageInfo_ERC20History.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ERC20History proto.InternalMessageInfo
-
-func (m *ERC20History) GetBlockNumber() string {
-	if m != nil {
-		return m.BlockNumber
-	}
-	return ""
-}
-
-func (m *ERC20History) GetTimeStamp() string {
-	if m != nil {
-		return m.TimeStamp
-	}
-	return ""
-}
-
-func (m *ERC20History) GetHash() string {
-	if m != nil {
-		return m.Hash
-	}
-	return ""
-}
-
-func (m *ERC20History) GetNonce() string {
-	if m != nil {
-		return m.Nonce
-	}
-	return ""
-}
-
-func (m *ERC20History) GetFrom() string {
-	if m != nil {
-		return m.From
-	}
-	return ""
-}
-
-func (m *ERC20History) GetTo() string {
-	if m != nil {
-		return m.To
-	}
-	return ""
-}
-
-func (m *ERC20History) GetContractAddress() string {
-	if m != nil {
-		return m.ContractAddress
-	}
-	return ""
-}
-
-func (m *ERC20History) GetValue() string {
-	if m != nil {
-		return m.Value
-	}
-	return ""
-}
-
-func (m *ERC20History) GetGasPrice() string {
-	if m != nil {
-		return m.GasPrice
-	}
-	return ""
-}
-
-func (m *ERC20History) GetGas() string {
-	if m != nil {
-		return m.Gas
-	}
-	return ""
-}
-
-func (m *ERC20History) GetInput() string {
-	if m != nil {
-		return m.Input
-	}
-	return ""
-}
-
-type MultisigInfo struct {
-	Height               int64    `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *MultisigInfo) Reset()         { *m = MultisigInfo{} }
-func (m *MultisigInfo) String() string { return proto.CompactTextString(m) }
-func (*MultisigInfo) ProtoMessage()    {}
-func (*MultisigInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{14}
-}
-
-func (m *MultisigInfo) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_MultisigInfo.Unmarshal(m, b)
-}
-func (m *MultisigInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_MultisigInfo.Marshal(b, m, deterministic)
-}
-func (m *MultisigInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MultisigInfo.Merge(m, src)
-}
-func (m *MultisigInfo) XXX_Size() int {
-	return xxx_messageInfo_MultisigInfo.Size(m)
-}
-func (m *MultisigInfo) XXX_DiscardUnknown() {
-	xxx_messageInfo_MultisigInfo.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MultisigInfo proto.InternalMessageInfo
-
-func (m *MultisigInfo) GetHeight() int64 {
-	if m != nil {
-		return m.Height
-	}
-	return 0
-}
-
-type WatchAddress struct {
-	Address              string   `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	UserID               string   `protobuf:"bytes,2,opt,name=userID,proto3" json:"userID,omitempty"`
-	WalletIndex          int32    `protobuf:"varint,3,opt,name=WalletIndex,proto3" json:"WalletIndex,omitempty"`
-	AddressIndex         int32    `protobuf:"varint,4,opt,name=AddressIndex,proto3" json:"AddressIndex,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *WatchAddress) Reset()         { *m = WatchAddress{} }
-func (m *WatchAddress) String() string { return proto.CompactTextString(m) }
-func (*WatchAddress) ProtoMessage()    {}
-func (*WatchAddress) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{15}
-}
-
-func (m *WatchAddress) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WatchAddress.Unmarshal(m, b)
-}
-func (m *WatchAddress) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WatchAddress.Marshal(b, m, deterministic)
-}
-func (m *WatchAddress) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WatchAddress.Merge(m, src)
-}
-func (m *WatchAddress) XXX_Size() int {
-	return xxx_messageInfo_WatchAddress.Size(m)
-}
-func (m *WatchAddress) XXX_DiscardUnknown() {
-	xxx_messageInfo_WatchAddress.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_WatchAddress proto.InternalMessageInfo
-
-func (m *WatchAddress) GetAddress() string {
-	if m != nil {
-		return m.Address
-	}
-	return ""
-}
-
-func (m *WatchAddress) GetUserID() string {
-	if m != nil {
-		return m.UserID
-	}
-	return ""
-}
-
-func (m *WatchAddress) GetWalletIndex() int32 {
-	if m != nil {
-		return m.WalletIndex
-	}
-	return 0
-}
-
-func (m *WatchAddress) GetAddressIndex() int32 {
-	if m != nil {
-		return m.AddressIndex
-	}
-	return 0
-}
-
-type Empty struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Empty) Reset()         { *m = Empty{} }
-func (m *Empty) String() string { return proto.CompactTextString(m) }
-func (*Empty) ProtoMessage()    {}
-func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{16}
-}
-
-func (m *Empty) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Empty.Unmarshal(m, b)
-}
-func (m *Empty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Empty.Marshal(b, m, deterministic)
-}
-func (m *Empty) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Empty.Merge(m, src)
-}
-func (m *Empty) XXX_Size() int {
-	return xxx_messageInfo_Empty.Size(m)
-}
-func (m *Empty) XXX_DiscardUnknown() {
-	xxx_messageInfo_Empty.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Empty proto.InternalMessageInfo
-
-type RawTx struct {
-	Transaction          string   `protobuf:"bytes,1,opt,name=transaction,proto3" json:"transaction,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RawTx) Reset()         { *m = RawTx{} }
-func (m *RawTx) String() string { return proto.CompactTextString(m) }
-func (*RawTx) ProtoMessage()    {}
-func (*RawTx) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{17}
-}
-
-func (m *RawTx) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RawTx.Unmarshal(m, b)
-}
-func (m *RawTx) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RawTx.Marshal(b, m, deterministic)
-}
-func (m *RawTx) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RawTx.Merge(m, src)
-}
-func (m *RawTx) XXX_Size() int {
-	return xxx_messageInfo_RawTx.Size(m)
-}
-func (m *RawTx) XXX_DiscardUnknown() {
-	xxx_messageInfo_RawTx.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RawTx proto.InternalMessageInfo
-
-func (m *RawTx) GetTransaction() string {
-	if m != nil {
-		return m.Transaction
-	}
-	return ""
-}
-
-type AddressToResync struct {
+type Address struct {
 	Address              string   `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AddressToResync) Reset()         { *m = AddressToResync{} }
-func (m *AddressToResync) String() string { return proto.CompactTextString(m) }
-func (*AddressToResync) ProtoMessage()    {}
-func (*AddressToResync) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{18}
+func (m *Address) Reset()         { *m = Address{} }
+func (m *Address) String() string { return proto.CompactTextString(m) }
+func (*Address) ProtoMessage()    {}
+func (*Address) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8b26ab11ddf9501b, []int{5}
 }
 
-func (m *AddressToResync) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddressToResync.Unmarshal(m, b)
+func (m *Address) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Address.Unmarshal(m, b)
 }
-func (m *AddressToResync) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddressToResync.Marshal(b, m, deterministic)
+func (m *Address) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Address.Marshal(b, m, deterministic)
 }
-func (m *AddressToResync) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddressToResync.Merge(m, src)
+func (m *Address) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Address.Merge(m, src)
 }
-func (m *AddressToResync) XXX_Size() int {
-	return xxx_messageInfo_AddressToResync.Size(m)
+func (m *Address) XXX_Size() int {
+	return xxx_messageInfo_Address.Size(m)
 }
-func (m *AddressToResync) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddressToResync.DiscardUnknown(m)
+func (m *Address) XXX_DiscardUnknown() {
+	xxx_messageInfo_Address.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AddressToResync proto.InternalMessageInfo
+var xxx_messageInfo_Address proto.InternalMessageInfo
 
-func (m *AddressToResync) GetAddress() string {
+func (m *Address) GetAddress() string {
 	if m != nil {
 		return m.Address
 	}
 	return ""
-}
-
-type ERC20Address struct {
-	Address              string   `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	OnlyBalances         bool     `protobuf:"varint,2,opt,name=onlyBalances,proto3" json:"onlyBalances,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ERC20Address) Reset()         { *m = ERC20Address{} }
-func (m *ERC20Address) String() string { return proto.CompactTextString(m) }
-func (*ERC20Address) ProtoMessage()    {}
-func (*ERC20Address) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{19}
-}
-
-func (m *ERC20Address) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ERC20Address.Unmarshal(m, b)
-}
-func (m *ERC20Address) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ERC20Address.Marshal(b, m, deterministic)
-}
-func (m *ERC20Address) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ERC20Address.Merge(m, src)
-}
-func (m *ERC20Address) XXX_Size() int {
-	return xxx_messageInfo_ERC20Address.Size(m)
-}
-func (m *ERC20Address) XXX_DiscardUnknown() {
-	xxx_messageInfo_ERC20Address.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ERC20Address proto.InternalMessageInfo
-
-func (m *ERC20Address) GetAddress() string {
-	if m != nil {
-		return m.Address
-	}
-	return ""
-}
-
-func (m *ERC20Address) GetOnlyBalances() bool {
-	if m != nil {
-		return m.OnlyBalances
-	}
-	return false
-}
-
-type UsersData struct {
-	Map                  map[string]*AddressExtended `protobuf:"bytes,1,rep,name=map,proto3" json:"map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	UsersContracts       map[string]string           `protobuf:"bytes,2,rep,name=UsersContracts,proto3" json:"UsersContracts,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
-	XXX_unrecognized     []byte                      `json:"-"`
-	XXX_sizecache        int32                       `json:"-"`
-}
-
-func (m *UsersData) Reset()         { *m = UsersData{} }
-func (m *UsersData) String() string { return proto.CompactTextString(m) }
-func (*UsersData) ProtoMessage()    {}
-func (*UsersData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{20}
-}
-
-func (m *UsersData) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_UsersData.Unmarshal(m, b)
-}
-func (m *UsersData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_UsersData.Marshal(b, m, deterministic)
-}
-func (m *UsersData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UsersData.Merge(m, src)
-}
-func (m *UsersData) XXX_Size() int {
-	return xxx_messageInfo_UsersData.Size(m)
-}
-func (m *UsersData) XXX_DiscardUnknown() {
-	xxx_messageInfo_UsersData.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_UsersData proto.InternalMessageInfo
-
-func (m *UsersData) GetMap() map[string]*AddressExtended {
-	if m != nil {
-		return m.Map
-	}
-	return nil
-}
-
-func (m *UsersData) GetUsersContracts() map[string]string {
-	if m != nil {
-		return m.UsersContracts
-	}
-	return nil
-}
-
-type AddressExtended struct {
-	UserID               string   `protobuf:"bytes,1,opt,name=UserID,proto3" json:"UserID,omitempty"`
-	WalletIndex          int32    `protobuf:"varint,2,opt,name=WalletIndex,proto3" json:"WalletIndex,omitempty"`
-	AddressIndex         int32    `protobuf:"varint,3,opt,name=AddressIndex,proto3" json:"AddressIndex,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *AddressExtended) Reset()         { *m = AddressExtended{} }
-func (m *AddressExtended) String() string { return proto.CompactTextString(m) }
-func (*AddressExtended) ProtoMessage()    {}
-func (*AddressExtended) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{21}
-}
-
-func (m *AddressExtended) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddressExtended.Unmarshal(m, b)
-}
-func (m *AddressExtended) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddressExtended.Marshal(b, m, deterministic)
-}
-func (m *AddressExtended) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddressExtended.Merge(m, src)
-}
-func (m *AddressExtended) XXX_Size() int {
-	return xxx_messageInfo_AddressExtended.Size(m)
-}
-func (m *AddressExtended) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddressExtended.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AddressExtended proto.InternalMessageInfo
-
-func (m *AddressExtended) GetUserID() string {
-	if m != nil {
-		return m.UserID
-	}
-	return ""
-}
-
-func (m *AddressExtended) GetWalletIndex() int32 {
-	if m != nil {
-		return m.WalletIndex
-	}
-	return 0
-}
-
-func (m *AddressExtended) GetAddressIndex() int32 {
-	if m != nil {
-		return m.AddressIndex
-	}
-	return 0
 }
 
 type ReplyInfo struct {
@@ -1291,7 +436,7 @@ func (m *ReplyInfo) Reset()         { *m = ReplyInfo{} }
 func (m *ReplyInfo) String() string { return proto.CompactTextString(m) }
 func (*ReplyInfo) ProtoMessage()    {}
 func (*ReplyInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{22}
+	return fileDescriptor_8b26ab11ddf9501b, []int{6}
 }
 
 func (m *ReplyInfo) XXX_Unmarshal(b []byte) error {
@@ -1333,7 +478,7 @@ func (m *ServiceVersion) Reset()         { *m = ServiceVersion{} }
 func (m *ServiceVersion) String() string { return proto.CompactTextString(m) }
 func (*ServiceVersion) ProtoMessage()    {}
 func (*ServiceVersion) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8b26ab11ddf9501b, []int{23}
+	return fileDescriptor_8b26ab11ddf9501b, []int{7}
 }
 
 func (m *ServiceVersion) XXX_Unmarshal(b []byte) error {
@@ -1382,127 +527,226 @@ func (m *ServiceVersion) GetLasttag() string {
 	return ""
 }
 
+// ???
+type RejectedTxs struct {
+	RejectedTxs          []string `protobuf:"bytes,1,rep,name=RejectedTxs,proto3" json:"RejectedTxs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RejectedTxs) Reset()         { *m = RejectedTxs{} }
+func (m *RejectedTxs) String() string { return proto.CompactTextString(m) }
+func (*RejectedTxs) ProtoMessage()    {}
+func (*RejectedTxs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8b26ab11ddf9501b, []int{8}
+}
+
+func (m *RejectedTxs) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RejectedTxs.Unmarshal(m, b)
+}
+func (m *RejectedTxs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RejectedTxs.Marshal(b, m, deterministic)
+}
+func (m *RejectedTxs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RejectedTxs.Merge(m, src)
+}
+func (m *RejectedTxs) XXX_Size() int {
+	return xxx_messageInfo_RejectedTxs.Size(m)
+}
+func (m *RejectedTxs) XXX_DiscardUnknown() {
+	xxx_messageInfo_RejectedTxs.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RejectedTxs proto.InternalMessageInfo
+
+func (m *RejectedTxs) GetRejectedTxs() []string {
+	if m != nil {
+		return m.RejectedTxs
+	}
+	return nil
+}
+
+type TxsToCheck struct {
+	Hash                 []string `protobuf:"bytes,1,rep,name=Hash,proto3" json:"Hash,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *TxsToCheck) Reset()         { *m = TxsToCheck{} }
+func (m *TxsToCheck) String() string { return proto.CompactTextString(m) }
+func (*TxsToCheck) ProtoMessage()    {}
+func (*TxsToCheck) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8b26ab11ddf9501b, []int{9}
+}
+
+func (m *TxsToCheck) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TxsToCheck.Unmarshal(m, b)
+}
+func (m *TxsToCheck) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TxsToCheck.Marshal(b, m, deterministic)
+}
+func (m *TxsToCheck) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TxsToCheck.Merge(m, src)
+}
+func (m *TxsToCheck) XXX_Size() int {
+	return xxx_messageInfo_TxsToCheck.Size(m)
+}
+func (m *TxsToCheck) XXX_DiscardUnknown() {
+	xxx_messageInfo_TxsToCheck.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TxsToCheck proto.InternalMessageInfo
+
+func (m *TxsToCheck) GetHash() []string {
+	if m != nil {
+		return m.Hash
+	}
+	return nil
+}
+
+type Empty struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Empty) Reset()         { *m = Empty{} }
+func (m *Empty) String() string { return proto.CompactTextString(m) }
+func (*Empty) ProtoMessage()    {}
+func (*Empty) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8b26ab11ddf9501b, []int{10}
+}
+
+func (m *Empty) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Empty.Unmarshal(m, b)
+}
+func (m *Empty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Empty.Marshal(b, m, deterministic)
+}
+func (m *Empty) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Empty.Merge(m, src)
+}
+func (m *Empty) XXX_Size() int {
+	return xxx_messageInfo_Empty.Size(m)
+}
+func (m *Empty) XXX_DiscardUnknown() {
+	xxx_messageInfo_Empty.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Empty proto.InternalMessageInfo
+
+type UsersData struct {
+	Map                  map[string]*Address `protobuf:"bytes,1,rep,name=map,proto3" json:"map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
+}
+
+func (m *UsersData) Reset()         { *m = UsersData{} }
+func (m *UsersData) String() string { return proto.CompactTextString(m) }
+func (*UsersData) ProtoMessage()    {}
+func (*UsersData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8b26ab11ddf9501b, []int{11}
+}
+
+func (m *UsersData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UsersData.Unmarshal(m, b)
+}
+func (m *UsersData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UsersData.Marshal(b, m, deterministic)
+}
+func (m *UsersData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UsersData.Merge(m, src)
+}
+func (m *UsersData) XXX_Size() int {
+	return xxx_messageInfo_UsersData.Size(m)
+}
+func (m *UsersData) XXX_DiscardUnknown() {
+	xxx_messageInfo_UsersData.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UsersData proto.InternalMessageInfo
+
+func (m *UsersData) GetMap() map[string]*Address {
+	if m != nil {
+		return m.Map
+	}
+	return nil
+}
+
 func init() {
-	proto.RegisterType((*IsEmpty)(nil), "nsethprotobuf.IsEmpty")
-	proto.RegisterType((*ContractInfo)(nil), "nsethprotobuf.ContractInfo")
-	proto.RegisterType((*TokenInfo)(nil), "nsethprotobuf.TokenInfo")
-	proto.RegisterType((*RejectedTxs)(nil), "nsethprotobuf.RejectedTxs")
-	proto.RegisterType((*TxsToCheck)(nil), "nsethprotobuf.TxsToCheck")
-	proto.RegisterType((*Multisig)(nil), "nsethprotobuf.Multisig")
-	proto.RegisterType((*Balance)(nil), "nsethprotobuf.Balance")
-	proto.RegisterType((*Nonce)(nil), "nsethprotobuf.Nonce")
-	proto.RegisterType((*GasPriceEstimation)(nil), "nsethprotobuf.GasPriceEstimation")
+	proto.RegisterType((*TransactionHash)(nil), "nsethprotobuf.TransactionHash")
+	proto.RegisterType((*AddressInfo)(nil), "nsethprotobuf.AddressInfo")
+	proto.RegisterType((*FeeRateEstimation)(nil), "nsethprotobuf.FeeRateEstimation")
 	proto.RegisterType((*BlockHeight)(nil), "nsethprotobuf.BlockHeight")
 	proto.RegisterType((*ETHTransaction)(nil), "nsethprotobuf.ETHTransaction")
-	proto.RegisterType((*ERC20Info)(nil), "nsethprotobuf.ERC20Info")
-	proto.RegisterType((*ERC20Balances)(nil), "nsethprotobuf.ERC20Balances")
-	proto.RegisterType((*ERC20History)(nil), "nsethprotobuf.ERC20History")
-	proto.RegisterType((*MultisigInfo)(nil), "nsethprotobuf.MultisigInfo")
-	proto.RegisterType((*WatchAddress)(nil), "nsethprotobuf.WatchAddress")
-	proto.RegisterType((*Empty)(nil), "nsethprotobuf.Empty")
-	proto.RegisterType((*RawTx)(nil), "nsethprotobuf.RawTx")
-	proto.RegisterType((*AddressToResync)(nil), "nsethprotobuf.AddressToResync")
-	proto.RegisterType((*ERC20Address)(nil), "nsethprotobuf.ERC20Address")
-	proto.RegisterType((*UsersData)(nil), "nsethprotobuf.UsersData")
-	proto.RegisterMapType((map[string]*AddressExtended)(nil), "nsethprotobuf.UsersData.MapEntry")
-	proto.RegisterMapType((map[string]string)(nil), "nsethprotobuf.UsersData.UsersContractsEntry")
-	proto.RegisterType((*AddressExtended)(nil), "nsethprotobuf.AddressExtended")
+	proto.RegisterType((*Address)(nil), "nsethprotobuf.Address")
 	proto.RegisterType((*ReplyInfo)(nil), "nsethprotobuf.ReplyInfo")
 	proto.RegisterType((*ServiceVersion)(nil), "nsethprotobuf.ServiceVersion")
+	proto.RegisterType((*RejectedTxs)(nil), "nsethprotobuf.RejectedTxs")
+	proto.RegisterType((*TxsToCheck)(nil), "nsethprotobuf.TxsToCheck")
+	proto.RegisterType((*Empty)(nil), "nsethprotobuf.Empty")
+	proto.RegisterType((*UsersData)(nil), "nsethprotobuf.UsersData")
+	proto.RegisterMapType((map[string]*Address)(nil), "nsethprotobuf.UsersData.MapEntry")
 }
 
 func init() { proto.RegisterFile("streamer.proto", fileDescriptor_8b26ab11ddf9501b) }
 
 var fileDescriptor_8b26ab11ddf9501b = []byte{
-	// 1406 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x57, 0xdb, 0x72, 0xdb, 0x36,
-	0x13, 0xd6, 0xf9, 0xb0, 0x92, 0x65, 0xff, 0x88, 0xe3, 0xe1, 0xef, 0x3f, 0xc9, 0xef, 0x62, 0x92,
-	0x4c, 0x7a, 0x18, 0x37, 0xe3, 0xa4, 0x33, 0x99, 0x5e, 0xd5, 0x91, 0x15, 0x5b, 0x6d, 0xec, 0xa4,
-	0xb4, 0xea, 0x5c, 0xc3, 0x24, 0x6c, 0xb1, 0x26, 0x09, 0x95, 0x84, 0x6c, 0x69, 0xa6, 0xd7, 0xbd,
-	0xea, 0x43, 0xf4, 0x15, 0xfa, 0x2e, 0xbd, 0xea, 0x63, 0xf4, 0x09, 0x3a, 0x58, 0x80, 0x14, 0x49,
-	0xcb, 0x76, 0xa7, 0x9d, 0xde, 0x61, 0x3f, 0x2c, 0xf6, 0xbc, 0x0b, 0x00, 0x7a, 0xb1, 0x8c, 0x38,
-	0x0b, 0x78, 0xb4, 0x3d, 0x89, 0x84, 0x14, 0x64, 0x25, 0x8c, 0xb9, 0x1c, 0xe3, 0xfa, 0x74, 0x7a,
-	0x46, 0xff, 0x0f, 0xcd, 0x61, 0x3c, 0x08, 0x26, 0x72, 0x4e, 0xd6, 0xa1, 0x8e, 0x0b, 0xab, 0xbc,
-	0x55, 0x7e, 0xd6, 0xb2, 0x35, 0x41, 0x7d, 0xe8, 0xf6, 0x45, 0x28, 0x23, 0xe6, 0xc8, 0x61, 0x78,
-	0x26, 0xc8, 0x4b, 0xb8, 0xdf, 0x17, 0xe1, 0x99, 0x17, 0x05, 0x4c, 0x7a, 0x22, 0x8c, 0x6d, 0xfe,
-	0xc3, 0xd4, 0x8b, 0xb8, 0x8b, 0xa7, 0xaa, 0xf6, 0xf2, 0x4d, 0xf2, 0x14, 0x7a, 0x89, 0x94, 0x77,
-	0x57, 0x21, 0x8f, 0x62, 0xab, 0xb2, 0x55, 0x7d, 0xd6, 0xb6, 0x0b, 0x28, 0x7d, 0x07, 0xed, 0x91,
-	0xb8, 0xe0, 0x21, 0xaa, 0x7a, 0x06, 0xab, 0xc9, 0xf6, 0xae, 0xeb, 0x46, 0x3c, 0x8e, 0x51, 0x49,
-	0xdb, 0x2e, 0xc2, 0xc4, 0x82, 0xe6, 0x6b, 0xe6, 0xb3, 0xd0, 0xe1, 0x56, 0x05, 0x39, 0x12, 0x92,
-	0x7e, 0x0e, 0x1d, 0x9b, 0x7f, 0xcf, 0x1d, 0xc9, 0xdd, 0xd1, 0x2c, 0x26, 0x5b, 0x39, 0xd2, 0x2a,
-	0xa3, 0x11, 0x59, 0x88, 0x6e, 0x01, 0x8c, 0x66, 0xf1, 0x48, 0xf4, 0xc7, 0xdc, 0xb9, 0x20, 0x04,
-	0x6a, 0x07, 0x2c, 0x1e, 0x1b, 0x46, 0x5c, 0xd3, 0xdf, 0xcb, 0xd0, 0x3a, 0x9c, 0xfa, 0xd2, 0x8b,
-	0xbd, 0x73, 0xf2, 0x18, 0x56, 0x72, 0x1e, 0x9b, 0x30, 0xe4, 0x41, 0xe5, 0xfe, 0x1b, 0xe6, 0x48,
-	0x11, 0xcd, 0x13, 0x47, 0xb4, 0x99, 0x05, 0x94, 0x50, 0xe8, 0x8e, 0x66, 0xef, 0xce, 0xfa, 0x11,
-	0xc7, 0x83, 0x56, 0x15, 0xb9, 0x72, 0x18, 0xd9, 0x84, 0x56, 0xe2, 0xbe, 0x55, 0xc3, 0xfd, 0x94,
-	0x56, 0xe7, 0xf7, 0xf8, 0xc4, 0x17, 0xf3, 0x63, 0xc9, 0xe4, 0x34, 0xb6, 0xea, 0x68, 0x4c, 0x0e,
-	0x23, 0x0f, 0xa0, 0x6d, 0xd4, 0xf1, 0xd8, 0x6a, 0xa0, 0x5f, 0x0b, 0x80, 0x7e, 0x93, 0x46, 0x32,
-	0x1b, 0xd4, 0x72, 0x2e, 0xa8, 0xca, 0x9d, 0xf7, 0x3c, 0x74, 0xbd, 0xf0, 0x3c, 0x1f, 0xf5, 0x02,
-	0x4a, 0x1f, 0x42, 0xfd, 0x48, 0xa8, 0x03, 0xeb, 0x66, 0x61, 0xa2, 0xa3, 0x09, 0xfa, 0x73, 0x19,
-	0xc8, 0x3e, 0x8b, 0xdf, 0x47, 0x9e, 0xc3, 0x07, 0xb1, 0xf4, 0x82, 0xd4, 0xc1, 0x13, 0x1e, 0xcd,
-	0x8f, 0x7d, 0x71, 0x85, 0xfc, 0x35, 0x3b, 0xa5, 0x55, 0x3e, 0x10, 0xaf, 0x20, 0x8e, 0x6b, 0xb2,
-	0x01, 0x8d, 0x43, 0xee, 0x7a, 0xd3, 0x00, 0xc3, 0x55, 0xb3, 0x0d, 0xa5, 0x78, 0xdf, 0xb0, 0x58,
-	0x07, 0xa9, 0x66, 0xe3, 0x3a, 0x91, 0x8d, 0x78, 0x7d, 0x21, 0x5b, 0xd1, 0xf4, 0x09, 0x74, 0x5e,
-	0xfb, 0xc2, 0xb9, 0x38, 0xe0, 0xde, 0xf9, 0x58, 0x2a, 0xb1, 0x63, 0x5c, 0x19, 0xa3, 0x0d, 0x45,
-	0x7f, 0xab, 0x41, 0x6f, 0x30, 0x3a, 0x18, 0x45, 0x2c, 0x8c, 0x99, 0x83, 0x16, 0x6f, 0x40, 0xe3,
-	0xbb, 0x98, 0x47, 0xc3, 0x3d, 0x13, 0x28, 0x43, 0xa9, 0x6a, 0xfb, 0xc0, 0x7c, 0x9f, 0xcb, 0x61,
-	0xe8, 0xf2, 0x19, 0x1a, 0x5d, 0xb7, 0xb3, 0x90, 0x4a, 0x98, 0x89, 0xbd, 0x66, 0xa9, 0x22, 0x4b,
-	0x0e, 0x4b, 0x6b, 0x50, 0x27, 0x1b, 0xd7, 0xe8, 0x5b, 0x24, 0x02, 0xf4, 0xa1, 0x6d, 0xe3, 0x9a,
-	0xf4, 0xa0, 0x32, 0x12, 0x56, 0x03, 0x91, 0xca, 0x48, 0x28, 0xab, 0x76, 0x03, 0x31, 0x0d, 0xa5,
-	0xd5, 0xd4, 0x56, 0x69, 0x4a, 0x25, 0xc3, 0x0b, 0x27, 0x53, 0x69, 0xb5, 0x10, 0xd6, 0x84, 0x8a,
-	0x4c, 0x92, 0x0b, 0xab, 0x8d, 0x0e, 0xa7, 0xb4, 0xd9, 0x7b, 0xeb, 0x05, 0x9e, 0xb4, 0x20, 0xdd,
-	0x43, 0x7a, 0x91, 0xda, 0x0e, 0x9a, 0x6e, 0x12, 0xbe, 0x01, 0x0d, 0x53, 0x82, 0x5d, 0x84, 0x1b,
-	0x8b, 0xe2, 0xc3, 0x18, 0x8f, 0xbc, 0x80, 0x5b, 0x2b, 0x28, 0x6a, 0x01, 0x90, 0x47, 0xaa, 0xf7,
-	0x26, 0x42, 0xf8, 0xb8, 0xdd, 0xc3, 0xed, 0x0c, 0xa2, 0xe2, 0x99, 0xc9, 0x90, 0xb5, 0x8a, 0x0c,
-	0xc5, 0xa4, 0xd9, 0x3c, 0x9e, 0x87, 0x8e, 0xb5, 0x86, 0x43, 0xcc, 0x50, 0xca, 0x83, 0xa4, 0x65,
-	0xad, 0xff, 0xe0, 0xce, 0xa2, 0x85, 0xb3, 0x0d, 0x45, 0x0a, 0x0d, 0xf5, 0x18, 0x56, 0x0e, 0xb9,
-	0x1c, 0x0b, 0x77, 0x18, 0x5e, 0x8a, 0x0b, 0xee, 0x5a, 0xf7, 0x90, 0x21, 0x0f, 0x2a, 0xad, 0x11,
-	0x97, 0xd3, 0x28, 0xb4, 0xd6, 0x75, 0xa4, 0x35, 0x45, 0x3e, 0x81, 0x35, 0xc5, 0xe2, 0x60, 0x5d,
-	0x9b, 0x78, 0xdc, 0x47, 0xed, 0xd7, 0x70, 0xfa, 0x23, 0xb4, 0x07, 0x76, 0x7f, 0xe7, 0x39, 0x4e,
-	0xbe, 0x2f, 0xa0, 0x79, 0xe0, 0xc5, 0x6a, 0x32, 0xe0, 0xe4, 0xe9, 0xec, 0xfc, 0x6f, 0x3b, 0x37,
-	0xb6, 0xb7, 0x91, 0xd5, 0xb0, 0xd8, 0x09, 0x2f, 0x79, 0x05, 0x2d, 0xd3, 0x7a, 0x7a, 0xbe, 0x76,
-	0x76, 0x1e, 0x2c, 0x3b, 0x97, 0xf0, 0xd8, 0x29, 0x37, 0xed, 0xc3, 0x4a, 0x6e, 0x4b, 0x35, 0x7f,
-	0x7e, 0xe6, 0x36, 0xef, 0x9e, 0xb5, 0xbf, 0x54, 0xa0, 0x9b, 0x35, 0x2c, 0xcd, 0xd7, 0xd1, 0x34,
-	0x38, 0xe5, 0x91, 0x11, 0x94, 0x85, 0x54, 0x3d, 0xa8, 0xcc, 0x1e, 0x4b, 0x16, 0x4c, 0x8c, 0xb8,
-	0x05, 0x90, 0x56, 0x7e, 0x35, 0x53, 0xf9, 0x69, 0xbd, 0xe9, 0x76, 0x30, 0xf5, 0xf6, 0x57, 0xfa,
-	0x61, 0xc9, 0x75, 0xd2, 0x5c, 0x7e, 0x9d, 0xac, 0x43, 0xfd, 0x84, 0xf9, 0x53, 0x9e, 0x74, 0x08,
-	0x12, 0xd7, 0x3a, 0xa4, 0x9d, 0xe9, 0x90, 0x35, 0xa8, 0xee, 0xb3, 0x18, 0x9b, 0xa3, 0x6d, 0xab,
-	0xa5, 0x92, 0x31, 0xc4, 0x2e, 0xeb, 0x68, 0x19, 0x48, 0xd0, 0xa7, 0xd0, 0x4d, 0xea, 0x0e, 0x13,
-	0x7d, 0xd3, 0x90, 0xf9, 0xa9, 0x0c, 0xdd, 0x0f, 0x4c, 0x3a, 0xe3, 0x4c, 0xd4, 0x59, 0x3e, 0x1f,
-	0x86, 0x54, 0x22, 0xa6, 0x7a, 0xf8, 0xe8, 0xf8, 0x19, 0xaa, 0x38, 0x7c, 0xaa, 0x77, 0x0f, 0x9f,
-	0xda, 0xf5, 0xe1, 0x43, 0x9b, 0xe6, 0x51, 0x40, 0x3f, 0x86, 0xba, 0xcd, 0xae, 0x46, 0x33, 0x25,
-	0x57, 0x2e, 0x66, 0x5f, 0x92, 0xd4, 0x0c, 0x44, 0x3f, 0x85, 0x55, 0x23, 0x63, 0x24, 0x4c, 0xff,
-	0xdd, 0x68, 0x3e, 0x7d, 0x6b, 0x6a, 0xe6, 0x6e, 0x47, 0x29, 0x74, 0x45, 0xe8, 0xcf, 0x33, 0x15,
-	0xae, 0x3a, 0x29, 0x87, 0xd1, 0x5f, 0x2b, 0xd0, 0x56, 0xc3, 0x37, 0xde, 0x63, 0x92, 0x91, 0x17,
-	0x50, 0x0d, 0xd8, 0xc4, 0xb4, 0xd0, 0x47, 0x85, 0x56, 0x48, 0xd9, 0xb6, 0x0f, 0xd9, 0x64, 0x10,
-	0xca, 0x68, 0x6e, 0x2b, 0x6e, 0x32, 0x82, 0x1e, 0x6e, 0x25, 0x45, 0x91, 0xb4, 0xd2, 0x67, 0x37,
-	0x9e, 0xcf, 0xb3, 0x6b, 0x51, 0x05, 0x19, 0x9b, 0x27, 0xd0, 0x4a, 0xd4, 0xa8, 0x62, 0xb9, 0xe0,
-	0x73, 0xe3, 0x9e, 0x5a, 0x92, 0x97, 0x50, 0xbf, 0xc4, 0x82, 0x53, 0x3e, 0x75, 0x76, 0x1e, 0x15,
-	0x54, 0x99, 0xd8, 0x0c, 0x66, 0x92, 0x87, 0x2e, 0x77, 0x6d, 0xcd, 0xfc, 0x65, 0xe5, 0x55, 0x79,
-	0x73, 0x17, 0xee, 0x2d, 0x51, 0xbf, 0x44, 0xc5, 0x7a, 0x56, 0x45, 0x3b, 0x23, 0x82, 0x8a, 0x34,
-	0x5d, 0x89, 0x82, 0x7f, 0xf7, 0x42, 0xa3, 0x4f, 0xa0, 0x6d, 0xf3, 0x89, 0x3f, 0xc7, 0x0e, 0xb0,
-	0xa0, 0x19, 0xf0, 0x38, 0x66, 0xe7, 0xe9, 0x2b, 0xc3, 0x90, 0x74, 0x06, 0xbd, 0x63, 0x1e, 0x5d,
-	0x7a, 0x0e, 0x3f, 0xe1, 0x51, 0x6c, 0xee, 0xd9, 0xd3, 0x88, 0x85, 0xce, 0x38, 0x31, 0x4b, 0x53,
-	0x0a, 0x77, 0x44, 0xa0, 0x6e, 0x27, 0xd3, 0x02, 0x9a, 0x52, 0xd3, 0xe5, 0x74, 0xea, 0xf9, 0xae,
-	0x54, 0xd7, 0x89, 0x1e, 0x22, 0x0b, 0x40, 0x69, 0xf6, 0x59, 0x2c, 0x25, 0x3b, 0x37, 0xb3, 0x24,
-	0x21, 0x77, 0xfe, 0x68, 0x01, 0x39, 0x12, 0x2e, 0xef, 0x8b, 0x20, 0x98, 0x86, 0x9e, 0x63, 0x5e,
-	0x71, 0x7b, 0xd0, 0x31, 0x06, 0xa1, 0xe5, 0xeb, 0xc5, 0xd9, 0xaa, 0xfa, 0x64, 0xf3, 0x61, 0x01,
-	0xcd, 0xbb, 0x40, 0x4b, 0xe4, 0x10, 0xd6, 0x06, 0x97, 0x3c, 0x94, 0xfb, 0x5c, 0xa6, 0xe3, 0x63,
-	0xb9, 0xa8, 0x62, 0xc5, 0x5e, 0x7f, 0x2b, 0xd1, 0x12, 0xd9, 0x87, 0x55, 0x14, 0x37, 0x0c, 0x3d,
-	0xe9, 0x31, 0x7f, 0xd7, 0x75, 0x89, 0x75, 0x53, 0xa5, 0x6e, 0x16, 0x77, 0xd2, 0x34, 0xa0, 0x5d,
-	0x04, 0x05, 0xed, 0xba, 0xee, 0x11, 0xbf, 0x4a, 0xda, 0xb1, 0x78, 0xf1, 0x64, 0x87, 0xd2, 0xad,
-	0xe2, 0x86, 0x70, 0x2f, 0x71, 0x33, 0x7b, 0x41, 0x2f, 0xf7, 0x74, 0xb3, 0x80, 0x66, 0x4e, 0xd0,
-	0x12, 0xf9, 0x1a, 0xba, 0x89, 0xa8, 0xbe, 0x70, 0x39, 0xb9, 0xa1, 0x3d, 0x92, 0x61, 0x73, 0x87,
-	0x97, 0xa9, 0x59, 0xbb, 0x78, 0x4a, 0xdf, 0x1f, 0x77, 0x89, 0x2c, 0x9a, 0xad, 0x1f, 0xb0, 0x25,
-	0xf2, 0x2d, 0xdc, 0xcf, 0x8b, 0x4b, 0x9e, 0xc8, 0x77, 0x09, 0xdc, 0x28, 0x7a, 0x6c, 0xee, 0xd0,
-	0x12, 0x79, 0x6f, 0xf2, 0xa0, 0x19, 0x93, 0x3c, 0xfc, 0x13, 0x9f, 0x07, 0xb0, 0x82, 0x12, 0x8f,
-	0xf8, 0x15, 0x06, 0xf6, 0xef, 0x24, 0xe1, 0x79, 0x99, 0x0c, 0xa1, 0x87, 0x9f, 0x22, 0xfd, 0x5b,
-	0x52, 0xbf, 0xa9, 0xff, 0x16, 0x4e, 0x2c, 0x3e, 0x4e, 0xd7, 0x84, 0x65, 0xbf, 0x58, 0x25, 0xf2,
-	0x1a, 0x7a, 0x68, 0xd1, 0x31, 0x0f, 0x5d, 0x7d, 0xab, 0x14, 0x4d, 0x42, 0xf4, 0x56, 0xaf, 0xbe,
-	0x82, 0xfa, 0x11, 0x5f, 0x76, 0x74, 0x79, 0x1f, 0xe6, 0x9f, 0xec, 0xe8, 0x50, 0x1f, 0xda, 0xc7,
-	0xf3, 0xd0, 0x51, 0x0f, 0x30, 0x4e, 0x6e, 0xf1, 0xfe, 0x56, 0x33, 0xf6, 0xa1, 0xbb, 0xcf, 0xe5,
-	0xe2, 0xe9, 0xb6, 0xf4, 0xa5, 0x76, 0x53, 0xc3, 0xa4, 0xc7, 0x68, 0xe9, 0xb4, 0x81, 0xe8, 0x8b,
-	0x3f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x37, 0x69, 0x59, 0x92, 0xb1, 0x0f, 0x00, 0x00,
+	// 804 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x55, 0xdb, 0x6e, 0xe3, 0x36,
+	0x10, 0xf5, 0x2d, 0x17, 0x8d, 0xbb, 0xde, 0x96, 0x0d, 0x02, 0xd5, 0x68, 0x17, 0xae, 0x8a, 0x14,
+	0x79, 0x28, 0x52, 0x20, 0xfb, 0x52, 0xf4, 0x2d, 0x9b, 0x75, 0x2e, 0x40, 0x37, 0x48, 0x19, 0x75,
+	0xdf, 0x19, 0x69, 0x36, 0x56, 0x23, 0x91, 0x06, 0x49, 0xa7, 0xd1, 0x3f, 0xf4, 0xa1, 0xff, 0xd1,
+	0x0f, 0xeb, 0x6f, 0x14, 0x1c, 0x51, 0xb2, 0xac, 0x6c, 0xf2, 0x94, 0x39, 0x87, 0xe3, 0x21, 0xe7,
+	0x9c, 0xd1, 0x04, 0x26, 0xc6, 0x6a, 0x14, 0x05, 0xea, 0xa3, 0xa5, 0x56, 0x56, 0xb1, 0x57, 0xd2,
+	0xa0, 0x5d, 0x50, 0x7c, 0xbb, 0xfa, 0x14, 0x1d, 0xc0, 0xeb, 0x58, 0x0b, 0x69, 0x44, 0x62, 0x33,
+	0x25, 0x2f, 0x84, 0x59, 0x30, 0x06, 0x23, 0xf7, 0x37, 0xec, 0xcf, 0xfa, 0x87, 0x01, 0xa7, 0x38,
+	0x42, 0x18, 0x9f, 0xa4, 0xa9, 0x46, 0x63, 0x2e, 0xe5, 0x27, 0xc5, 0x42, 0xd8, 0x79, 0x27, 0x72,
+	0x21, 0x13, 0xf4, 0x59, 0x35, 0x64, 0x3f, 0xc2, 0xe4, 0x1a, 0x65, 0x9a, 0xc9, 0xbb, 0x3a, 0x61,
+	0x40, 0x09, 0x1d, 0x96, 0xed, 0xc1, 0xd6, 0x95, 0x72, 0xc7, 0xc3, 0x59, 0xff, 0x70, 0xc4, 0x2b,
+	0x10, 0xfd, 0xdb, 0x87, 0xaf, 0xce, 0x10, 0xb9, 0xb0, 0x38, 0x37, 0x36, 0x2b, 0x84, 0x7b, 0x14,
+	0x9b, 0xc2, 0xee, 0x47, 0xd4, 0xe5, 0x4d, 0xae, 0xfe, 0xa2, 0xeb, 0x46, 0xbc, 0xc1, 0xee, 0xb1,
+	0xc4, 0x0f, 0x88, 0xa7, 0x98, 0xed, 0xc3, 0xf6, 0x07, 0x4c, 0xb3, 0x55, 0xe1, 0x8b, 0x7b, 0xe4,
+	0x72, 0xcf, 0x84, 0xb1, 0xe1, 0xa8, 0xca, 0x75, 0x71, 0x5d, 0x9b, 0xf8, 0xad, 0x75, 0x6d, 0x3a,
+	0x7b, 0x03, 0x90, 0x99, 0x53, 0x25, 0xad, 0x16, 0x89, 0x0d, 0xb7, 0x67, 0xfd, 0xc3, 0x5d, 0xde,
+	0x62, 0xa2, 0x03, 0x18, 0xbf, 0xcb, 0x55, 0x72, 0x7f, 0x81, 0xd9, 0xdd, 0xc2, 0xba, 0x6b, 0x17,
+	0x14, 0xd1, 0x23, 0x87, 0xdc, 0xa3, 0xe8, 0xef, 0x21, 0x4c, 0xe6, 0xf1, 0x45, 0x4b, 0xe6, 0xcf,
+	0x49, 0x4c, 0xaf, 0xd3, 0xaa, 0xf0, 0x7a, 0x51, 0xcc, 0x26, 0x30, 0x88, 0x15, 0x75, 0x11, 0xf0,
+	0x41, 0xac, 0xdc, 0x15, 0x27, 0x85, 0x5a, 0xc9, 0xaa, 0x87, 0x80, 0x7b, 0xe4, 0xfc, 0xb8, 0x16,
+	0x65, 0xae, 0x44, 0x4a, 0x4d, 0x04, 0xbc, 0x86, 0xae, 0xbf, 0x73, 0x61, 0xae, 0x75, 0x96, 0x20,
+	0x75, 0x30, 0xe2, 0x0d, 0xf6, 0x67, 0xbf, 0x65, 0x45, 0x66, 0xc3, 0x9d, 0xe6, 0x8c, 0xf0, 0xda,
+	0x9f, 0xdd, 0x96, 0x3f, 0xec, 0x5b, 0x08, 0xa8, 0xe3, 0x38, 0x2b, 0x30, 0x0c, 0xa8, 0xcb, 0x35,
+	0xe1, 0xf4, 0x8a, 0x1f, 0x97, 0x4a, 0xe5, 0x74, 0x0c, 0x74, 0xdc, 0x62, 0xd8, 0x6c, 0x43, 0xaf,
+	0x70, 0x4c, 0x09, 0x5d, 0x09, 0x39, 0x9a, 0x52, 0x26, 0xe1, 0x17, 0xa4, 0xb6, 0x47, 0xee, 0xa5,
+	0x8d, 0x0f, 0x8c, 0x1a, 0x6c, 0x70, 0xe5, 0xb6, 0x5d, 0xa8, 0x34, 0xfc, 0xba, 0xd2, 0xa4, 0x42,
+	0x8e, 0xd7, 0x68, 0x57, 0x5a, 0x86, 0x7b, 0x15, 0x5f, 0xa1, 0xe8, 0x07, 0xd8, 0xf1, 0xa3, 0xec,
+	0x64, 0x13, 0x55, 0x58, 0x8f, 0xb1, 0x87, 0xd1, 0x01, 0x04, 0x1c, 0x97, 0x79, 0x59, 0x4f, 0x7b,
+	0x81, 0xc6, 0x88, 0xbb, 0x66, 0xda, 0x3d, 0x8c, 0x1e, 0x61, 0x72, 0x83, 0xfa, 0x21, 0x4b, 0xf0,
+	0x23, 0x6a, 0xe3, 0x9c, 0xdd, 0x87, 0xed, 0x5b, 0x2d, 0x64, 0x52, 0x7b, 0xeb, 0x91, 0xe3, 0x13,
+	0x55, 0x38, 0xa5, 0x2b, 0x7f, 0x3d, 0x72, 0x8a, 0xde, 0xae, 0xb2, 0x3c, 0xb5, 0x4e, 0xb2, 0xca,
+	0xe8, 0x35, 0xe1, 0x6e, 0xce, 0x85, 0xb1, 0x56, 0xdc, 0x79, 0xc3, 0x6b, 0x18, 0xfd, 0x0c, 0x63,
+	0x8e, 0x7f, 0x62, 0x62, 0x31, 0x8d, 0x1f, 0x8d, 0x93, 0xb6, 0x05, 0xc3, 0xfe, 0x6c, 0x78, 0x18,
+	0xf0, 0x36, 0x15, 0xcd, 0x9c, 0x39, 0x26, 0x56, 0xa7, 0x0b, 0x4c, 0xee, 0x5b, 0x03, 0x38, 0x6c,
+	0xbe, 0xf1, 0x1d, 0xd8, 0x9a, 0x17, 0x4b, 0x5b, 0x46, 0xff, 0xf4, 0x21, 0xf8, 0xc3, 0xa0, 0x36,
+	0xef, 0x85, 0x15, 0xec, 0x2d, 0x0c, 0x0b, 0xb1, 0xa4, 0xcc, 0xf1, 0xf1, 0xf7, 0x47, 0x1b, 0xeb,
+	0xe3, 0xa8, 0x49, 0x3b, 0xfa, 0x20, 0x96, 0x73, 0x69, 0x75, 0xc9, 0x5d, 0xf6, 0xf4, 0x0a, 0x76,
+	0x6b, 0x82, 0x7d, 0x09, 0xc3, 0x7b, 0x2c, 0xbd, 0x1e, 0x2e, 0x64, 0x3f, 0xc1, 0xd6, 0x83, 0xc8,
+	0x57, 0xd5, 0x6e, 0x18, 0x1f, 0xef, 0x77, 0x8a, 0x7a, 0x7b, 0x78, 0x95, 0xf4, 0xeb, 0xe0, 0x97,
+	0xfe, 0xf1, 0x7f, 0x23, 0x60, 0x57, 0x2a, 0xc5, 0x53, 0x55, 0x14, 0x2b, 0x99, 0x25, 0xb4, 0x18,
+	0x0c, 0x7b, 0x0f, 0x63, 0xaf, 0x3f, 0x19, 0xb5, 0xd7, 0x29, 0x44, 0xed, 0x4c, 0xbf, 0xeb, 0xb0,
+	0x9b, 0x8e, 0x45, 0x3d, 0xc6, 0x61, 0xef, 0x1c, 0xed, 0xd3, 0xbd, 0xf3, 0xcc, 0xbb, 0xa6, 0xb3,
+	0x0e, 0xff, 0xe4, 0x97, 0x51, 0x8f, 0x9d, 0xc1, 0xe4, 0x1c, 0x6d, 0x7b, 0x67, 0x3e, 0x57, 0x6d,
+	0xfa, 0x79, 0xde, 0xfd, 0x26, 0xea, 0xb1, 0x53, 0x78, 0x55, 0x7d, 0x03, 0xf5, 0xcc, 0x3e, 0x57,
+	0x26, 0xec, 0xf0, 0xcd, 0xf8, 0x46, 0x3d, 0x76, 0x09, 0x13, 0xb2, 0xbd, 0x9a, 0x07, 0x37, 0x2f,
+	0xdf, 0x74, 0xb2, 0xd7, 0xa3, 0xf1, 0xe4, 0x3d, 0xed, 0x21, 0xea, 0xb1, 0xdf, 0xa9, 0xaf, 0xf6,
+	0x2e, 0x7b, 0xd3, 0x2d, 0xb5, 0xf9, 0xef, 0xe4, 0x89, 0xfc, 0x9b, 0xab, 0x90, 0x5a, 0x0c, 0x6e,
+	0x4a, 0x99, 0xdc, 0x58, 0x61, 0x91, 0x75, 0x6f, 0x6f, 0x6d, 0x87, 0x17, 0x5b, 0x3c, 0x87, 0xd7,
+	0xf3, 0x07, 0x94, 0xf6, 0x52, 0x66, 0x36, 0x13, 0xf9, 0x49, 0x9a, 0xb2, 0xf0, 0xb9, 0x59, 0x7d,
+	0xa9, 0xd0, 0xed, 0x36, 0xb1, 0x6f, 0xff, 0x0f, 0x00, 0x00, 0xff, 0xff, 0xb2, 0x85, 0xdf, 0x42,
+	0x38, 0x07, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1517,22 +761,20 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type NodeCommunicationsClient interface {
+	// +
 	ServiceInfo(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*ServiceVersion, error)
-	EventGetGasPrice(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GasPriceEstimation, error)
-	EventInitialAdd(ctx context.Context, in *UsersData, opts ...grpc.CallOption) (*ReplyInfo, error)
-	EventAddNewAddress(ctx context.Context, in *WatchAddress, opts ...grpc.CallOption) (*ReplyInfo, error)
-	EventGetBlockHeight(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*BlockHeight, error)
-	EventGetCode(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*ReplyInfo, error)
-	EventGetAdressNonce(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*Nonce, error)
-	EventGetAdressBalance(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*Balance, error)
-	EventResyncAddress(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*ReplyInfo, error)
-	EventNewBlock(ctx context.Context, in *Empty, opts ...grpc.CallOption) (NodeCommunications_EventNewBlockClient, error)
+	// +-
+	GetFeeRateEstimation(ctx context.Context, in *Address, opts ...grpc.CallOption) (*FeeRateEstimation, error)
+	// +
+	GetAddressInfo(ctx context.Context, in *Address, opts ...grpc.CallOption) (*AddressInfo, error)
+	//
+	ResyncAddress(ctx context.Context, in *Address, opts ...grpc.CallOption) (*ReplyInfo, error)
+	//
 	CheckRejectTxs(ctx context.Context, in *TxsToCheck, opts ...grpc.CallOption) (*RejectedTxs, error)
-	EventSendRawTx(ctx context.Context, in *RawTx, opts ...grpc.CallOption) (*ReplyInfo, error)
-	NewTx(ctx context.Context, in *Empty, opts ...grpc.CallOption) (NodeCommunications_NewTxClient, error)
+	GetTransaction(ctx context.Context, in *TransactionHash, opts ...grpc.CallOption) (*ETHTransaction, error)
 	SyncState(ctx context.Context, in *BlockHeight, opts ...grpc.CallOption) (*ReplyInfo, error)
-	// erc20 methods
-	GetERC20Info(ctx context.Context, in *ERC20Address, opts ...grpc.CallOption) (*ERC20Info, error)
+	// TODO: remove
+	EventInitialAdd(ctx context.Context, in *UsersData, opts ...grpc.CallOption) (*ReplyInfo, error)
 }
 
 type nodeCommunicationsClient struct {
@@ -1552,9 +794,54 @@ func (c *nodeCommunicationsClient) ServiceInfo(ctx context.Context, in *Empty, o
 	return out, nil
 }
 
-func (c *nodeCommunicationsClient) EventGetGasPrice(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GasPriceEstimation, error) {
-	out := new(GasPriceEstimation)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventGetGasPrice", in, out, opts...)
+func (c *nodeCommunicationsClient) GetFeeRateEstimation(ctx context.Context, in *Address, opts ...grpc.CallOption) (*FeeRateEstimation, error) {
+	out := new(FeeRateEstimation)
+	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/GetFeeRateEstimation", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeCommunicationsClient) GetAddressInfo(ctx context.Context, in *Address, opts ...grpc.CallOption) (*AddressInfo, error) {
+	out := new(AddressInfo)
+	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/GetAddressInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeCommunicationsClient) ResyncAddress(ctx context.Context, in *Address, opts ...grpc.CallOption) (*ReplyInfo, error) {
+	out := new(ReplyInfo)
+	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/ResyncAddress", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeCommunicationsClient) CheckRejectTxs(ctx context.Context, in *TxsToCheck, opts ...grpc.CallOption) (*RejectedTxs, error) {
+	out := new(RejectedTxs)
+	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/CheckRejectTxs", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeCommunicationsClient) GetTransaction(ctx context.Context, in *TransactionHash, opts ...grpc.CallOption) (*ETHTransaction, error) {
+	out := new(ETHTransaction)
+	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/GetTransaction", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeCommunicationsClient) SyncState(ctx context.Context, in *BlockHeight, opts ...grpc.CallOption) (*ReplyInfo, error) {
+	out := new(ReplyInfo)
+	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/SyncState", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1570,178 +857,22 @@ func (c *nodeCommunicationsClient) EventInitialAdd(ctx context.Context, in *User
 	return out, nil
 }
 
-func (c *nodeCommunicationsClient) EventAddNewAddress(ctx context.Context, in *WatchAddress, opts ...grpc.CallOption) (*ReplyInfo, error) {
-	out := new(ReplyInfo)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventAddNewAddress", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) EventGetBlockHeight(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*BlockHeight, error) {
-	out := new(BlockHeight)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventGetBlockHeight", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) EventGetCode(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*ReplyInfo, error) {
-	out := new(ReplyInfo)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventGetCode", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) EventGetAdressNonce(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*Nonce, error) {
-	out := new(Nonce)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventGetAdressNonce", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) EventGetAdressBalance(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*Balance, error) {
-	out := new(Balance)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventGetAdressBalance", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) EventResyncAddress(ctx context.Context, in *AddressToResync, opts ...grpc.CallOption) (*ReplyInfo, error) {
-	out := new(ReplyInfo)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventResyncAddress", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) EventNewBlock(ctx context.Context, in *Empty, opts ...grpc.CallOption) (NodeCommunications_EventNewBlockClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_NodeCommunications_serviceDesc.Streams[0], "/nsethprotobuf.NodeCommunications/EventNewBlock", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &nodeCommunicationsEventNewBlockClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type NodeCommunications_EventNewBlockClient interface {
-	Recv() (*BlockHeight, error)
-	grpc.ClientStream
-}
-
-type nodeCommunicationsEventNewBlockClient struct {
-	grpc.ClientStream
-}
-
-func (x *nodeCommunicationsEventNewBlockClient) Recv() (*BlockHeight, error) {
-	m := new(BlockHeight)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *nodeCommunicationsClient) CheckRejectTxs(ctx context.Context, in *TxsToCheck, opts ...grpc.CallOption) (*RejectedTxs, error) {
-	out := new(RejectedTxs)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/CheckRejectTxs", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) EventSendRawTx(ctx context.Context, in *RawTx, opts ...grpc.CallOption) (*ReplyInfo, error) {
-	out := new(ReplyInfo)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/EventSendRawTx", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) NewTx(ctx context.Context, in *Empty, opts ...grpc.CallOption) (NodeCommunications_NewTxClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_NodeCommunications_serviceDesc.Streams[1], "/nsethprotobuf.NodeCommunications/NewTx", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &nodeCommunicationsNewTxClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type NodeCommunications_NewTxClient interface {
-	Recv() (*ETHTransaction, error)
-	grpc.ClientStream
-}
-
-type nodeCommunicationsNewTxClient struct {
-	grpc.ClientStream
-}
-
-func (x *nodeCommunicationsNewTxClient) Recv() (*ETHTransaction, error) {
-	m := new(ETHTransaction)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *nodeCommunicationsClient) SyncState(ctx context.Context, in *BlockHeight, opts ...grpc.CallOption) (*ReplyInfo, error) {
-	out := new(ReplyInfo)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/SyncState", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nodeCommunicationsClient) GetERC20Info(ctx context.Context, in *ERC20Address, opts ...grpc.CallOption) (*ERC20Info, error) {
-	out := new(ERC20Info)
-	err := c.cc.Invoke(ctx, "/nsethprotobuf.NodeCommunications/GetERC20Info", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // NodeCommunicationsServer is the server API for NodeCommunications service.
 type NodeCommunicationsServer interface {
+	// +
 	ServiceInfo(context.Context, *Empty) (*ServiceVersion, error)
-	EventGetGasPrice(context.Context, *Empty) (*GasPriceEstimation, error)
-	EventInitialAdd(context.Context, *UsersData) (*ReplyInfo, error)
-	EventAddNewAddress(context.Context, *WatchAddress) (*ReplyInfo, error)
-	EventGetBlockHeight(context.Context, *Empty) (*BlockHeight, error)
-	EventGetCode(context.Context, *AddressToResync) (*ReplyInfo, error)
-	EventGetAdressNonce(context.Context, *AddressToResync) (*Nonce, error)
-	EventGetAdressBalance(context.Context, *AddressToResync) (*Balance, error)
-	EventResyncAddress(context.Context, *AddressToResync) (*ReplyInfo, error)
-	EventNewBlock(*Empty, NodeCommunications_EventNewBlockServer) error
+	// +-
+	GetFeeRateEstimation(context.Context, *Address) (*FeeRateEstimation, error)
+	// +
+	GetAddressInfo(context.Context, *Address) (*AddressInfo, error)
+	//
+	ResyncAddress(context.Context, *Address) (*ReplyInfo, error)
+	//
 	CheckRejectTxs(context.Context, *TxsToCheck) (*RejectedTxs, error)
-	EventSendRawTx(context.Context, *RawTx) (*ReplyInfo, error)
-	NewTx(*Empty, NodeCommunications_NewTxServer) error
+	GetTransaction(context.Context, *TransactionHash) (*ETHTransaction, error)
 	SyncState(context.Context, *BlockHeight) (*ReplyInfo, error)
-	// erc20 methods
-	GetERC20Info(context.Context, *ERC20Address) (*ERC20Info, error)
+	// TODO: remove
+	EventInitialAdd(context.Context, *UsersData) (*ReplyInfo, error)
 }
 
 func RegisterNodeCommunicationsServer(s *grpc.Server, srv NodeCommunicationsServer) {
@@ -1766,20 +897,110 @@ func _NodeCommunications_ServiceInfo_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NodeCommunications_EventGetGasPrice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+func _NodeCommunications_GetFeeRateEstimation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Address)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventGetGasPrice(ctx, in)
+		return srv.(NodeCommunicationsServer).GetFeeRateEstimation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventGetGasPrice",
+		FullMethod: "/nsethprotobuf.NodeCommunications/GetFeeRateEstimation",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventGetGasPrice(ctx, req.(*Empty))
+		return srv.(NodeCommunicationsServer).GetFeeRateEstimation(ctx, req.(*Address))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NodeCommunications_GetAddressInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Address)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeCommunicationsServer).GetAddressInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/nsethprotobuf.NodeCommunications/GetAddressInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeCommunicationsServer).GetAddressInfo(ctx, req.(*Address))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NodeCommunications_ResyncAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Address)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeCommunicationsServer).ResyncAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/nsethprotobuf.NodeCommunications/ResyncAddress",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeCommunicationsServer).ResyncAddress(ctx, req.(*Address))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NodeCommunications_CheckRejectTxs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TxsToCheck)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeCommunicationsServer).CheckRejectTxs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/nsethprotobuf.NodeCommunications/CheckRejectTxs",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeCommunicationsServer).CheckRejectTxs(ctx, req.(*TxsToCheck))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NodeCommunications_GetTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransactionHash)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeCommunicationsServer).GetTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/nsethprotobuf.NodeCommunications/GetTransaction",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeCommunicationsServer).GetTransaction(ctx, req.(*TransactionHash))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NodeCommunications_SyncState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BlockHeight)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeCommunicationsServer).SyncState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/nsethprotobuf.NodeCommunications/SyncState",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeCommunicationsServer).SyncState(ctx, req.(*BlockHeight))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1802,228 +1023,6 @@ func _NodeCommunications_EventInitialAdd_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NodeCommunications_EventAddNewAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WatchAddress)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventAddNewAddress(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventAddNewAddress",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventAddNewAddress(ctx, req.(*WatchAddress))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_EventGetBlockHeight_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventGetBlockHeight(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventGetBlockHeight",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventGetBlockHeight(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_EventGetCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddressToResync)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventGetCode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventGetCode",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventGetCode(ctx, req.(*AddressToResync))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_EventGetAdressNonce_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddressToResync)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventGetAdressNonce(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventGetAdressNonce",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventGetAdressNonce(ctx, req.(*AddressToResync))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_EventGetAdressBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddressToResync)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventGetAdressBalance(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventGetAdressBalance",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventGetAdressBalance(ctx, req.(*AddressToResync))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_EventResyncAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddressToResync)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventResyncAddress(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventResyncAddress",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventResyncAddress(ctx, req.(*AddressToResync))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_EventNewBlock_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(NodeCommunicationsServer).EventNewBlock(m, &nodeCommunicationsEventNewBlockServer{stream})
-}
-
-type NodeCommunications_EventNewBlockServer interface {
-	Send(*BlockHeight) error
-	grpc.ServerStream
-}
-
-type nodeCommunicationsEventNewBlockServer struct {
-	grpc.ServerStream
-}
-
-func (x *nodeCommunicationsEventNewBlockServer) Send(m *BlockHeight) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _NodeCommunications_CheckRejectTxs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TxsToCheck)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).CheckRejectTxs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/CheckRejectTxs",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).CheckRejectTxs(ctx, req.(*TxsToCheck))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_EventSendRawTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RawTx)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).EventSendRawTx(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/EventSendRawTx",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).EventSendRawTx(ctx, req.(*RawTx))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_NewTx_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(NodeCommunicationsServer).NewTx(m, &nodeCommunicationsNewTxServer{stream})
-}
-
-type NodeCommunications_NewTxServer interface {
-	Send(*ETHTransaction) error
-	grpc.ServerStream
-}
-
-type nodeCommunicationsNewTxServer struct {
-	grpc.ServerStream
-}
-
-func (x *nodeCommunicationsNewTxServer) Send(m *ETHTransaction) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _NodeCommunications_SyncState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BlockHeight)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).SyncState(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/SyncState",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).SyncState(ctx, req.(*BlockHeight))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NodeCommunications_GetERC20Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ERC20Address)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NodeCommunicationsServer).GetERC20Info(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nsethprotobuf.NodeCommunications/GetERC20Info",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeCommunicationsServer).GetERC20Info(ctx, req.(*ERC20Address))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _NodeCommunications_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "nsethprotobuf.NodeCommunications",
 	HandlerType: (*NodeCommunicationsServer)(nil),
@@ -2033,65 +1032,34 @@ var _NodeCommunications_serviceDesc = grpc.ServiceDesc{
 			Handler:    _NodeCommunications_ServiceInfo_Handler,
 		},
 		{
-			MethodName: "EventGetGasPrice",
-			Handler:    _NodeCommunications_EventGetGasPrice_Handler,
+			MethodName: "GetFeeRateEstimation",
+			Handler:    _NodeCommunications_GetFeeRateEstimation_Handler,
 		},
 		{
-			MethodName: "EventInitialAdd",
-			Handler:    _NodeCommunications_EventInitialAdd_Handler,
+			MethodName: "GetAddressInfo",
+			Handler:    _NodeCommunications_GetAddressInfo_Handler,
 		},
 		{
-			MethodName: "EventAddNewAddress",
-			Handler:    _NodeCommunications_EventAddNewAddress_Handler,
-		},
-		{
-			MethodName: "EventGetBlockHeight",
-			Handler:    _NodeCommunications_EventGetBlockHeight_Handler,
-		},
-		{
-			MethodName: "EventGetCode",
-			Handler:    _NodeCommunications_EventGetCode_Handler,
-		},
-		{
-			MethodName: "EventGetAdressNonce",
-			Handler:    _NodeCommunications_EventGetAdressNonce_Handler,
-		},
-		{
-			MethodName: "EventGetAdressBalance",
-			Handler:    _NodeCommunications_EventGetAdressBalance_Handler,
-		},
-		{
-			MethodName: "EventResyncAddress",
-			Handler:    _NodeCommunications_EventResyncAddress_Handler,
+			MethodName: "ResyncAddress",
+			Handler:    _NodeCommunications_ResyncAddress_Handler,
 		},
 		{
 			MethodName: "CheckRejectTxs",
 			Handler:    _NodeCommunications_CheckRejectTxs_Handler,
 		},
 		{
-			MethodName: "EventSendRawTx",
-			Handler:    _NodeCommunications_EventSendRawTx_Handler,
+			MethodName: "GetTransaction",
+			Handler:    _NodeCommunications_GetTransaction_Handler,
 		},
 		{
 			MethodName: "SyncState",
 			Handler:    _NodeCommunications_SyncState_Handler,
 		},
 		{
-			MethodName: "GetERC20Info",
-			Handler:    _NodeCommunications_GetERC20Info_Handler,
+			MethodName: "EventInitialAdd",
+			Handler:    _NodeCommunications_EventInitialAdd_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "EventNewBlock",
-			Handler:       _NodeCommunications_EventNewBlock_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "NewTx",
-			Handler:       _NodeCommunications_NewTx_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "streamer.proto",
 }

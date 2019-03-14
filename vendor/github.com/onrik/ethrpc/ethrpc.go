@@ -277,14 +277,14 @@ func (rpc *EthRPC) EthGetStorageAt(data string, position int, tag string) (strin
 }
 
 // EthGetTransactionCount returns the number of transactions sent from an address.
-func (rpc *EthRPC) EthGetTransactionCount(address, block string) (int, error) {
+func (rpc *EthRPC) EthGetTransactionCount(address, block string) (big.Int, error) {
 	var response string
 
 	if err := rpc.call("eth_getTransactionCount", &response, address, block); err != nil {
-		return 0, err
+		return big.Int{}, err
 	}
 
-	return ParseInt(response)
+	return ParseBigInt(response)
 }
 
 // EthGetBlockTransactionCountByHash returns the number of transactions in a block from a block matching the given block hash.
