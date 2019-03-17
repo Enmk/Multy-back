@@ -9,7 +9,9 @@ import (
 // update mempool every ~5 minutes = 20 block
 const blockLengthForReloadTxpool = 20
 
-func (c *Client) BlockTransaction(hash string) {
+// HandleNewHeadBlock processes the new top or 'head' block of the chain,
+// note that this method is called only when head of the chain updated.
+func (c *Client) HandleNewHeadBlock(hash string) {
 	block, err := c.Rpc.EthGetBlockByHash(hash, true)
 	if err != nil {
 		log.Errorf("Get Block Err:%s", err.Error())
@@ -37,10 +39,10 @@ func (c *Client) BlockTransaction(hash string) {
 		c.MempoolReloadBlock = block.Number
 	}
 
+	// TODO: there are many transactions should we start all that in goroutines and use sync.WaitGroup()?
 	for _, rawTx := range txs {
 		c.parseETHTransaction(rawTx, rawTx.BlockNumber, false)
 		c.DeleteTxpoolTransaction(rawTx.Hash)
-
 	}
 }
 

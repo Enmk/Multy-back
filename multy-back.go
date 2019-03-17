@@ -186,7 +186,7 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 			}
 			log.Debugf("Ether cli.EventInitialAdd: resp: %s", resp.Message)
 
-			sv, err := cli.ServiceInfo(context.Background(), &ethpb.Empty{})
+			sv, err := cli.GetServiceVersion(context.Background(), &ethpb.Empty{})
 			if err != nil {
 				return servicesInfo, fmt.Errorf("SetUserData:  cli.ServiceInfo: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
 			}

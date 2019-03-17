@@ -12,7 +12,8 @@ func (self *ETHConn) GetFeeRate(address typeseth.Address) (types.TransactionFeeR
 	var gasLimit typeseth.GasLimit = 21000
 	// For testnet we return estimate gas price from mainnet because testnet have many strange transaction
 	gasPriceEstimateFromNS, err := self.GRPCClient.GetFeeRateEstimation(context.Background(), &pb.Address{
-		Address: string(address)})
+		Address: address.Hex(),
+	})
 	if err != nil {
 		log.Errorf("wrong ETH eventGasPrice error: %v", err)
 		return types.TransactionFeeRateEstimation{

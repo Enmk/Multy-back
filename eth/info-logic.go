@@ -13,7 +13,7 @@ func (self *ETHConn) GetBlockHeigth() (int64, error) {
 }
 
 func (self *ETHConn) GetSeviceInfo() (*store.ServiceInfo, error) {
-	serviceVersion, err := self.GRPCClient.ServiceInfo(context.Background(), &pb.Empty{})
+	serviceVersion, err := self.GRPCClient.GetServiceVersion(context.Background(), &pb.Empty{})
 	log.Errorf("%v, %v", serviceVersion, err)
 
 	return &store.ServiceInfo{

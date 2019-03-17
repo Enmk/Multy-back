@@ -25,7 +25,7 @@ func (ethcli *ETHConn) setGRPCHandlers(networkID int, accuracyRange int) {
 			select {
 			case addr := <-ethcli.WatchAddress:
 				// TODO: split chan and move emit new address to nsq
-				err := ethcli.NSQClient.EmitNewAddressEvent(eth.Address(addr.Address))
+				err := ethcli.NSQClient.EmitNewAddressEvent(eth.HexToAddress(addr.Address))
 				if err != nil {
 					log.Errorf("NewAddressNode: cli.EventAddNewAddress %s\n", err.Error())
 				}

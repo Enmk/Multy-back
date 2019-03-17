@@ -9,11 +9,11 @@ type ErrorNotFound interface {
 	error
 }
 
-type storageErrorContext interface {
+type errorContextProvider interface {
 	getErrorContext() string
 }
 
-func reportError(storage storageErrorContext, err error, message string) error {
+func reportError(storage errorContextProvider, err error, message string) error {
 	if err == mgo.ErrNotFound {
 		return ErrorNotFound(errors.Wrapf(err, "DB error on %s : %s", storage.getErrorContext(), message))
 	}

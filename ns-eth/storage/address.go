@@ -12,8 +12,11 @@ import (
 // Stores all eth addresses that we filter transactions against
 // each address is a separate (empty) document.
 
-type addressSet map[eth.Address]struct{}
+type addressSet map[string]struct{}
 
+func toKey(address eth.Address) string {
+	return string(address.Bytes())
+}
 type AddressStorage struct {
 	collection *mgo.Collection
 
@@ -36,12 +39,12 @@ func (self *AddressStorage) AddAddress(newAddress eth.Address) error {
 	self.m.Lock()
 	defer self.m.Unlock()
 
-	_, err := self.collection.UpsertId(newAddress, bson.M{"_id": newAddress})
+	_, err := self.collection.UpsertId(newAddress, bson.M{"_id": newAddress.Bytes()})
 	if err != nil {
 		return reportError(self, err, "adding address failed")
 	}
 
-	self.cachedAddresses[newAddress] = struct{}{}
+	self.cachedAddresses[toKey(newAddress)] = struct{}{}
 	return nil
 }
 
@@ -60,7 +63,7 @@ func (self *AddressStorage) IsAddressExists(address eth.Address) bool {
 	self.m.RLock()
 	defer self.m.RUnlock()
 
-	_, exists := self.cachedAddresses[address]
+	_, exists := self.cachedAddresses[toKey(address)]
 
 	return exists
 }
@@ -77,7 +80,7 @@ func (self *AddressStorage) LoadAllAddresses() error {
 
 	var addressDoc bson.M
 	for iter.Next(&addressDoc) {
-		newAddresses[(eth.Address)(addressDoc["_id"].(string))] = struct{}{}
+		newAddresses[toKey(addressDoc["_id"].(eth.Address))] = struct{}{}
 	}
 
 	err := iter.Err()

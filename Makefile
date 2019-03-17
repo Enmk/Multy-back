@@ -49,6 +49,10 @@ $(TARGETS):
 test:
 	go test ./...
 
+.PHONY: test_verbose
+test_verbose:
+	go test -v ./...
+
 proto: 
 	cd ./ns-eth-protobuf && protoc --go_out=plugins=grpc:. *.proto
 

@@ -18,7 +18,6 @@ import (
 	"github.com/Multy-io/Multy-back/currencies"
 	ethpb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
-	typeseth "github.com/Multy-io/Multy-back/types/eth"
 	nsq "github.com/bitly/go-nsq"
 	_ "github.com/jekabolt/slflog"
 	mgo "gopkg.in/mgo.v2"
@@ -440,8 +439,4 @@ func msToUserData(addresses []string, usersData *mgo.Collection) map[string]stor
 		users[strings.ToLower(address)] = user
 	}
 	return users
-}
-
-func EthAddressFromString(address string) typeseth.Address {
-	return typeseth.Address(address)
 }

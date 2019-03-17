@@ -21,6 +21,7 @@ import (
 var log = slf.WithContext("NodeClient").WithCaller(slf.CallerShort)
 
 // NodeClient is a main struct of service
+// TODO: rename to NodeSerivce
 type NodeClient struct {
 	Config     *Configuration
 	Instance   *Client

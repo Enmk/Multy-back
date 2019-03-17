@@ -31,7 +31,7 @@ WORKDIR $GOPATH/src/github.com/Multy-io/Multy-back
 RUN go get -v ./...
 
 # Check that project can be built and binaries appear to work Ok on this platform.
-RUN make build -B && make canary-test && make test
+RUN make build -B && make canary-test
 
 # Cleanup
 RUN rm -rf ./*

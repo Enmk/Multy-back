@@ -10,11 +10,8 @@ import (
 
 	mgo "gopkg.in/mgo.v2"
 	eth "github.com/Multy-io/Multy-back/types/eth"
-)
-
-const (
-	mockTransactionId eth.TransactionHash = "mock transaction id"
-	mockBlockId eth.BlockHash = "mock block id"
+	. "github.com/Multy-io/Multy-back/tests"
+	. "github.com/Multy-io/Multy-back/tests/eth"
 )
 
 var (
@@ -22,29 +19,38 @@ var (
 
 	mockTransaction = eth.Transaction{
 		ID: mockTransactionId,
-		Sender: "sender",
-		Receiver: "receiver",
+		Sender: ToAddress("sender"),
+		Receiver: ToAddress("receiver"),
 		Payload: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-		Amount: eth.NewAmountFromInt64(1337),
+		Amount: *eth.NewAmountFromInt64(1337),
 		Nonce: 42,
 		Fee : eth.TransactionFee{
 			GasLimit: 10000,
 			GasPrice: 100*eth.GWei,
 		},
 	}
+
+	mockTransactionId = ToTxHash("mock transaction id")
+	mockBlockId = ToBlockHash("mock block id")
+	mockAddress = ToAddress("mock address")
 )
 
-func newEmptyStorage() *Storage {
-	storage, err := NewStorage(config)
+func newEmptyStorage(test *testing.T) *Storage {
+	c := config
+	uniqueDb := os.Getenv("MONGO_UNINQUE_DB_FOR_EACH_TEST") != "0"
+	if uniqueDb {
+		c.Database += "_" + test.Name()
+	}
+	storage, err := NewStorage(c)
 	if err != nil {
-		log.Fatalf("Failed to connect to the MongoDB instance with %v : %v", config, err)
+		test.Fatalf("Failed to connect to the MongoDB instance with %#v : %v", config, err)
 	}
 
 	dbName := storage.db.Name
 	// Dropping a DB in order to cleanup all collections
 	err = storage.db.DropDatabase()
-	if err != nil {
-		log.Fatalf("Failed to drop database: %s", dbName)
+	if !uniqueDb && err != nil {
+		test.Fatalf("Failed to drop database: %s", dbName)
 	}
 
 	return storage
@@ -52,11 +58,11 @@ func newEmptyStorage() *Storage {
 
 func TestMain(m *testing.M) {
 	config = Config{
-		Address: os.Getenv("MONGO_DB_ADDRESS"),
-		Username: os.Getenv("MONGO_DB_USER"),
-		Password: os.Getenv("MONGO_DB_PASSWORD"),
-		Database: os.Getenv("MONGO_DB_DATABASE_NS_STORE"),
-		Timeout:  time.Millisecond * 100,
+		Address: GetenvOrDefault("MONGO_DB_ADDRESS", "localhost:27017"),
+		Username: GetenvOrDefault("MONGO_DB_USER", ""),
+		Password: GetenvOrDefault("MONGO_DB_PASSWORD", ""),
+		Database: GetenvOrDefault("MONGO_DB_DATABASE_NS_STORE", "ns_test_db"),
+		Timeout:  100 * time.Millisecond,
 	}
 
 	if os.Getenv("DGAMING_BACK_VERBOSE_TESTS") != "" || os.Getenv("DGAMING_BACK_VERBOSE_TESTS_MONGO") != "" {
@@ -68,21 +74,21 @@ func TestMain(m *testing.M) {
 
 	_, err := NewStorage(config)
 	if err != nil {
-		log.Fatalf("Failed to connect to the MongoDB instance with %v : %v", config, err)
+		log.Fatalf("Failed to connect to the MongoDB instance with %#v : %v", config, err)
 	}
 
 	os.Exit(m.Run())
 }
 
 func TestBlockStorage(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
 	expectedBlock := eth.Block{
 		BlockHeader: eth.BlockHeader{
 			ID: mockBlockId,
 			Height: 10,
-			Parent: "mock block parent",
+			Parent: ToBlockHash("mock block parent"),
 		},
 		Transactions: []eth.Transaction{
 			mockTransaction,
@@ -121,7 +127,7 @@ func TestBlockStorage(test *testing.T) {
 }
 
 func TestBlockStorageEmpty(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
 	// Empty DB, RemoveBlock and GetBlock should return ErrorNotFound
@@ -137,10 +143,10 @@ func TestBlockStorageEmpty(test *testing.T) {
 }
 
 func TestBlockStorageImmutableBlock(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
-	const expectedImmutableBlockID = "immutable block id"
+	expectedImmutableBlockID := ToBlockHash("immutable block id")
 	err := storage.BlockStorage.SetImmutableBlockId(expectedImmutableBlockID)
 	if err != nil {
 		test.Fatalf("failed to set immutable block: %+v", err)
@@ -157,29 +163,27 @@ func TestBlockStorageImmutableBlock(test *testing.T) {
 }
 
 func TestAddressStorage(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
-	const address = "mockaddress"
-
-	ok := storage.AddressStorage.IsAddressExists(address)
+	ok := storage.AddressStorage.IsAddressExists(mockAddress)
 	if ok != false {
 		test.Fatalf("found address that does not exist yet")
 	}
 
-	err := storage.AddressStorage.AddAddress(address)
+	err := storage.AddressStorage.AddAddress(mockAddress)
 	if err != nil {
 		test.Fatalf("failed to add address: %+v", err)
 	}
 
-	ok = storage.AddressStorage.IsAddressExists(address)
+	ok = storage.AddressStorage.IsAddressExists(mockAddress)
 	if ok != true {
 		test.Fatalf("failed to find already added address")
 	}
 }
 
 func TestAddressStorageLoadAllAddressesTwice(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
 	err := storage.AddressStorage.LoadAllAddresses()
@@ -194,22 +198,20 @@ func TestAddressStorageLoadAllAddressesTwice(test *testing.T) {
 }
 
 func TestAddressStorageAddAddressTwice(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
-	const address = "mockaddress"
-
-	err := storage.AddressStorage.AddAddress(address)
+	err := storage.AddressStorage.AddAddress(mockAddress)
 	if err != nil {
 		test.Fatalf("failed to add address: %+v", err)
 	}
 
-	err = storage.AddressStorage.AddAddress(address)
+	err = storage.AddressStorage.AddAddress(mockAddress)
 	if err != nil {
 		test.Fatalf("failed to add address: %+v", err)
 	}
 
-	ok := storage.AddressStorage.IsAddressExists(address)
+	ok := storage.AddressStorage.IsAddressExists(mockAddress)
 	if ok != true {
 		test.Fatalf("failed to find already added address")
 	}
@@ -225,22 +227,22 @@ func TestAddressStorageAddAddressTwice(test *testing.T) {
 }
 
 func TestAddressStorageAddAddress(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
-	err := storage.AddressStorage.AddAddress("mockaddress")
+	err := storage.AddressStorage.AddAddress(mockAddress)
 	if err != nil {
 		test.Fatalf("failed to add address: %+v", err)
 	}
 
-	ok := storage.AddressStorage.IsAddressExists("mockaddress")
+	ok := storage.AddressStorage.IsAddressExists(mockAddress)
 	if ok != true {
 		test.Fatalf("failed to find already added address")
 	}
 }
 
 func TestTransactionStorage(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
 	err := storage.TransactionStorage.RemoveTransaction(mockTransactionId)
@@ -279,7 +281,7 @@ func TestTransactionStorage(test *testing.T) {
 }
 
 func TestTransactionStorageTransactionStatus(test *testing.T) {
-	storage := newEmptyStorage()
+	storage := newEmptyStorage(test)
 	defer storage.Close()
 
 	expectedTx := eth.TransactionWithStatus{

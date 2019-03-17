@@ -8,16 +8,23 @@ package nseth
 import (
 	"math/big"
 	"time"
+	"fmt"
+	"strings"
 
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/store"
+	"github.com/pkg/errors"
+
 	"github.com/onrik/ethrpc"
 	"gopkg.in/mgo.v2/bson"
+	"github.com/jekabolt/slf"
+	
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+	"github.com/Multy-io/Multy-back/types/eth"
 )
 
-func newETHtx(hash, from, to string, amount float64, gas, gasprice, nonce int) store.TransactionETH {
-	return store.TransactionETH{}
-}
+const erc20TransferName = "transfer(address,uint256)"
+// Topic of ERC20/721 `Transfer(address,address,uint256)` event.
+const transferEventTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
 
 func (client *Client) SendRawTransaction(rawTX string) (string, error) {
 	hash, err := client.Rpc.EthSendRawTransaction(rawTX)
@@ -83,7 +90,150 @@ func (client *Client) ResyncAddress(txid string) error {
 	return nil
 }
 
+type TransactionReceipt struct {
+	Status    bool
+	TokenTransfers []TokenTransfer
+	DeployedContract eth.Address
+}
+
+type TokenTransfer struct {
+	Contract  eth.Address
+	From      eth.Address
+	To        eth.Address
+	Value     eth.Amount
+	Removed   bool // TODO: shall we keep this?
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
+}
+
+func getDataArguments(data string, numberOfArgs int) ([]string, error) {
+	// Parse arguments from hex-encoded data string, each argument is
+	// expected to be 64-char wide, which corresponds to 32-byte (uint256)
+	// alignment of arguments in smart contract call protocol.
+	// Data may have an "0x" prefix
+
+	if strings.HasPrefix(data, "0x") {
+		data = data[2:]
+	}
+
+	if len(data) < numberOfArgs * 64 {
+		return []string{}, errors.Errorf(
+			"Not enough data for %d arguments.", numberOfArgs)
+	}
+
+	arguments := []string{}
+	for i := 0; i < numberOfArgs; i++ {
+		start := i * 64
+		end := (i + 1) * 64
+
+		arguments = append(arguments, data[start:end])
+	}
+
+	return arguments, nil
+}
+
+func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
+	// Some smart contracts put all arguments to the topics, other put 
+	// only portion of arguments as topics, rest as data.
+	// So let's assume that if there are less topics than expected arguments,
+	// then remaining arguments are in the data.
+
+	arguments := []string{}
+
+	for i := 0; i < minInt(len(log.Topics), numberOfArgs); i++ {
+		arguments = append(arguments, log.Topics[i])
+	}
+
+	if len(arguments) < numberOfArgs {
+		dataArguments, err := getDataArguments(log.Data, numberOfArgs - len(arguments))
+		if err != nil {
+			return []string{}, err
+		}
+
+		arguments = append(arguments, dataArguments...)
+	}
+
+	return arguments, nil
+}
+
+func (client *Client) getTransactionReceipt(transactionHash string) (result *TransactionReceipt, err error) {
+	log := log.WithField("txid", transactionHash)
+	receipt, err := client.Rpc.EthGetTransactionReceipt(transactionHash)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to fetch transaction receipt from Node; %+v", err)
+	}
+	if len(receipt.BlockHash) == 0 && len(receipt.TransactionHash) == 0 {
+		// Since only recent recepts are available on node, empty receipt is not an error.
+		return nil, nil
+	}
+
+	result = &TransactionReceipt{
+		Status: bool(receipt.Status != 0),
+	}
+	if !result.Status {
+		return result, nil
+	}
+
+	// A sentinel to verify that we parse all receipts properly
+	defer func() {
+		originalReceipt := fmt.Sprintf("%#v", receipt)
+		if len(result.TokenTransfers) == 0 && strings.Contains(originalReceipt, transferEventTopic[2:]) {
+			log.Fatalf("\n\n%[1]sTransaction receipt contains transfer log that was not parsed correctly.%[1]s\n\noriginal %#v\nparsed: %#v\n\n\n\n",
+				"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+				originalReceipt,
+				result)
+		}
+	}()
+
+	for i, logEntry := range receipt.Logs {
+		// log := log.WithField("Log #", i)
+		if len(logEntry.Topics) >= 1 && logEntry.Topics[0] == transferEventTopic {
+			var tokenTransfer TokenTransfer
+
+			eventArguments, err := getEventLogArguments(logEntry, 4)
+			if err != nil {
+				return nil, err
+			}
+			// log.Debugf("!!!!\t GOT A TRANSFER EVENT on : %#v", logEntry)
+
+			tokenTransfer.Contract = eth.HexToAddress(logEntry.Address)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Log %d: failed read 'Address' as contract address", i)
+			}
+
+			tokenTransfer.From = eth.HexToAddress(eventArguments[1])
+			if err != nil {
+				return nil, errors.Wrapf(err, "Log %d: failed read 'From' address", i)
+			}
+
+			tokenTransfer.To = eth.HexToAddress(eventArguments[2])
+			if err != nil {
+				return nil, errors.Wrapf(err, "Log %d: failed read 'To' address", i)
+			}
+
+			tokenTransfer.Value, err = eth.HexToAmount(eventArguments[3])
+			if err != nil {
+				return nil, errors.Wrapf(err, "Log %d: failed to read amount", i)
+			}
+
+			tokenTransfer.Removed = logEntry.Removed
+			result.TokenTransfers = append(result.TokenTransfers, tokenTransfer)
+		}
+	}
+
+	return result, nil
+}
+
+
+// TODO: provide eth.BlockHeader instead of blockHeight to use block time form node.
 func (client *Client) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) {
+	log := log.WithFields(slf.Fields{"txid": rawTX.Hash, "blockHeight": blockHeight, "resync": isResync})
 	var fromUser string
 	var toUser string
 
@@ -95,9 +245,51 @@ func (client *Client) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight 
 		toUser = udTo.(string)
 	}
 
+	var transactionReceipt *TransactionReceipt
+	var err error
+	if blockHeight > 0 {
+		// Only makes sence to fetch receipt for transactions that are included in any block.
+		transactionReceipt, err = client.getTransactionReceipt(rawTX.Hash)
+		// log.Debugf("\treceipt: %#v", transactionReceipt)
+		if err != nil {
+			log.Errorf("Failed to get transacion receipt: %+v", err)
+		}
+	}
+
 	if toUser == "" && fromUser == "" {
-		// not our users tx
-		return
+		ignoreTransaction := true
+
+		callInfo, err := DecodeSmartContractCall(rawTX.Input)
+		if callInfo != nil {
+			log.Infof("Smart contract call info: %v, err: %v", callInfo, err)
+		}
+
+		if callInfo != nil && callInfo.Name == erc20TransferName {
+			address := callInfo.Arguments[0].(eth.Address)
+			if udTokenTo, ok := client.UsersData.Load(address.Hex()); ok {
+				ignoreTransaction = false
+				log.Debugf("!!! TOKEN TX for tracked user %+v", udTokenTo)
+			}
+		}
+
+		// Check if token was transferred to or from our user.
+		if transactionReceipt != nil && len(transactionReceipt.TokenTransfers) > 0 {
+			for _, t := range transactionReceipt.TokenTransfers {
+				if _, ok := client.UsersData.Load(t.From); ok {
+					ignoreTransaction = false;
+					break;
+				}
+				if _, ok := client.UsersData.Load(t.To); ok {
+					ignoreTransaction = false;
+					break;
+				}
+			}
+		}
+
+		if ignoreTransaction {
+			// not our users tx
+			return
+		}
 	}
 
 	tx := rawToGenerated(rawTX)
@@ -119,8 +311,6 @@ func (client *Client) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight 
 	if blockHeight == -1 {
 		tx.TxpoolTime = time.Now().Unix()
 	}
-
-	// log.Infof("tx - %v", tx)
 
 	/*
 		Fetching tx status and send
@@ -159,21 +349,6 @@ func (client *Client) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight 
 	// 	// send to multy-back
 	// 	client.TransactionsStream <- tx
 	// }
-
-	// from v1 to v2 incoming
-	// if toUser.UserID != "" {
-	// 	tx.UserID = toUser.UserID
-	// 	tx.WalletIndex = int32(toUser.WalletIndex)
-	// 	tx.AddressIndex = int32(toUser.AddressIndex)
-	// 	tx.Status = store.TxStatusAppearedInBlockIncoming
-	// 	if blockHeight == -1 {
-	// 		tx.Status = store.TxStatusAppearedInMempoolIncoming
-	// 	}
-	// 	log.Warnf("incoming ----- for uid %v ", toUser.UserID)
-	// 	// send to multy-back
-	// 	client.TransactionsStream <- tx
-	// }
-
 }
 
 func rawToGenerated(rawTX ethrpc.Transaction) pb.ETHTransaction {
