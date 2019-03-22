@@ -71,7 +71,7 @@ type Transaction struct {
 	Hash             string
 	Nonce            int
 	BlockHash        string
-	BlockNumber      *int
+	BlockNumber      int64
 	TransactionIndex *int
 	From             string
 	To               string

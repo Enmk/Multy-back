@@ -27,6 +27,12 @@ type Amount struct {
 	big.Int
 }
 
+type AddressInfo struct {
+	TotalBalance   Amount
+	PendingBalance Amount
+	Nonce          TransactionNonce
+}
+
 // Transaction is an Ethereun blockchain transaction
 
 type Transaction struct {

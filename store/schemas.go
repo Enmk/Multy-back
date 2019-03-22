@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"time"
 
-	ethpb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	gosocketio "github.com/graarh/golang-socketio"
 )
 
@@ -205,10 +204,6 @@ type MultyTX struct {
 	WalletsOutput     []WalletForTx         `json:"walletsoutput"` //here we storing all wallets and addresses that took part in Outputs of the transaction
 }
 
-type BTCResync struct {
-	Txs    []MultyTX
-	SpOuts []SpendableOutputs
-}
 type ResyncTx struct {
 	Hash        string
 	BlockHeight int
@@ -298,11 +293,12 @@ type MultisigWallet struct {
 	ContractAddress    string `json:"contractAddress"`
 }
 
-type EtherscanResp struct {
-	Status  string               `json:"status"`
-	Message string               `json:"message"`
-	Result  []ethpb.ERC20History `json:"result"`
-}
+// type EtherscanResp struct {
+// 	Status  string               `json:"status"`
+// 	Message string               `json:"message"`
+// 	Result  []ethpb.ERC20History `json:"result"`
+// }
+
 type ERC20TokenTransferTx struct {
 	BlockNumber       string `json:"blockNumber"`
 	TimeStamp         string `json:"timeStamp"`
@@ -339,8 +335,8 @@ type TransactionETH struct {
 	From              string                `json:"from"`
 	To                string                `json:"to"`
 	Amount            string                `json:"txoutamount"`
-	GasPrice          int64                 `json:"gasprice"`
-	GasLimit          int64                 `json:"gaslimit"`
+	GasPrice          uint64                `json:"gasprice"`
+	GasLimit          uint64                `json:"gaslimit"`
 	Nonce             int                   `json:"nonce"`
 	Status            int                   `json:"txstatus" bson:"txstatus"`
 	BlockTime         int64                 `json:"blocktime"`

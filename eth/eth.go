@@ -12,6 +12,7 @@ import (
 	mgo "gopkg.in/mgo.v2"
 
 	"github.com/Multy-io/Multy-back/currencies"
+	"github.com/Multy-io/Multy-back/eth/client"
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
 	"github.com/Multy-io/Multy-back/types"
@@ -22,11 +23,15 @@ import (
 
 // ETHConn is a main struct of package
 type ETHConn struct {
-	NsqProducer      *nsq.Producer // a producer for sending data to clients
-	CliTest          pb.NodeCommunicationsClient
-	CliMain          pb.NodeCommunicationsClient
-	WatchAddressTest chan pb.WatchAddress
-	WatchAddressMain chan pb.WatchAddress
+	FirebaseNsqProducer *nsq.Producer // a producer for sending data to clients
+	// CliTest      pb.NodeCommunicationsClient
+	GRPCClient        pb.NodeCommunicationsClient
+	NSQClient         *client.ETHEventHandler
+	WatchAddress      chan UserAddress
+	blockHandler      client.EthBlockHandler
+	transactionStatus client.EthTransactionStatusHandler
+	// NSQClientTest client.ETHEventHandler
+	// WatchAddressTest chan userAddress
 
 	ETHDefaultGasPrice types.TransactionFeeRateEstimation
 
@@ -41,8 +46,8 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	//declare pacakge struct
 	cli := &ETHConn{}
 
-	cli.WatchAddressMain = make(chan pb.WatchAddress)
-	cli.WatchAddressTest = make(chan pb.WatchAddress)
+	cli.WatchAddress = make(chan UserAddress)
+	// cli.WatchAddressTest = make(chan userAddress)
 
 	config := nsq.NewConfig()
 	p, err := nsq.NewProducer(nsqAddr, config)
@@ -50,7 +55,7 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 		return cli, fmt.Errorf("nsq producer: %s", err.Error())
 	}
 
-	cli.NsqProducer = p
+	cli.FirebaseNsqProducer = p
 	log.Infof("InitHandlers: nsq.NewProducer: √")
 
 	addr := []string{dbConf.Address}
@@ -92,29 +97,25 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	if err != nil {
 		return cli, fmt.Errorf("fetchCoinType: %s", err.Error())
 	}
-	cliMain, err := initGrpcClient(coinTypeMain.GRPCUrl)
+	grpcClient, err := initGrpcClient(coinTypeMain.GRPCUrl)
 	if err != nil {
 		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
 
-	cli.CliMain = cliMain
-
-	// setup testnet
-	coinTypeTest, err := store.FetchCoinType(coinTypes, currencies.Ether, currencies.ETHTest)
-	if err != nil {
-		return cli, fmt.Errorf("fetchCoinType: %s", err.Error())
-	}
-	cliTest, err := initGrpcClient(coinTypeTest.GRPCUrl)
-	if err != nil {
-		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
-	}
-	cli.CliTest = cliTest
+	cli.GRPCClient = grpcClient
 
 	cli.setGRPCHandlers(currencies.ETHMain, coinTypeMain.AccuracyRange)
 	log.Infof("InitHandlers: initGrpcClient: Main: √")
 
-	cli.setGRPCHandlers(currencies.ETHTest, coinTypeTest.AccuracyRange)
-	log.Infof("InitHandlers: initGrpcClient: Test: √")
+	cli.blockHandler = client.EthBlockHandler{}
+	cli.transactionStatus = client.EthTransactionStatusHandler{}
+
+	cli.NSQClient, err = client.NewEventHandler(nsqAddr, &cli.blockHandler, &cli.transactionStatus)
+
+	if err != nil {
+		log.Errorf("init NSQclient error: %s", err.Error())
+		return cli, err
+	}
 
 	return cli, nil
 }
@@ -131,7 +132,7 @@ func initGrpcClient(url string) (pb.NodeCommunicationsClient, error) {
 	return client, nil
 }
 
-// BtcTransaction stuct for ws notifications
+// EthTransaction stuct for ws notifications
 type Transaction struct {
 	TransactionType int    `json:"transactionType"`
 	Amount          string `json:"amount"`
@@ -143,4 +144,11 @@ type Transaction struct {
 type TransactionWithUserID struct {
 	NotificationMsg *Transaction
 	UserID          string
+}
+
+type UserAddress struct {
+	Address      string
+	UserID       string
+	WalletIndex  int32
+	AddressIndex int32
 }
