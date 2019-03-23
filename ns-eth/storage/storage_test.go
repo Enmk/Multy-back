@@ -37,9 +37,10 @@ var (
 
 func newEmptyStorage(test *testing.T) *Storage {
 	c := config
-	uniqueDb := os.Getenv("MONGO_UNINQUE_DB_FOR_EACH_TEST") != "0"
+	uniqueDb := GetenvOrDefault("MULTY_TEST_NS_STORAGE_UNINQUE_DB_FOR_EACH_TEST", "0") != "0"
 	if uniqueDb {
 		c.Database += "_" + test.Name()
+		test.Logf("Using unique DB for the test: %s", c.Database)
 	}
 	storage, err := NewStorage(c)
 	if err != nil {

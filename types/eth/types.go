@@ -89,7 +89,7 @@ const (
 )
 
 type TransactionWithStatus struct {
-	Transaction `json:",inline" bson:",inline"`
+	Transaction                   `json:",inline" bson:",inline"`
 	Status      TransactionStatus `json:"status" bson:"status"`
 }
 
@@ -166,28 +166,6 @@ func NewAmountFromString(str string, base int) (*Amount, error) {
 	return amount, nil
 }
 
-const amountBSONStringBase = 10
-
-func (a *Amount) SetBSON(raw bson.Raw) error {
-	var amountString string
-	err := raw.Unmarshal(&amountString)
-	if err != nil {
-		return errors.Wrap(err, "Faield to parse amount from BSON")
-	}
-
-	amount, err := NewAmountFromString(amountString, amountBSONStringBase)
-	if err != nil {
-		return err
-	}
-	*a = *amount
-
-	return nil
-}
-
-func (a *Amount) GetBSON() (interface{}, error) {
-	return a.Text(amountBSONStringBase), nil
-}
-
 // HexToAddress converts hex-encoded string (it may be prefixed with 0x) to Address.
 func HexToAddress(hexString string) Address {
 	return Address(geth.HexToAddress(hexString))
@@ -217,4 +195,44 @@ func HexToAmount(hexString string) (Amount, error) {
 
 func (amount Amount) Hex() string {
 	return "0x" + amount.Text(16)
+}
+
+// Marshalling tricks: since transaction stores Amount by-value, 
+// big.Int marshalling is no applicable and Amount is marshalled as struct, merely to "Int: {}":
+// https://github.com/golang/go/issues/28946#issuecomment-441684687
+
+// MarshalJSON implements the json.Marshaler interface. 
+func (amount Amount) MarshalJSON() ([]byte, error) {
+	return []byte(amount.Hex()), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface. 
+func (amount *Amount) UnmarshalJSON(text []byte) error {
+	newAmount, err := HexToAmount(string(text))
+	if err != nil {
+		return err
+	}
+
+	*amount = newAmount
+	return nil
+}
+
+func (a *Amount) SetBSON(raw bson.Raw) error {
+	var amountString string
+	err := raw.Unmarshal(&amountString)
+	if err != nil {
+		return errors.Wrap(err, "Faield to parse amount from BSON")
+	}
+
+	amount, err := HexToAmount(amountString)
+	if err != nil {
+		return err
+	}
+	*a = amount
+
+	return nil
+}
+
+func (a Amount) GetBSON() (interface{}, error) {
+	return a.Hex(), nil
 }

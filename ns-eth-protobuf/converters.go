@@ -138,6 +138,7 @@ func SmartContractMethodInfoToProtobuf(methodInfo *eth.SmartContractMethodInfo) 
 	for i, arg := range methodInfo.Arguments {
 		value, err := json.Marshal(arg)
 		typeByte := make([]byte, 1)
+
 		switch v := arg.(type) {
 		case eth.Address, *eth.Address:
 			typeByte[0] = 'a'

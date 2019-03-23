@@ -127,7 +127,7 @@ func TestTxStatusHandler(test *testing.T) {
 		var txWithStatus eth.TransactionWithStatus
 		err := json.Unmarshal(msgRaw, &txWithStatus)
 		if err != nil {
-			test.Errorf("bad status after unmarshal with error: %v,   %v", err, msgRaw)
+			test.Errorf("bad status after unmarshal with error: %+v,   %v", err, msgRaw)
 			return err
 		}
 		if !reflect.DeepEqual(txWithStatusMempool, txWithStatus) {
