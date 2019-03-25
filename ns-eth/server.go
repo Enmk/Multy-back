@@ -145,7 +145,7 @@ func (s *Server) ResyncAddress(c context.Context, address *pb.Address) (*pb.Repl
 	log.Debugf("EventResyncAddress %d", len(reTx.Result))
 
 	for _, hash := range reTx.Result {
-		s.EthCli.ResyncAddress(hash.Hash)
+		s.EthCli.ResyncTransaction(hash.Hash)
 	}
 
 	return &pb.ReplyInfo{

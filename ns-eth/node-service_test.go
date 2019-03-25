@@ -5,12 +5,12 @@ import (
 
 	"flag"
 	"os"
-	"sync"
 	l "log"
 	"time"
 
 	"github.com/jekabolt/config"
 	"github.com/onrik/ethrpc"
+	"github.com/Multy-io/Multy-back/types/eth"
 )
 
 var (
@@ -20,10 +20,14 @@ func init() {
     flag.String("ConfigPath", "", "path to config file to allow providing node-service configs")
 }
 
-func newNodeClient() *NodeClient {
-	var userMap sync.Map
+type mockAddressLookup struct {}
+func (*mockAddressLookup) IsAddressExists(eth.Address) bool {
+	return false
+}
 
-	client := NewClient(&conf.EthConf, &userMap)
+func newNodeClient() *NodeClient {
+
+	client := NewClient(&conf.EthConf, &mockAddressLookup{})
 	select {
 	case <- client.ready:
 		break;

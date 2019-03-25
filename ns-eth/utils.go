@@ -16,13 +16,16 @@ import (
 	"github.com/onrik/ethrpc"
 	"gopkg.in/mgo.v2/bson"
 	"github.com/jekabolt/slf"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/types/eth"
 )
 
 const erc20TransferName = "transfer(address,uint256)"
-// Topic of ERC20/721 `Transfer(address,address,uint256)` event.
+// Signature of ERC20/721 `Transfer` event.
+const transferEventName = "Transfer(address,address,uint256)"
+
 const transferEventTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 
@@ -30,7 +33,7 @@ func (client *NodeClient) SendRawTransaction(rawTX string) (string, error) {
 	hash, err := client.Rpc.EthSendRawTransaction(rawTX)
 	if err != nil {
 		log.Errorf("SendRawTransaction:rpc.EthSendRawTransaction: %s", err.Error())
-		return hash, err
+		return hash, errors.Wrapf(err, "Failed to send raw transaction")
 	}
 	return hash, err
 }
@@ -79,7 +82,7 @@ func (client *NodeClient) GetAddressNonce(address string) (big.Int, error) {
 	return client.Rpc.EthGetTransactionCount(address, "latest")
 }
 
-func (client *NodeClient) ResyncAddress(txid string) error {
+func (client *NodeClient) ResyncTransaction(txid string) error {
 	tx, err := client.Rpc.EthGetTransactionByHash(txid)
 	if err != nil {
 		return err
@@ -162,9 +165,9 @@ func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
 	return arguments, nil
 }
 
-func (client *NodeClient) getTransactionReceipt(transactionHash string) (result *TransactionReceipt, err error) {
-	log := log.WithField("txid", transactionHash)
-	receipt, err := client.Rpc.EthGetTransactionReceipt(transactionHash)
+func (client *NodeClient) fetchTransactionCallInfo(rawTx ethrpc.Transaction) (result *eth.SmartContractCallInfo, err error) {
+	log := log.WithField("txid", rawTx.Hash)
+	receipt, err := client.Rpc.EthGetTransactionReceipt(rawTx.Hash)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to fetch transaction receipt from Node; %+v", err)
 	}
@@ -173,17 +176,34 @@ func (client *NodeClient) getTransactionReceipt(transactionHash string) (result 
 		return nil, nil
 	}
 
-	result = &TransactionReceipt{
-		Status: bool(receipt.Status != 0),
+	methodInfo, err := DecodeSmartContractCall(rawTx.Input, eth.HexToAddress(rawTx.To))
+	if err != nil {
+		log.Infof("Failed to decode smart contract method call: %#v", err)
+		// NOTE: it is Ok if call can't be decoded, Input could be not a SC call or unknown method call.
 	}
-	if !result.Status {
-		return result, nil
+
+	var deployedAddress *eth.Address
+	if receipt.ContractAddress != "" {
+		address := eth.HexToAddress(receipt.ContractAddress)
+		deployedAddress = &address
+	}
+
+	events := make([]eth.SmartContractEventInfo, 0, len(receipt.Logs))
+	for i, logEntry := range receipt.Logs {
+		logData := strings.Join(logEntry.Topics, "") + logEntry.Data
+		logData = strings.ReplaceAll(logData, "0x", "")
+		event, err := DecodeSmartContractEvent(logData, eth.HexToAddress(logEntry.Address))
+		if err != nil {
+			log.Errorf("Failed to decode transaction log #%d : with error %#v", i, err)
+		} else {
+			events = append(events, *event)
+		}
 	}
 
 	// A sentinel to verify that we parse all receipts properly
 	defer func() {
 		originalReceipt := fmt.Sprintf("%#v", receipt)
-		if len(result.TokenTransfers) == 0 && strings.Contains(originalReceipt, transferEventTopic[2:]) {
+		if len(result.Events) == 0 && strings.Contains(originalReceipt, transferEventTopic[2:]) {
 			log.Fatalf("\n\n%[1]sTransaction receipt contains transfer log that was not parsed correctly.%[1]s\n\noriginal %#v\nparsed: %#v\n\n\n\n",
 				"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
 				originalReceipt,
@@ -191,126 +211,192 @@ func (client *NodeClient) getTransactionReceipt(transactionHash string) (result 
 		}
 	}()
 
-	for i, logEntry := range receipt.Logs {
-		// log := log.WithField("Log #", i)
-		if len(logEntry.Topics) >= 1 && logEntry.Topics[0] == transferEventTopic {
-			var tokenTransfer TokenTransfer
+	return &eth.SmartContractCallInfo{
+		Status: eth.SmartContractCallStatus(receipt.Status),
+		Method: methodInfo,
+		DeployedAddress: deployedAddress,
+		Events: events,
+	}, nil
+}
 
-			eventArguments, err := getEventLogArguments(logEntry, 4)
-			if err != nil {
-				return nil, err
-			}
-			// log.Debugf("!!!!\t GOT A TRANSFER EVENT on : %#v", logEntry)
+func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, block *eth.Block) (*eth.Transaction, error) {
+	log := log.WithField("txid", rawTX.Hash)
 
-			tokenTransfer.Contract = eth.HexToAddress(logEntry.Address)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Log %d: failed read 'Address' as contract address", i)
-			}
+	var err error
+	var callInfo *eth.SmartContractCallInfo
 
-			tokenTransfer.From = eth.HexToAddress(eventArguments[1])
-			if err != nil {
-				return nil, errors.Wrapf(err, "Log %d: failed read 'From' address", i)
-			}
+	payload, err := hexutil.Decode(rawTX.Input)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to decode transaction payload.")
+	}
 
-			tokenTransfer.To = eth.HexToAddress(eventArguments[2])
-			if err != nil {
-				return nil, errors.Wrapf(err, "Log %d: failed read 'To' address", i)
-			}
-
-			tokenTransfer.Value, err = eth.HexToAmount(eventArguments[3])
-			if err != nil {
-				return nil, errors.Wrapf(err, "Log %d: failed to read amount", i)
-			}
-
-			tokenTransfer.Removed = logEntry.Removed
-			result.TokenTransfers = append(result.TokenTransfers, tokenTransfer)
+	if rawTX.BlockNumber > 0 {
+		callInfo, err = client.fetchTransactionCallInfo(rawTX)
+		if err != nil {
+			log.Errorf("Failed to get transacion call info: %+v", err)
+			return nil, errors.WithMessage(err, "from fetchAllTransactionInfo")
 		}
 	}
 
-	return result, nil
+	var blockInfo *eth.TransactionBlockInfo
+	if block != nil {
+		blockInfo = &eth.TransactionBlockInfo{
+			Hash:   block.BlockHeader.ID,
+			Height: block.BlockHeader.Height,
+			Time:   block.BlockHeader.Time,
+		}
+	}
+
+	return &eth.Transaction{
+		ID:       eth.HexToHash(rawTX.Hash),
+		Sender:   eth.HexToAddress(rawTX.From),
+		Receiver: eth.HexToAddress(rawTX.To),
+		Payload:  payload,
+		Amount:   eth.Amount{rawTX.Value},
+		Nonce:    eth.TransactionNonce(rawTX.Nonce),
+		Fee: eth.TransactionFee{
+			GasPrice: eth.GasPrice(rawTX.GasPrice.Uint64()),
+			GasLimit: eth.GasLimit(rawTX.Gas),
+		},
+		CallInfo:  callInfo,
+		BlockInfo: blockInfo,
+	}, nil
+
+	// if useTransaction == false {
+
+	// 	callInfo, err := DecodeSmartContractCall(rawTX.Input)
+	// 	if callInfo != nil {
+	// 		log.Infof("Smart contract call info: %v, err: %v", callInfo, err)
+	// 	}
+
+	// 	if callInfo != nil && callInfo.Name == erc20TransferName {
+	// 		address, ok := callInfo.Arguments[0].(eth.Address)
+	// 		if ok == true {
+	// 			useTransaction = client.IsAnyKnownAddress(address)
+	// 		} else {
+	// 			log.Errorf("Unexpected argument 0 type for erc20 `transfer()`: %#v, expected Address", callInfo)
+	// 		}
+	// 	}
+
+	// 	// Check if token was transferred to or from our user.
+	// 	if transactionReceipt != nil && len(transactionReceipt.TokenTransfers) > 0 {
+	// 		for _, t := range transactionReceipt.TokenTransfers {
+	// 			if client.IsAnyKnownAddress(t.From, t.To) == true {
+	// 				useTransaction = true
+	// 				break;
+	// 			}
+	// 		}
+	// 	}
+
+	// 	if useTransaction == false {
+	// 		// not our users tx
+	// 		return
+	// 	}
+	// }
+
+	// tx := rawToGenerated(rawTX)
+	// tx.Resync = isResync
+
+	// block, err := client.Rpc.EthGetBlockByHash(rawTX.BlockHash, false)
+	// if err != nil {
+	// 	if blockHeight == -1 {
+	// 		tx.TxpoolTime = time.Now().Unix()
+	// 	} else {
+	// 		tx.BlockTime = time.Now().Unix()
+	// 	}
+	// 	tx.BlockHeight = blockHeight
+	// } else {
+	// 	tx.BlockTime = int64(block.Timestamp)
+	// 	tx.BlockHeight = int64(block.Number)
+	// }
+
+	// if blockHeight == -1 {
+	// 	tx.TxpoolTime = time.Now().Unix()
+	// }
 }
 
 
 // TODO: provide eth.BlockHeader instead of blockHeight to use block time form node.
-func (client *NodeClient) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) {
+func (client *NodeClient) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) error {
 	log := log.WithFields(slf.Fields{"txid": rawTX.Hash, "blockHeight": blockHeight, "resync": isResync})
-	var fromUser string
-	var toUser string
 
-	if udFrom, ok := client.UsersData.Load(rawTX.From); ok {
-		fromUser = udFrom.(string)
-	}
-
-	if udTo, ok := client.UsersData.Load(rawTX.To); ok {
-		toUser = udTo.(string)
-	}
-
-	var transactionReceipt *TransactionReceipt
-	var err error
-	if blockHeight > 0 {
-		// Only makes sence to fetch receipt for transactions that are included in any block.
-		transactionReceipt, err = client.getTransactionReceipt(rawTX.Hash)
-		// log.Debugf("\treceipt: %#v", transactionReceipt)
-		if err != nil {
-			log.Errorf("Failed to get transacion receipt: %+v", err)
-		}
-	}
-
-	if toUser == "" && fromUser == "" {
-		ignoreTransaction := true
-
-		callInfo, err := DecodeSmartContractCall(rawTX.Input)
-		if callInfo != nil {
-			log.Infof("Smart contract call info: %v, err: %v", callInfo, err)
-		}
-
-		if callInfo != nil && callInfo.Name == erc20TransferName {
-			address := callInfo.Arguments[0].(eth.Address)
-			if udTokenTo, ok := client.UsersData.Load(address.Hex()); ok {
-				ignoreTransaction = false
-				log.Debugf("!!! TOKEN TX for tracked user %+v", udTokenTo)
-			}
-		}
-
-		// Check if token was transferred to or from our user.
-		if transactionReceipt != nil && len(transactionReceipt.TokenTransfers) > 0 {
-			for _, t := range transactionReceipt.TokenTransfers {
-				if _, ok := client.UsersData.Load(t.From); ok {
-					ignoreTransaction = false;
-					break;
-				}
-				if _, ok := client.UsersData.Load(t.To); ok {
-					ignoreTransaction = false;
-					break;
-				}
-			}
-		}
-
-		if ignoreTransaction {
-			// not our users tx
-			return
-		}
-	}
-
-	tx := rawToGenerated(rawTX)
-	tx.Resync = isResync
-
-	block, err := client.Rpc.EthGetBlockByHash(rawTX.BlockHash, false)
+	transaction, err := client.fetchTransactionInfo(rawTX, nil)
 	if err != nil {
-		if blockHeight == -1 {
-			tx.TxpoolTime = time.Now().Unix()
-		} else {
-			tx.BlockTime = time.Now().Unix()
-		}
-		tx.BlockHeight = blockHeight
-	} else {
-		tx.BlockTime = int64(block.Timestamp)
-		tx.BlockHeight = int64(block.Number)
+		log.Errorf("fetchTransactionInfo: %#v", err)
+		return err
 	}
 
-	if blockHeight == -1 {
-		tx.TxpoolTime = time.Now().Unix()
+	if client.isTransactionOfKnownAddress(transaction) {
+		client.TransactionsStream <- *transaction
 	}
+
+	return nil
+
+	// // Transaction from known user
+	// useTransaction := client.IsAnyKnownAddress(transaction.Sender, transaction.Receiver)
+
+	// var transactionReceipt *TransactionReceipt
+	// var err error
+	// if blockHeight > 0 {
+	// 	// Only makes sence to fetch receipt for transactions that are included in any block.
+	// 	transactionReceipt, err = client.getTransactionReceipt(rawTX.Hash)
+	// 	// log.Debugf("\treceipt: %#v", transactionReceipt)
+	// 	if err != nil {
+	// 		log.Errorf("Failed to get transacion receipt: %+v", err)
+	// 	}
+	// }
+
+	// if useTransaction == false {
+
+	// 	callInfo, err := DecodeSmartContractCall(rawTX.Input)
+	// 	if callInfo != nil {
+	// 		log.Infof("Smart contract call info: %v, err: %v", callInfo, err)
+	// 	}
+
+	// 	if callInfo != nil && callInfo.Name == erc20TransferName {
+	// 		address, ok := callInfo.Arguments[0].(eth.Address)
+	// 		if ok == true {
+	// 			useTransaction = client.IsAnyKnownAddress(address)
+	// 		} else {
+	// 			log.Errorf("Unexpected argument 0 type for erc20 `transfer()`: %#v, expected Address", callInfo)
+	// 		}
+	// 	}
+
+	// 	// Check if token was transferred to or from our user.
+	// 	if transactionReceipt != nil && len(transactionReceipt.TokenTransfers) > 0 {
+	// 		for _, t := range transactionReceipt.TokenTransfers {
+	// 			if client.IsAnyKnownAddress(t.From, t.To) == true {
+	// 				useTransaction = true
+	// 				break;
+	// 			}
+	// 		}
+	// 	}
+
+	// 	if useTransaction == false {
+	// 		// not our users tx
+	// 		return
+	// 	}
+	// }
+
+	// tx := rawToGenerated(rawTX)
+	// tx.Resync = isResync
+
+	// block, err := client.Rpc.EthGetBlockByHash(rawTX.BlockHash, false)
+	// if err != nil {
+	// 	if blockHeight == -1 {
+	// 		tx.TxpoolTime = time.Now().Unix()
+	// 	} else {
+	// 		tx.BlockTime = time.Now().Unix()
+	// 	}
+	// 	tx.BlockHeight = blockHeight
+	// } else {
+	// 	tx.BlockTime = int64(block.Timestamp)
+	// 	tx.BlockHeight = int64(block.Number)
+	// }
+
+	// if blockHeight == -1 {
+	// 	tx.TxpoolTime = time.Now().Unix()
+	// }
 
 	/*
 		Fetching tx status and send
@@ -378,4 +464,50 @@ func isMempoolUpdate(mempool bool, status int) bson.M {
 			"blocktime": time.Now().Unix(),
 		},
 	}
+}
+
+func (client *NodeClient) IsAnyKnownAddress(addresses ...eth.Address) bool {
+	for _, address := range addresses {
+		if client.addressLookup.IsAddressExists(address) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (client *NodeClient) isTransactionOfKnownAddress(transaction *eth.Transaction) bool {
+	if client.IsAnyKnownAddress(transaction.Sender, transaction.Receiver) {
+		return true
+	}
+
+	if callInfo := transaction.CallInfo; callInfo != nil {
+		if method := callInfo.Method; method != nil {
+			if method.Name == erc20TransferName && len(method.Arguments) > 0 {
+				address, ok := method.Arguments[0].(eth.Address)
+				if ok == true {
+					if client.IsAnyKnownAddress(address) {
+						return true
+					}
+				} else {
+					log.Errorf("Unexpected argument 0 type for erc20 `transfer()` method: %#v, expected Address", callInfo)
+				}
+			}
+		}
+
+		for _, event := range callInfo.Events {
+			if event.Name == transferEventName && len(event.Arguments) >= 3 {
+				fromAddress, ok := event.Arguments[0].(eth.Address)
+				if ok && client.IsAnyKnownAddress(fromAddress) {
+					return true
+				}
+				toAddress, ok := event.Arguments[1].(eth.Address)
+				if ok && client.IsAnyKnownAddress(toAddress) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }

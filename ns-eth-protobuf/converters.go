@@ -130,7 +130,11 @@ func SmartContractMethodInfoToProtobuf(methodInfo *eth.SmartContractMethodInfo) 
 		return nil
 	}
 
+	address := Address{
+		Address: methodInfo.Address.Hex(),
+	}
 	result := &SmartContractCall{
+		Address: &address,
 		Name: methodInfo.Name,
 	}
 
@@ -226,7 +230,13 @@ func SmartContractMethodInfoFromProtobuf(callInfo *SmartContractCall) *eth.Smart
 		arguments = append(arguments, value)
 	}
 
+	var address eth.Address
+	if callInfo.Address != nil {
+		address = eth.HexToAddress(callInfo.Address.Address)
+	}
+
 	return &eth.SmartContractMethodInfo{
+		Address:   address,
 		Name:      callInfo.Name,
 		Arguments: arguments,
 	}

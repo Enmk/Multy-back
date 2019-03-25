@@ -91,7 +91,7 @@ func readABI(description, json string) annotatedABI {
 	}
 }
 
-func DecodeSmartContractCall(input string) (*eth.SmartContractMethodInfo, error) {
+func DecodeSmartContractCall(input string, address eth.Address) (*eth.SmartContractMethodInfo, error) {
 	if len(input) < smartContractCallSigSize * 2 {
 		return nil, errors.Errorf("Input is to small for smart contract call")
 	}
@@ -115,6 +115,7 @@ func DecodeSmartContractCall(input string) (*eth.SmartContractMethodInfo, error)
 	}
 
 	result := &eth.SmartContractMethodInfo{
+		Address: address,
 		Name: method.Method.Sig(),
 		Arguments: make([]eth.SmartContractMethodArgument, 0, len(arguments)),
 	}
@@ -135,7 +136,7 @@ func DecodeSmartContractCall(input string) (*eth.SmartContractMethodInfo, error)
 	return result, nil
 }
 
-func DecodeSmartContractEvent(input string) (*eth.SmartContractEventInfo, error) {
+func DecodeSmartContractEvent(input string, address eth.Address) (*eth.SmartContractEventInfo, error) {
 	if len(input) < smartContractEventSigSize * 2 {
 		return nil, errors.Errorf("Input is to small for smart contract event")
 	}
@@ -170,6 +171,7 @@ func DecodeSmartContractEvent(input string) (*eth.SmartContractEventInfo, error)
 	}
 
 	result := &eth.SmartContractEventInfo{
+		Address: address,
 		Name: eventName(&event.Event),
 		Arguments: make([]eth.SmartContractEventArgument, 0, len(arguments)),
 	}
@@ -207,13 +209,19 @@ func convertType(value interface{}) interface{} {
 
 	switch v := value.(type) {
 	case int8:
+		result = *big.NewInt(int64(v))
 	case int16:
+		result = *big.NewInt(int64(v))
 	case int32:
+		result = *big.NewInt(int64(v))
 	case int64:
 		result = *big.NewInt(int64(v))
 	case uint8:
+		result = *new(big.Int).SetUint64(uint64(v))
 	case uint16:
+		result = *new(big.Int).SetUint64(uint64(v))
 	case uint32:
+		result = *new(big.Int).SetUint64(uint64(v))
 	case uint64:
 		result = *new(big.Int).SetUint64(uint64(v))
 	case *big.Int:

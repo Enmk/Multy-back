@@ -12,7 +12,7 @@ import (
 func checkDecodeSmartContractCall(test *testing.T, input string, expected eth.SmartContractMethodInfo) {
 	test.Logf("input: %s", input)
 
-	scCall, err := DecodeSmartContractCall(input)
+	scCall, err := DecodeSmartContractCall(input, expected.Address)
 	if err != nil {
 		test.Errorf("failed to decode smart contract call: %+v", err)
 		return
@@ -31,7 +31,7 @@ func checkDecodeSmartContractCall(test *testing.T, input string, expected eth.Sm
 func checkDecodeSmartContractCallError(test *testing.T, input string) {
 	test.Logf("input: %s", input)
 
-	_, err := DecodeSmartContractCall(input)
+	_, err := DecodeSmartContractCall(input, eth.Address{})
 	if err == nil {
 		test.Errorf("DecodeSmartContractCall expected to fail")
 		return
@@ -41,7 +41,7 @@ func checkDecodeSmartContractCallError(test *testing.T, input string) {
 func checkDecodeSmartContractEvent(test *testing.T, input string, expected eth.SmartContractEventInfo) {
 	test.Logf("input: %s", input)
 
-	scEvent, err := DecodeSmartContractEvent(input)
+	scEvent, err := DecodeSmartContractEvent(input, eth.Address{})
 	if err != nil {
 		test.Errorf("failed to decode smart contract event: %+v", err)
 		return
@@ -60,7 +60,7 @@ func checkDecodeSmartContractEvent(test *testing.T, input string, expected eth.S
 func checkDecodeSmartContractEventError(test *testing.T, input string) {
 	test.Logf("input: %s", input)
 
-	_, err := DecodeSmartContractEvent(input)
+	_, err := DecodeSmartContractEvent(input, eth.Address{})
 	if err == nil {
 		test.Errorf("DecodeSmartContractEvent expected to fail")
 		return

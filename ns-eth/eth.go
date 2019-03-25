@@ -14,9 +14,13 @@ import (
 	"github.com/onrik/ethrpc"
 	_ "github.com/jekabolt/slflog"
 	
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/types/eth"
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 )
+
+type AddressLookup interface {
+	IsAddressExists(address eth.Address) bool
+}
 
 // TODO: rename to NodeClient
 type NodeClient struct {
@@ -29,7 +33,7 @@ type NodeClient struct {
 	Done               <-chan interface{}
 	Stop               chan struct{}
 	ready              chan struct{} // signalled once when the client is ready
-	UsersData          *sync.Map
+	addressLookup      AddressLookup
 	AbiClient          *ethclient.Client
 	Mempool            *sync.Map
 	MempoolReloadBlock int
@@ -42,16 +46,16 @@ type Conf struct {
 	WsOrigin string
 }
 
-func NewClient(conf *Conf, usersData *sync.Map) *NodeClient {
+func NewClient(conf *Conf, addressLookup AddressLookup) *NodeClient {
 
 	c := &NodeClient{
 		config:             conf,
-		TransactionsStream: make(chan eth.Transaction),
+		TransactionsStream: make(chan eth.Transaction, 1000),
 		BlockStream:        make(chan pb.BlockHeight),
 		Done:               make(chan interface{}),
 		Stop:               make(chan struct{}),
 		ready:              make(chan struct{}, 1), // writing a single event shouldn't block even if nobody listens.
-		UsersData:          usersData,
+		addressLookup:      addressLookup,
 		Mempool:            &sync.Map{},
 	}
 

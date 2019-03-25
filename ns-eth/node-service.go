@@ -8,14 +8,18 @@ package nseth
 import (
 	"fmt"
 	"net"
-	"sync"
 	"time"
 
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jekabolt/slf"
-	_ "github.com/jekabolt/slflog"
 	"google.golang.org/grpc"
+	
+	_ "github.com/jekabolt/slflog"
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+	"github.com/Multy-io/Multy-back/types/eth"
+
+	"github.com/Multy-io/Multy-back/ns-eth/storage"
+	"github.com/Multy-io/Multy-back/ns-eth/server"
 )
 
 var log = slf.WithContext("NodeService").WithCaller(slf.CallerShort)
@@ -23,11 +27,11 @@ var log = slf.WithContext("NodeService").WithCaller(slf.CallerShort)
 // NodeService is a main struct of service, handles all events and all logics
 type NodeService struct {
 	Config     *Configuration
-	Instance   *NodeClient
+	nodeClient   *NodeClient
 	GRPCserver *Server
-	Clients    *sync.Map // address to userid
-	Storage    *storage.Storage
-	EventManager *server.EventManager
+	// clients    *sync.Map // 'set' of addresses (eth.Address => struct{}{})
+	storage    *storage.Storage
+	eventManager *server.EventManager
 }
 
 // Init initializes Multy instance
@@ -38,19 +42,6 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 		Config: conf,
 	}
 
-	var usersData sync.Map
-
-	usersData.Store("address", "address")
-	// store.AddressExtended{
-	// 	UserID:       "kek",
-	// 	WalletIndex:  1,
-	// 	AddressIndex: 2,
-	// }
-	// )
-
-	// initail initialization of clients data
-	service.Clients = &usersData
-
 	log.Infof("Users data initialization done")
 
 	// init gRPC server
@@ -59,14 +50,14 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 		return nil, fmt.Errorf("failed to listen: %v", err.Error())
 	}
 
-	// Creates a new gRPC server
-	ethCli := NewClient(&conf.EthConf, service.Clients) //, service.CliMultisig)
+	// New session to the node
+	ethCli := NewClient(&conf.EthConf, service.storage.AddressStorage)
 	if err != nil {
 		return nil, fmt.Errorf("eth.NewClient initialization: %s", err.Error())
 	}
 	log.Infof("ETH client initialization done")
 
-	service.Instance = ethCli
+	service.nodeClient = ethCli
 
 	// Dial to abi client to reach smart contracts methods
 	ABIconn, err := ethclient.Dial(conf.AbiClientUrl)
@@ -74,10 +65,10 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 		log.Fatalf("Failed to connect to infura %v", err)
 	}
 
+	// Creates a new gRPC server
 	s := grpc.NewServer()
 	srv := Server{
-		UsersData:       service.Clients,
-		EthCli:          service.Instance,
+		EthCli:          service.nodeClient,
 		Info:            &conf.ServiceInfo,
 		NetworkID:       conf.NetworkID,
 		ResyncUrl:       resyncUrl,
@@ -98,6 +89,26 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 
 	return service, nil
 }
+
+// Event Manager Handlers:
+func (service *NodeService) HandleNewAddress(address eth.Address) error {
+	return service.storage.AddressStorage.AddAddress(address)
+}
+
+func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
+	_, err := service.nodeClient.SendRawTransaction(string(rawTx))
+	// TODO: add a TX hash to a pool of monitored transactions
+	return err
+}
+
+// func (service *NodeService) ProcessTransactionStream() {
+// 	// We've faced new transaction:
+// 	for tx := range service.TransactionStream {
+// 		log.Infof("NewTx history - %v", tx.ID)
+// 	}
+// }
+
+
 
 func fetchResyncUrl(networkid int) string {
 	switch networkid {
@@ -125,7 +136,7 @@ func WatchReload(reload chan struct{}, service *NodeService) {
 			service.GRPCserver.GRPCserver.Stop()
 			log.Debugf("WatchReload:Successfully stopped")
 			for _ = range ticker.C {
-				close(service.Instance.RPCStream)
+				close(service.nodeClient.RPCStream)
 				_, err := service.Init(service.Config)
 				if err != nil {
 					log.Errorf("WatchReload:Init %v ", err)

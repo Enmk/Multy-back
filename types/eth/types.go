@@ -3,6 +3,7 @@ package eth
 import (
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -51,6 +52,13 @@ type Transaction struct {
 	Nonce    TransactionNonce			`json:"nonce" bson:"nonce"`
 	Fee      TransactionFee				`json:"fee" bson:"fee"`
 	CallInfo *SmartContractCallInfo		`json:"call_info,omitempty" bson:"call_info,omitempty"`
+	BlockInfo *TransactionBlockInfo		`json:"block,omitempty" bson:"block,omitempty"`
+}
+
+type TransactionBlockInfo struct{
+	Hash   BlockHash		`json:"hash" bson:"hash"`
+	Height uint64			`json:"height" bson:"height"`
+	Time   time.Time		`json:"time" bson:"time"`
 }
 
 type GasLimit uint64
@@ -63,18 +71,19 @@ type TransactionFee struct {
 
 type SmartContractCallInfo struct {
 	// Status of the call
-	Status SmartContractCallStatus
+	Status SmartContractCallStatus		`json:"status" bson:"status"`
 	// Method that was called, maybe null if unknown or unable to parse, may be null.
-	Method *SmartContractMethodInfo
+	Method *SmartContractMethodInfo		`json:"method" bson:"method"`
 	// Events that were generated during execution, only non-removed events.
-	Events []SmartContractEventInfo
+	Events []SmartContractEventInfo		`json:"events" bson:"events"`
 	// Address of new deployed contract, may be null
-	DeployedAddress *Address
+	DeployedAddress *Address			`json:"deployed_address" bson:"deployed_address"`
 }
 
 type SmartContractMethodInfo struct {
-	Name string
-	Arguments []SmartContractMethodArgument
+	Address Address								`json:"address" bson:"address"`
+	Name string									`json:"name" bson:"name"`
+	Arguments []SmartContractMethodArgument		`json:"arguments" bson:"arguments"`
 }
 
 type SmartContractMethodArgument interface{}
@@ -139,9 +148,10 @@ const (
 
 // BlockHeader is a header of the Ethereum blockchain block
 type BlockHeader struct {
-	ID BlockHash		`json:"_id" bson:"_id"`
+	ID     BlockHash	`json:"_id" bson:"_id"`
 	Height uint64		`json:"height" bson:"height"`
 	Parent BlockHash	`json:"parent_id" bson:"parent_id"`
+	Time   time.Time
 }
 
 // Block is an Ethereum blockchain block
@@ -166,11 +176,14 @@ func NewAmountFromString(str string, base int) (*Amount, error) {
 	return amount, nil
 }
 
+func HexToHash(hexString string) Hash {
+	return geth.HexToHash(hexString)
+}
+
 // HexToAddress converts hex-encoded string (it may be prefixed with 0x) to Address.
 func HexToAddress(hexString string) Address {
 	return Address(geth.HexToAddress(hexString))
 }
-
 
 // HexToAmount converts hex-encoded string (it may be prefixed with 0x) to Amount.
 func HexToAmount(hexString string) (Amount, error) {
