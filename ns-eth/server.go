@@ -197,6 +197,18 @@ func (s *Server) EventInitialAdd(c context.Context, ud *pb.UsersData) (*pb.Reply
 	}, nil
 }
 
+func (self *Server) SendRawTransaction(c context.Context, tx *pb.RawTransaction) (*pb.ReplyInfo, error) {
+	hash, err := self.EthCli.SendRawTransaction(tx.GetRawTx())
+	if err != nil {
+		return &pb.ReplyInfo{
+			Message: "error: wrong raw tx",
+		}, fmt.Errorf("error: wrong raw tx %v", err)
+	}
+	return &pb.ReplyInfo{
+		Message: hash,
+	}, nil
+}
+
 // // TODO: Pasha Change method to return len Message or rename method to 'isContranct' and return boot value
 // func (s *Server) EventGetCode(c context.Context, in *pb.AddressToResync) (*pb.ReplyInfo, error) {
 // 	code, err := s.EthCli.GetCode(in.Address)

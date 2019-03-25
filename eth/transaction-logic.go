@@ -3,9 +3,9 @@ package eth
 import (
 	"context"
 
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/common"
 	ethcommon "github.com/Multy-io/Multy-back/common/eth"
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 )
 
 func (self *EthController) GetFeeRate(address ethcommon.Address) (common.TransactionFeeRateEstimation, ethcommon.GasLimit) {
@@ -38,8 +38,19 @@ func (self *EthController) GetFeeRate(address ethcommon.Address) (common.Transac
 	}, gasLimit
 }
 
-func (self *EthController) SendRawTransaction(rawTransaction ethcommon.RawTransaction) error {
+func (self *EthController) SendRawTransaction(rawTransaction ethcommon.RawTransaction) (string, error) {
+	err := self.NSQClient.EmitRawTransactionEvent(rawTransaction)
+	if err != nil {
+		log.Errorf("No push raw transaction to NSQ, error: %v", err)
+		return "", err
+	}
 	log.Infof("raw transaction: %v", rawTransaction)
-
-	return self.NSQClient.EmitRawTransactionEvent(rawTransaction)
+	reply, err := self.GRPCClient.SendRawTransaction(context.Background(), &pb.RawTransaction{
+		RawTx: string(rawTransaction),
+	})
+	if err != nil {
+		log.Errorf("send raw transaction from GRPC error: %v", err)
+		return reply.GetMessage(), err
+	}
+	return "", nil
 }

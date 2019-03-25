@@ -18,7 +18,7 @@ import (
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
 	"github.com/Multy-io/Multy-back/store"
-	typeseth "github.com/Multy-io/Multy-back/common/eth"
+	ethcommon "github.com/Multy-io/Multy-back/types/eth"
 	"github.com/jekabolt/slf"
 
 	"github.com/gin-gonic/gin"
@@ -60,9 +60,9 @@ type RestClient struct {
 
 	log slf.StructuredLogger
 
-	donationAddresses []store.DonationInfo
-	mobileVersions    store.MobileVersions
-	ERC20TokenList    store.VerifiedTokenList
+	// donationAddresses []store.DonationInfo
+	mobileVersions store.MobileVersions
+	ERC20TokenList store.VerifiedTokenList
 
 	ETH              *eth.EthController
 	MultyVersion     store.ServerConfig
@@ -75,7 +75,7 @@ func SetRestHandlers(
 	// TODO: reduce properties amount and get desired services directly from multy container
 	userDB store.UserStore,
 	r *gin.Engine,
-	donationAddresses []store.DonationInfo,
+	// donationAddresses []store.DonationInfo,
 	eth *eth.EthController,
 	mv store.ServerConfig,
 	secretkey string,
@@ -85,16 +85,16 @@ func SetRestHandlers(
 	exchangerFactory *exchanger.FactoryExchanger,
 ) (*RestClient, error) {
 	restClient := &RestClient{
-		userStore:         userDB,
-		log:               slf.WithContext("rest-client").WithCaller(slf.CallerShort),
-		donationAddresses: donationAddresses,
-		ETH:               eth,
-		MultyVersion:      mv,
-		Secretkey:         secretkey,
-		mobileVersions:    mobileVer,
-		ERC20TokenList:    tl,
-		BrowserDefault:    bd,
-		ExchangerFactory:  exchangerFactory,
+		userStore: userDB,
+		log:       slf.WithContext("rest-client").WithCaller(slf.CallerShort),
+		// donationAddresses: donationAddresses,
+		ETH:              eth,
+		MultyVersion:     mv,
+		Secretkey:        secretkey,
+		mobileVersions:   mobileVer,
+		ERC20TokenList:   tl,
+		BrowserDefault:   bd,
+		ExchangerFactory: exchangerFactory,
 	}
 	initMiddlewareJWT(restClient)
 
@@ -107,7 +107,7 @@ func SetRestHandlers(
 		v1.POST("/wallet", restClient.addWallet())
 		v1.GET("/transaction/feerate/:currencyid/:networkid", restClient.getFeeRate())
 		v1.GET("/transaction/feerate/:currencyid/:networkid/*address", restClient.getFeeRate())
-		v1.POST("/transaction/send", restClient.sendRawHDTransaction())
+		v1.POST("/transaction/send", restClient.sendTransaction())
 		v1.GET("/wallet/:walletindex/verbose/:currencyid/:networkid/*type", restClient.getWalletVerbose())
 		v1.GET("/wallet/:walletindex/verbose/:currencyid/:networkid", restClient.getWalletVerbose())
 		v1.GET("/wallets/verbose", restClient.getAllWalletsVerbose())
@@ -425,14 +425,9 @@ func (restClient *RestClient) getServerConfig() gin.HandlerFunc {
 				"poloniex": []string{"usd_btc", "eth_btc", "eth_usd", "btc_usd"},
 				"gdax":     []string{"eur_btc", "usd_btc", "eth_btc", "eth_usd", "eth_eur", "btc_usd"},
 			},
-			"servertime": time.Now().UTC().Unix(),
-			"api":        "1.2",
-			"version":    restClient.MultyVersion,
-			"donate":     restClient.donationAddresses,
-			"multisigfactory": map[string]string{
-				"ethtestnet": "0x04f68589f53cfdf408025cd7cea8a40dbf488e49",
-				"ethmainnet": "0xc2cbdd9b58502cff1db5f9cce48ac17a9a550185",
-			},
+			"servertime":     time.Now().UTC().Unix(),
+			"api":            "1.2",
+			"version":        restClient.MultyVersion,
 			"erc20tokenlist": restClient.ERC20TokenList,
 		}
 		resp["android"] = map[string]int{
@@ -475,9 +470,9 @@ func (restClient *RestClient) getFeeRate() gin.HandlerFunc {
 			})
 			return
 		}
-		var address typeseth.Address
+		var address ethcommon.Address
 		if len(c.Param("address")) > 0 {
-			address = typeseth.HexToAddress(c.Param("address")[1:])
+			address = ethcommon.HexToAddress(c.Param("address")[1:])
 			restClient.log.Debugf("getFeeRate [%d] \t[networkID=%s]", address, c.Request.RemoteAddr)
 			if err != nil {
 				restClient.log.Errorf("getFeeRate: non int networkid:[%d] %s \t[addr=%s]", address, err.Error(), c.Request.RemoteAddr)
@@ -512,18 +507,18 @@ type RawHDTx struct {
 }
 
 type Payload struct {
-	Address             string   `json:"address"`
-	AddressIndex        int      `json:"addressindex"`
-	WalletIndex         int      `json:"walletindex"`
-	Transaction         string   `json:"transaction"`
-	IsHD                bool     `json:"ishd"`
-	MultisigFactory     bool     `json:"multisigfactory"`
+	Address      string `json:"address"`
+	AddressIndex int    `json:"addressindex"`
+	WalletIndex  int    `json:"walletindex"`
+	Transaction  string `json:"transaction"`
+	IsHD         bool   `json:"ishd"`
+	//  MultisigFactory     bool     `json:"multisigfactory"`
 	WalletName          string   `json:"walletname"`
 	Owners              []string `json:"owners"`
 	ConfirmationsNeeded int      `json:"confirmationsneeded"`
 }
 
-func (restClient *RestClient) sendRawHDTransaction() gin.HandlerFunc {
+func (restClient *RestClient) sendTransaction() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		var rawTx RawHDTx
@@ -555,7 +550,7 @@ func (restClient *RestClient) sendRawHDTransaction() gin.HandlerFunc {
 		switch rawTx.CurrencyID {
 		case currencies.Ether:
 			if rawTx.NetworkID == currencies.ETHMain {
-				err := restClient.ETH.SendRawTransaction(typeseth.RawTransaction(rawTx.Transaction))
+				hash, err := restClient.ETH.SendRawTransaction(ethcommon.RawTransaction(rawTx.Transaction))
 				if err != nil {
 					restClient.log.Errorf("sendRawHDTransaction:eth.SendRawTransaction %s \n raw tx = %v ", err.Error(), rawTx.Transaction)
 					c.JSON(http.StatusNotAcceptable, gin.H{
@@ -568,7 +563,7 @@ func (restClient *RestClient) sendRawHDTransaction() gin.HandlerFunc {
 				c.JSON(http.StatusOK, gin.H{
 					"code": http.StatusOK,
 					// Client don't use this parametr
-					// "message": hash.GetMessage(),
+					"message": hash,
 				})
 
 				return
@@ -701,8 +696,8 @@ func (restClient *RestClient) getWalletVerbose() gin.HandlerFunc {
 				for _, address := range wallet.Adresses {
 
 					var err error
-					addr := typeseth.HexToAddress(address.Address)
-					addressInfo := typeseth.AddressInfo{}
+					addr := ethcommon.HexToAddress(address.Address)
+					addressInfo := ethcommon.AddressInfo{}
 					// ercAddres := &ethpb.ERC20Address{
 					// 	Address:      address.Address,
 					// 	OnlyBalances: true,
@@ -783,18 +778,6 @@ func (restClient *RestClient) getWalletVerbose() gin.HandlerFunc {
 	}
 }
 
-type WalletVerbose struct {
-	CurrencyID     int              `json:"currencyid"`
-	NetworkID      int              `json:"networkid"`
-	WalletIndex    int              `json:"walletindex"`
-	WalletName     string           `json:"walletname"`
-	LastActionTime int64            `json:"lastactiontime"`
-	DateOfCreation int64            `json:"dateofcreation"`
-	VerboseAddress []AddressVerbose `json:"addresses"`
-	Pending        bool             `json:"pending"`
-	Syncing        bool             `json:"issyncing"`
-}
-
 type WalletVerboseETH struct {
 	CurrencyID     int                 `json:"currencyid"`
 	NetworkID      int                 `json:"networkid"`
@@ -809,17 +792,6 @@ type WalletVerboseETH struct {
 	Pending        bool                `json:"pending"`
 	Syncing        bool                `json:"issyncing"`
 	Broken         int                 `json:"brokenStatus"`
-	Multisig       *MultisigVerbose    `json:"multisig,omitempty"`
-}
-
-type AddressVerbose struct {
-	LastActionTime int64                    `json:"lastactiontime"`
-	Address        string                   `json:"address"`
-	AddressIndex   int                      `json:"addressindex"`
-	Amount         int64                    `json:"amount"`
-	SpendableOuts  []store.SpendableOutputs `json:"spendableoutputs,omitempty"`
-	Nonce          int64                    `json:"nonce,omitempty"`
-	IsSyncing      bool                     `json:"issyncing"`
 }
 
 type ETHAddressVerbose struct {
@@ -829,17 +801,6 @@ type ETHAddressVerbose struct {
 	Amount         string `json:"amount"`
 	Nonce          uint64 `json:"nonce,omitempty"`
 	// ERC20Balances  []*ethpb.ERC20Balances `json:"erc20balances"`
-}
-
-type MultisigVerbose struct {
-	Owners             []store.AddressExtended `json:"owners,omitempty"`
-	Confirmations      int                     `json:"confirmations,omitempty"`
-	DeployStatus       int                     `json:"deployStatus,omitempty"`
-	FactoryAddress     string                  `json:"factoryAddress,omitempty"`
-	TxOfCreation       string                  `json:"txOfCreation,omitempty"`
-	InviteCode         string                  `json:"inviteCode,omitempty"`
-	OwnersCount        int                     `json:"ownersCount,omitempty"`
-	HavePaymentReqests bool                    `json:"havePaymentReqests"`
 }
 
 type StockExchangeRate struct {
@@ -918,8 +879,8 @@ func (restClient *RestClient) getAllWalletsVerbose() gin.HandlerFunc {
 				// TODO: rewrite this method and refactor
 				for _, address := range wallet.Adresses {
 					var err error
-					addr := typeseth.HexToAddress(address.Address)
-					addressInfo := typeseth.AddressInfo{}
+					addr := ethcommon.HexToAddress(address.Address)
+					addressInfo := ethcommon.AddressInfo{}
 
 					switch wallet.NetworkID {
 					case currencies.ETHMain:
@@ -1229,7 +1190,7 @@ func (restClient *RestClient) resyncWallet() gin.HandlerFunc {
 				// resync = restClient.ETH.CliMain
 				go func() {
 					for _, address := range walletToResync.Adresses {
-						err = restClient.ETH.ResyncAddress(typeseth.HexToAddress(address.Address))
+						err = restClient.ETH.ResyncAddress(ethcommon.HexToAddress(address.Address))
 						if err != nil {
 							restClient.log.Errorf("resyncWallet case currencies.Ether:ETHMain: %v", err.Error())
 						}
