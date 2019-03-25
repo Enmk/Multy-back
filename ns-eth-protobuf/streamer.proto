@@ -54,7 +54,6 @@ message BlockHeight{
     int64 height = 1;
 }
 
-
 message ETHTransaction {                     
     string Hash = 1;                       
     string From = 2;                      
@@ -68,6 +67,19 @@ message ETHTransaction {
     int64 TxpoolTime = 10;        
     int64 BlockHeight = 11;
     bool Resync = 12;
+    SmartContractInfo ContractInfo = 13;
+}
+
+message SmartContractInfo {
+    int32 Status = 1;
+    SmartContractCall Method = 2;
+    repeated SmartContractCall Events = 3;
+    string DeployedAddress = 4;
+}
+
+message SmartContractCall {
+    string Name = 1;
+    repeated bytes Arguments = 2;
 }
 
 message Address {

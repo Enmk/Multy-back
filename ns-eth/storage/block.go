@@ -74,6 +74,7 @@ func (self *BlockStorage) GetImmutableBlockId() (*eth.BlockHash, error) {
 		return nil, reportError(self, err, "read immutable block id failed")
 	}
 
-	blockHash := (eth.BlockHash)(immutableBlockDoc["immutable_block"].(string))
-	return &blockHash, nil
+	blockHash := new(eth.BlockHash)
+	blockHash.SetBytes(immutableBlockDoc["immutable_block"].([]byte))
+	return blockHash, nil
 }

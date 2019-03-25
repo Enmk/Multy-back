@@ -65,7 +65,8 @@ func (c *Client) ReloadTxPool() error {
 		return err
 	}
 
-	// We get responыe as sample down https://github.com/ethereum/go-ethereum/wiki/Management-APIs#example-14 and convert response to map[string]map[string]map[string]*RPCTransaction
+	// https://github.com/ethereum/go-ethereum/wiki/Management-APIs#example-14
+	// We convert response to map[string]map[string]map[string]*RPCTransaction
 	/***
 	"pending": {
 		"0x00000000C0293c8cA34Dac9BCC0F953532D34e4d": { //address

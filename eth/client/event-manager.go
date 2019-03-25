@@ -18,6 +18,7 @@ type BlockHandler interface {
 	HandleBlock(block eth.BlockHeader) error
 }
 
+// TODO: rename to EventManager
 type ETHEventHandler struct {
 	addressNSQ          string
 	txStatusHandler     TransactionStatusHandler

@@ -475,9 +475,9 @@ func (restClient *RestClient) getFeeRate() gin.HandlerFunc {
 			})
 			return
 		}
-		var address typeseth.Address = ""
+		var address typeseth.Address
 		if len(c.Param("address")) > 0 {
-			address = eth.EthAddressFromString(c.Param("address")[1:])
+			address = typeseth.HexToAddress(c.Param("address")[1:])
 			restClient.log.Debugf("getFeeRate [%d] \t[networkID=%s]", address, c.Request.RemoteAddr)
 			if err != nil {
 				restClient.log.Errorf("getFeeRate: non int networkid:[%d] %s \t[addr=%s]", address, err.Error(), c.Request.RemoteAddr)
@@ -701,7 +701,7 @@ func (restClient *RestClient) getWalletVerbose() gin.HandlerFunc {
 				for _, address := range wallet.Adresses {
 
 					var err error
-					addr := eth.EthAddressFromString(address.Address)
+					addr := typeseth.HexToAddress(address.Address)
 					addressInfo := typeseth.AddressInfo{}
 					// ercAddres := &ethpb.ERC20Address{
 					// 	Address:      address.Address,
@@ -918,7 +918,7 @@ func (restClient *RestClient) getAllWalletsVerbose() gin.HandlerFunc {
 				// TODO: rewrite this method and refactor
 				for _, address := range wallet.Adresses {
 					var err error
-					addr := eth.EthAddressFromString(address.Address)
+					addr := typeseth.HexToAddress(address.Address)
 					addressInfo := typeseth.AddressInfo{}
 
 					switch wallet.NetworkID {
@@ -1229,15 +1229,13 @@ func (restClient *RestClient) resyncWallet() gin.HandlerFunc {
 				// resync = restClient.ETH.CliMain
 				go func() {
 					for _, address := range walletToResync.Adresses {
-						err = restClient.ETH.ResyncAddress(eth.EthAddressFromString(address.Address))
-
+						err = restClient.ETH.ResyncAddress(typeseth.HexToAddress(address.Address))
 						if err != nil {
 							restClient.log.Errorf("resyncWallet case currencies.Ether:ETHMain: %v", err.Error())
 						}
 					}
 				}()
 			}
-
 		}
 
 		c.JSON(http.StatusOK, gin.H{

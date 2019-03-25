@@ -9,7 +9,7 @@ import (
 
 func (self *ETHConn) GetAddressInfo(address typeseth.Address) (typeseth.AddressInfo, error) {
 	addressInfo, err := self.GRPCClient.GetAddressInfo(context.Background(), &pb.Address{
-		Address: string(address),
+		Address: address.Hex(),
 	})
 	if err != nil {
 		log.Errorf("Error on ns-GRPC GetAddressInfo address: %v error: %v ", address, err)
@@ -35,7 +35,7 @@ func (self *ETHConn) GetAddressInfo(address typeseth.Address) (typeseth.AddressI
 
 func (self *ETHConn) ResyncAddress(address typeseth.Address) error {
 	_, err := self.GRPCClient.ResyncAddress(context.Background(), &pb.Address{
-		Address: string(address),
+		Address: address.Hex(),
 	})
 
 	return err

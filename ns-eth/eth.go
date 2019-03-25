@@ -10,22 +10,25 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/ethereum/go-ethereum/rpc"
-	_ "github.com/jekabolt/slflog"
 	"github.com/onrik/ethrpc"
+	_ "github.com/jekabolt/slflog"
+	
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+	"github.com/Multy-io/Multy-back/types/eth"
 )
 
+// TODO: rename to NodeClient
 type Client struct {
 	Rpc                *ethrpc.EthRPC
 	Client             *rpc.Client
 	config             *Conf
-	TransactionsStream chan pb.ETHTransaction
+	TransactionsStream chan eth.Transaction
 	BlockStream        chan pb.BlockHeight
 	RPCStream          chan interface{}
 	Done               <-chan interface{}
 	Stop               chan struct{}
+	ready              chan struct{} // signalled once when the client is ready
 	UsersData          *sync.Map
 	AbiClient          *ethclient.Client
 	Mempool            *sync.Map
@@ -43,10 +46,11 @@ func NewClient(conf *Conf, usersData *sync.Map) *Client {
 
 	c := &Client{
 		config:             conf,
-		TransactionsStream: make(chan pb.ETHTransaction),
+		TransactionsStream: make(chan eth.Transaction),
 		BlockStream:        make(chan pb.BlockHeight),
 		Done:               make(chan interface{}),
 		Stop:               make(chan struct{}),
+		ready:              make(chan struct{}, 1), // writing a single event shouldn't block even if nobody listens.
 		UsersData:          usersData,
 		Mempool:            &sync.Map{},
 	}
@@ -54,8 +58,21 @@ func NewClient(conf *Conf, usersData *sync.Map) *Client {
 	go c.RunProcess()
 	return c
 }
+
 func (c *Client) Shutdown() {
+	log.Info("Closing connection to ETH Node.")
 	c.Client.Close()
+}
+
+func waitForSubCancellation(sub *rpc.ClientSubscription, name string) error {
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Warnf("Got a subscription error on %s: %+v", name, err)
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *Client) RunProcess() error {
@@ -63,6 +80,7 @@ func (c *Client) RunProcess() error {
 	c.Rpc = ethrpc.NewEthRPC("http" + c.config.Address + c.config.RpcPort)
 	log.Infof("ETH RPC Connection %s", "http"+c.config.Address+c.config.RpcPort)
 
+	// TODO: why are we even do that? to check connectibility?
 	_, err := c.Rpc.EthNewPendingTransactionFilter()
 	if err != nil {
 		log.Errorf("NewClient:EthNewPendingTransactionFilter: %s", err.Error())
@@ -86,13 +104,15 @@ func (c *Client) RunProcess() error {
 
 	c.RPCStream = make(chan interface{})
 
-	_, err = c.Client.Subscribe(context.Background(), "eth", c.RPCStream, "newHeads")
+	// Subscribe to node events, for details see https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
+	// TODO: handle errors via context.Err() channel
+	sub1, err := c.Client.Subscribe(context.Background(), "eth", c.RPCStream, "newHeads")
 	if err != nil {
 		log.Errorf("Run: client.Subscribe: newHeads %s", err.Error())
 		return err
 	}
 
-	_, err = c.Client.Subscribe(context.Background(), "eth", c.RPCStream, "newPendingTransactions")
+	sub2, err := c.Client.Subscribe(context.Background(), "eth", c.RPCStream, "newPendingTransactions")
 	if err != nil {
 		log.Errorf("Run: client.Subscribe: newPendingTransactions %s", err.Error())
 		return err
@@ -102,6 +122,10 @@ func (c *Client) RunProcess() error {
 
 	// c.Done = done
 
+	go waitForSubCancellation(sub1, "newHeads")
+	go waitForSubCancellation(sub2, "newPendingTransactions")
+	c.ready <- struct{}{}
+
 	for {
 		switch v := (<-c.RPCStream).(type) {
 		default:
@@ -109,7 +133,7 @@ func (c *Client) RunProcess() error {
 		case string:
 			go c.AddTransactionToTxpool(v)
 		case map[string]interface{}:
-			go c.BlockTransaction(v["hash"].(string))
+			go c.HandleNewHeadBlock(v["hash"].(string))
 		case nil:
 			// defer func() {
 			// 	c.Stop <- struct{}{}

@@ -21,7 +21,7 @@ import (
 	"github.com/jekabolt/slf"
 )
 
-// ETHConn is a main struct of package
+// ETHConn is a main struct of package, rename to EthController
 type ETHConn struct {
 	FirebaseNsqProducer *nsq.Producer // a producer for sending data to clients
 	// CliTest      pb.NodeCommunicationsClient

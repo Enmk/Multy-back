@@ -8,8 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Multy-io/Multy-back/types/eth"
 	nsq "github.com/bitly/go-nsq"
+
+	"github.com/Multy-io/Multy-back/types/eth"
+
+	. "github.com/Multy-io/Multy-back/tests"
+	. "github.com/Multy-io/Multy-back/tests/eth"
 )
 
 var addressNSQ string
@@ -34,11 +38,8 @@ func (self *testRawTxHandler) HandleSendRawTx(rawTx eth.RawTransaction) error {
 }
 
 func TestMain(m *testing.M) {
-	if os.Getenv("NSQ_ENDPOINT") != "" {
-		addressNSQ = os.Getenv("NSQ_ENDPOINT")
-	} else {
-		addressNSQ = "127.0.0.1:4150"
-	}
+	addressNSQ = GetenvOrDefault("NSQ_ENDPOINT", "127.0.0.1:4150")
+
 	config = nsq.NewConfig()
 	os.Exit(m.Run())
 }
@@ -58,7 +59,7 @@ func TestRegisterEvents(test *testing.T) {
 		test.Error("Error create producer")
 	}
 
-	var testAddress eth.Address = "test address"
+	var testAddress eth.Address = ToAddress("test address")
 	addressJSON, err := json.Marshal(testAddress)
 	if err != nil {
 		test.Error("Error marshal string to addressJSON(byte[])")
@@ -110,7 +111,7 @@ func TestTxStatusHandler(test *testing.T) {
 
 	txWithStatusMempool := eth.TransactionWithStatus{
 		Transaction: eth.Transaction{
-			ID: "test-ID",
+			ID: ToTxHash("test-ID"),
 		},
 		Status: eth.TransactionStatusInMempool,
 	}
@@ -126,7 +127,7 @@ func TestTxStatusHandler(test *testing.T) {
 		var txWithStatus eth.TransactionWithStatus
 		err := json.Unmarshal(msgRaw, &txWithStatus)
 		if err != nil {
-			test.Errorf("bad status after unmarshal with error: %v,   %v", err, msgRaw)
+			test.Errorf("bad status after unmarshal with error: %+v,   %v", err, msgRaw)
 			return err
 		}
 		if !reflect.DeepEqual(txWithStatusMempool, txWithStatus) {
@@ -149,7 +150,7 @@ func TestBlockHandler(test *testing.T) {
 	eventManager, err := NewEventHandler(addressNSQ, &testAddressHandler, &testRawTxHandler)
 	defer eventManager.Close()
 
-	var testId eth.BlockHash = "zxc"
+	var testId eth.BlockHash = ToBlockHash("zxc")
 	testBlockHeader := eth.BlockHeader{
 		ID:     testId,
 		Height: 1,

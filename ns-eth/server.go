@@ -32,7 +32,7 @@ type Server struct {
 	ReloadChan      chan struct{}
 }
 
-func (s *Server) ServiceInfo(c context.Context, in *pb.Empty) (*pb.ServiceVersion, error) {
+func (s *Server) GetServiceVersion(c context.Context, in *pb.Empty) (*pb.ServiceVersion, error) {
 	return &pb.ServiceVersion{
 		Branch:    s.Info.Branch,
 		Commit:    s.Info.Commit,
@@ -166,6 +166,7 @@ func (s *Server) CheckRejectTxs(c context.Context, txs *pb.TxsToCheck) (*pb.Reje
 }
 
 func (s *Server) GetTransaction(c context.Context, transactionHash *pb.TransactionHash) (*pb.ETHTransaction, error) {
+	// TODO: push that transaction via parseETHTransaction()
 	transaction, err := s.EthCli.Rpc.EthGetTransactionByHash(transactionHash.GetHash())
 	if err != nil {
 		log.Errorf("GetTransaction: txHash: %s, error: %v", transactionHash.GetHash(), err)
