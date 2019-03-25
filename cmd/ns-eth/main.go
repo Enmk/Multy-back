@@ -58,7 +58,7 @@ func main() {
 		Buildtime: buildtime,
 	}
 
-	nc := ns.NodeClient{}
+	nc := ns.NodeService{}
 	node, err := nc.Init(&globalOpt)
 	if err != nil {
 		log.Fatalf("Server initialization: %s\n", err.Error())

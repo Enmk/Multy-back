@@ -18,22 +18,23 @@ import (
 	"google.golang.org/grpc"
 )
 
-var log = slf.WithContext("NodeClient").WithCaller(slf.CallerShort)
+var log = slf.WithContext("NodeService").WithCaller(slf.CallerShort)
 
-// NodeClient is a main struct of service
-// TODO: rename to NodeSerivce
-type NodeClient struct {
+// NodeService is a main struct of service, handles all events and all logics
+type NodeService struct {
 	Config     *Configuration
 	Instance   *Client
 	GRPCserver *Server
 	Clients    *sync.Map // address to userid
+	Storage    *storage.Storage
+	EventManager *server.EventManager
 }
 
 // Init initializes Multy instance
-func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
+func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	resyncUrl := fetchResyncUrl(conf.NetworkID)
 	conf.ResyncUrl = resyncUrl
-	nc = &NodeClient{
+	service = &NodeService{
 		Config: conf,
 	}
 
@@ -48,7 +49,7 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 	// )
 
 	// initail initialization of clients data
-	nc.Clients = &usersData
+	service.Clients = &usersData
 
 	log.Infof("Users data initialization done")
 
@@ -59,13 +60,13 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 	}
 
 	// Creates a new gRPC server
-	ethCli := NewClient(&conf.EthConf, nc.Clients) //, nc.CliMultisig)
+	ethCli := NewClient(&conf.EthConf, service.Clients) //, service.CliMultisig)
 	if err != nil {
 		return nil, fmt.Errorf("eth.NewClient initialization: %s", err.Error())
 	}
 	log.Infof("ETH client initialization done")
 
-	nc.Instance = ethCli
+	service.Instance = ethCli
 
 	// Dial to abi client to reach smart contracts methods
 	ABIconn, err := ethclient.Dial(conf.AbiClientUrl)
@@ -75,8 +76,8 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 
 	s := grpc.NewServer()
 	srv := Server{
-		UsersData:       nc.Clients,
-		EthCli:          nc.Instance,
+		UsersData:       service.Clients,
+		EthCli:          service.Instance,
 		Info:            &conf.ServiceInfo,
 		NetworkID:       conf.NetworkID,
 		ResyncUrl:       resyncUrl,
@@ -88,14 +89,14 @@ func (nc *NodeClient) Init(conf *Configuration) (*NodeClient, error) {
 		ReloadChan:      make(chan struct{}),
 	}
 
-	nc.GRPCserver = &srv
+	service.GRPCserver = &srv
 
 	pb.RegisterNodeCommunicationsServer(s, &srv)
 	go s.Serve(lis)
 
-	go WathReload(srv.ReloadChan, nc)
+	go WatchReload(srv.ReloadChan, service)
 
-	return nc, nil
+	return service, nil
 }
 
 func fetchResyncUrl(networkid int) string {
@@ -111,26 +112,26 @@ func fetchResyncUrl(networkid int) string {
 	}
 }
 
-func WathReload(reload chan struct{}, cli *NodeClient) {
-	// func WathReload(reload chan struct{}, s *grpc.Server, srv *streamer.Server, lis net.Listener, conf *Configuration) {
+func WatchReload(reload chan struct{}, service *NodeService) {
+	// func WatchReload(reload chan struct{}, s *grpc.Server, srv *streamer.Server, lis net.Listener, conf *Configuration) {
 	for {
 		select {
 		case _ = <-reload:
 			ticker := time.NewTicker(1000 * time.Millisecond)
-			err := cli.GRPCserver.Listener.Close()
+			err := service.GRPCserver.Listener.Close()
 			if err != nil {
-				log.Errorf("WathReload:lis.Close %v", err.Error())
+				log.Errorf("WatchReload:lis.Close %v", err.Error())
 			}
-			cli.GRPCserver.GRPCserver.Stop()
-			log.Debugf("WathReload:Successfully stopped")
+			service.GRPCserver.GRPCserver.Stop()
+			log.Debugf("WatchReload:Successfully stopped")
 			for _ = range ticker.C {
-				close(cli.Instance.RPCStream)
-				_, err := cli.Init(cli.Config)
+				close(service.Instance.RPCStream)
+				_, err := service.Init(service.Config)
 				if err != nil {
-					log.Errorf("WathReload:Init %v ", err)
+					log.Errorf("WatchReload:Init %v ", err)
 					continue
 				}
-				log.Debugf("WathReload:Successfully reloaded")
+				log.Debugf("WatchReload:Successfully reloaded")
 				return
 			}
 		}

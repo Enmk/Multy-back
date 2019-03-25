@@ -47,10 +47,10 @@ func TestMain(m *testing.M) {
 func TestRegisterEvents(test *testing.T) {
 	testAddressHandler := testAddressHandler{}
 	testRawTxHandler := testRawTxHandler{}
-	eventManager, err := NewEventHandler(addressNSQ, &testAddressHandler, &testRawTxHandler)
+	eventManager, err := NewEventManager(addressNSQ, &testAddressHandler, &testRawTxHandler)
 	defer eventManager.Close()
 	if err != nil {
-		test.Errorf("NewEventHandler return error: %v", err)
+		test.Errorf("NewEventManager return error: %v", err)
 	}
 
 	testNsqRegisterAdddress, err := nsq.NewProducer(addressNSQ, config)
@@ -106,7 +106,7 @@ func TestRegisterEvents(test *testing.T) {
 func TestTxStatusHandler(test *testing.T) {
 	testAddressHandler := testAddressHandler{}
 	testRawTxHandler := testRawTxHandler{}
-	eventManager, err := NewEventHandler(addressNSQ, &testAddressHandler, &testRawTxHandler)
+	eventManager, err := NewEventManager(addressNSQ, &testAddressHandler, &testRawTxHandler)
 	defer eventManager.Close()
 
 	txWithStatusMempool := eth.TransactionWithStatus{
@@ -147,7 +147,7 @@ func TestTxStatusHandler(test *testing.T) {
 func TestBlockHandler(test *testing.T) {
 	testAddressHandler := testAddressHandler{}
 	testRawTxHandler := testRawTxHandler{}
-	eventManager, err := NewEventHandler(addressNSQ, &testAddressHandler, &testRawTxHandler)
+	eventManager, err := NewEventManager(addressNSQ, &testAddressHandler, &testRawTxHandler)
 	defer eventManager.Close()
 
 	var testId eth.BlockHash = ToBlockHash("zxc")
