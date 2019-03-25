@@ -26,7 +26,7 @@ const erc20TransferName = "transfer(address,uint256)"
 const transferEventTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 
-func (client *Client) SendRawTransaction(rawTX string) (string, error) {
+func (client *NodeClient) SendRawTransaction(rawTX string) (string, error) {
 	hash, err := client.Rpc.EthSendRawTransaction(rawTX)
 	if err != nil {
 		log.Errorf("SendRawTransaction:rpc.EthSendRawTransaction: %s", err.Error())
@@ -35,7 +35,7 @@ func (client *Client) SendRawTransaction(rawTX string) (string, error) {
 	return hash, err
 }
 
-func (client *Client) GetAddressBalance(address string) (big.Int, error) {
+func (client *NodeClient) GetAddressBalance(address string) (big.Int, error) {
 	balance, err := client.Rpc.EthGetBalance(address, "latest")
 	if err != nil {
 		log.Errorf("GetAddressBalance:rpc.EthGetBalance: %s", err.Error())
@@ -44,7 +44,7 @@ func (client *Client) GetAddressBalance(address string) (big.Int, error) {
 	return balance, err
 }
 
-func (client *Client) GetTxByHash(hash string) (bool, error) {
+func (client *NodeClient) GetTxByHash(hash string) (bool, error) {
 	tx, err := client.Rpc.EthGetTransactionByHash(hash)
 	if tx == nil {
 		return false, err
@@ -53,7 +53,7 @@ func (client *Client) GetTxByHash(hash string) (bool, error) {
 	}
 }
 
-func (client *Client) GetAddressPendingBalance(address string) (big.Int, error) {
+func (client *NodeClient) GetAddressPendingBalance(address string) (big.Int, error) {
 	balance, err := client.Rpc.EthGetBalance(address, "pending")
 	if err != nil {
 		log.Errorf("GetAddressPendingBalance:rpc.EthGetBalance: %s", err.Error())
@@ -63,23 +63,23 @@ func (client *Client) GetAddressPendingBalance(address string) (big.Int, error) 
 	return balance, err
 }
 
-func (client *Client) GetAllTxPool() ([]byte, error) {
+func (client *NodeClient) GetAllTxPool() ([]byte, error) {
 	return client.Rpc.TxPoolContent()
 }
 
-func (client *Client) GetBlockHeight() (int, error) {
+func (client *NodeClient) GetBlockHeight() (int, error) {
 	return client.Rpc.EthBlockNumber()
 }
 
-func (client *Client) GetCode(address string) (string, error) {
+func (client *NodeClient) GetCode(address string) (string, error) {
 	return client.Rpc.EthGetCode(address, "latest")
 }
 
-func (client *Client) GetAddressNonce(address string) (big.Int, error) {
+func (client *NodeClient) GetAddressNonce(address string) (big.Int, error) {
 	return client.Rpc.EthGetTransactionCount(address, "latest")
 }
 
-func (client *Client) ResyncAddress(txid string) error {
+func (client *NodeClient) ResyncAddress(txid string) error {
 	tx, err := client.Rpc.EthGetTransactionByHash(txid)
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
 	return arguments, nil
 }
 
-func (client *Client) getTransactionReceipt(transactionHash string) (result *TransactionReceipt, err error) {
+func (client *NodeClient) getTransactionReceipt(transactionHash string) (result *TransactionReceipt, err error) {
 	log := log.WithField("txid", transactionHash)
 	receipt, err := client.Rpc.EthGetTransactionReceipt(transactionHash)
 	if err != nil {
@@ -232,7 +232,7 @@ func (client *Client) getTransactionReceipt(transactionHash string) (result *Tra
 
 
 // TODO: provide eth.BlockHeader instead of blockHeight to use block time form node.
-func (client *Client) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) {
+func (client *NodeClient) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) {
 	log := log.WithFields(slf.Fields{"txid": rawTX.Hash, "blockHeight": blockHeight, "resync": isResync})
 	var fromUser string
 	var toUser string

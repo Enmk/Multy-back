@@ -11,7 +11,7 @@ const blockLengthForReloadTxpool = 20
 
 // HandleNewHeadBlock processes the new top or 'head' block of the chain,
 // note that this method is called only when head of the chain updated.
-func (c *Client) HandleNewHeadBlock(hash string) {
+func (c *NodeClient) HandleNewHeadBlock(hash string) {
 	block, err := c.Rpc.EthGetBlockByHash(hash, true)
 	if err != nil {
 		log.Errorf("Get Block Err:%s", err.Error())
@@ -46,7 +46,7 @@ func (c *Client) HandleNewHeadBlock(hash string) {
 	}
 }
 
-func (c *Client) ResyncBlock(block *ethrpc.Block) {
+func (c *NodeClient) ResyncBlock(block *ethrpc.Block) {
 	log.Warnf("ResyncBlock: %v", block.Number)
 	txs := []ethrpc.Transaction{}
 	if block.Transactions != nil {

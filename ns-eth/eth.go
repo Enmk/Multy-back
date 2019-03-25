@@ -19,7 +19,7 @@ import (
 )
 
 // TODO: rename to NodeClient
-type Client struct {
+type NodeClient struct {
 	Rpc                *ethrpc.EthRPC
 	Client             *rpc.Client
 	config             *Conf
@@ -42,9 +42,9 @@ type Conf struct {
 	WsOrigin string
 }
 
-func NewClient(conf *Conf, usersData *sync.Map) *Client {
+func NewClient(conf *Conf, usersData *sync.Map) *NodeClient {
 
-	c := &Client{
+	c := &NodeClient{
 		config:             conf,
 		TransactionsStream: make(chan eth.Transaction),
 		BlockStream:        make(chan pb.BlockHeight),
@@ -59,7 +59,7 @@ func NewClient(conf *Conf, usersData *sync.Map) *Client {
 	return c
 }
 
-func (c *Client) Shutdown() {
+func (c *NodeClient) Shutdown() {
 	log.Info("Closing connection to ETH Node.")
 	c.Client.Close()
 }
@@ -75,7 +75,7 @@ func waitForSubCancellation(sub *rpc.ClientSubscription, name string) error {
 	return nil
 }
 
-func (c *Client) RunProcess() error {
+func (c *NodeClient) RunProcess() error {
 	log.Info("Run ETH Process")
 	c.Rpc = ethrpc.NewEthRPC("http" + c.config.Address + c.config.RpcPort)
 	log.Infof("ETH RPC Connection %s", "http"+c.config.Address+c.config.RpcPort)

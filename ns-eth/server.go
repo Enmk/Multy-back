@@ -20,7 +20,7 @@ import (
 // Server implements streamer interface and is a gRPC server
 type Server struct {
 	UsersData       *sync.Map
-	EthCli          *Client
+	EthCli          *NodeClient
 	Info            *store.ServiceInfo
 	NetworkID       int
 	ResyncUrl       string

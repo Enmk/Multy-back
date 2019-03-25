@@ -23,7 +23,7 @@ var log = slf.WithContext("NodeService").WithCaller(slf.CallerShort)
 // NodeService is a main struct of service, handles all events and all logics
 type NodeService struct {
 	Config     *Configuration
-	Instance   *Client
+	Instance   *NodeClient
 	GRPCserver *Server
 	Clients    *sync.Map // address to userid
 	Storage    *storage.Storage

@@ -38,7 +38,7 @@ type RPCTransaction struct {
 	S                *hexutil.Big    `json:"s"`
 }
 
-func (c *Client) AddTransactionToTxpool(txHash string) {
+func (c *NodeClient) AddTransactionToTxpool(txHash string) {
 	rawTx, err := c.Rpc.EthGetTransactionByHash(txHash)
 	if err != nil {
 		log.Errorf("c.Rpc.EthGetTransactionByHash:Get TX Err: %s", err.Error())
@@ -54,11 +54,11 @@ func (c *Client) AddTransactionToTxpool(txHash string) {
 
 }
 
-func (c *Client) DeleteTxpoolTransaction(txHash string) {
+func (c *NodeClient) DeleteTxpoolTransaction(txHash string) {
 	c.Mempool.Delete(txHash)
 }
 
-func (c *Client) ReloadTxPool() error {
+func (c *NodeClient) ReloadTxPool() error {
 
 	mp, err := c.GetAllTxPool()
 	if err != nil {
@@ -117,7 +117,7 @@ func (c *Client) ReloadTxPool() error {
 	return nil
 }
 
-func (c *Client) EstimateTransactionGasPrice() types.TransactionFeeRateEstimation {
+func (c *NodeClient) EstimateTransactionGasPrice() types.TransactionFeeRateEstimation {
 	return estimateTransactionGasPriceFromTxpool(c.Mempool, uint64(gWei))
 }
 

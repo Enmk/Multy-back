@@ -20,7 +20,7 @@ func init() {
     flag.String("ConfigPath", "", "path to config file to allow providing node-service configs")
 }
 
-func newNodeClient() *Client {
+func newNodeClient() *NodeClient {
 	var userMap sync.Map
 
 	client := NewClient(&conf.EthConf, &userMap)
