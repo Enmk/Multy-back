@@ -2,14 +2,15 @@ package nseth
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/common/eth"
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 )
 
 type ServerRequestHandler interface {
@@ -22,15 +23,15 @@ type ServerRequestHandler interface {
 
 // Server implements streamer interface and is a gRPC server
 type Server struct {
-	EthCli          *NodeClient
-	gRPCserver      *grpc.Server
-	listener        net.Listener
-	ReloadChan      chan struct{}
+	EthCli     *NodeClient
+	gRPCserver *grpc.Server
+	listener   net.Listener
+	ReloadChan chan struct{}
 
-	RequestHandler  ServerRequestHandler
+	RequestHandler ServerRequestHandler
 }
 
-func NewServer(grpcPort string, nodeClient *NodeClient, requestHandler  ServerRequestHandler) (server *Server, err error) {
+func NewServer(grpcPort string, nodeClient *NodeClient, requestHandler ServerRequestHandler) (server *Server, err error) {
 	// init gRPC server
 	lis, err := net.Listen("tcp", grpcPort)
 	if err != nil {
@@ -207,6 +208,19 @@ func (self *Server) SendRawTransaction(c context.Context, tx *pb.RawTransaction)
 	return &pb.ReplyInfo{
 		Message: hash,
 	}, nil
+}
+
+type rawTransactionHandler struct {
+	nodeClient *NodeClient
+}
+
+func (self *rawTransactionHandler) HandleSendRawTx(rawTx eth.RawTransaction) error {
+	hash, err := self.nodeClient.SendRawTransaction(string(rawTx))
+	if err != nil {
+		log.Errorf("error send raw tx from NSQ to Node err: %v", err)
+	}
+	log.Infof("Send transaction: %v", hash)
+	return err
 }
 
 // // TODO: Pasha Change method to return len Message or rename method to 'isContranct' and return boot value

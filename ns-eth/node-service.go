@@ -6,19 +6,18 @@ See LICENSE for details
 package nseth
 
 import (
-	"fmt"
-	"time"
-	"net/http"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"strings"
-
-	"github.com/pkg/errors"
-	"github.com/jekabolt/slf"
+	"time"
 
 	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/common/eth"
 	"github.com/Multy-io/Multy-back/ns-eth/storage"
+	"github.com/jekabolt/slf"
+	"github.com/pkg/errors"
 )
 
 var log = slf.WithContext("NodeService").WithCaller(slf.CallerShort)
@@ -35,9 +34,10 @@ type NodeService struct {
 }
 
 type addressLookup struct {
-	addressStorage *storage.AddressStorage
+	addressStorage  *storage.AddressStorage
 	defaultResponse bool
 }
+
 func (a *addressLookup) IsKnownAddress(address eth.Address) bool {
 	if a.addressStorage != nil {
 		return a.addressStorage.IsAddressExists(address)
@@ -45,7 +45,6 @@ func (a *addressLookup) IsKnownAddress(address eth.Address) bool {
 
 	return a.defaultResponse
 }
-
 
 // Init initializes Multy instance
 func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
@@ -62,7 +61,7 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 
 	// New session to the node
 	addressLookup := addressLookup{
-		addressStorage:  nil,//service.storage.AddressStorage,
+		addressStorage:  nil, //service.storage.AddressStorage,
 		defaultResponse: true,
 	}
 	service.nodeClient = NewClient(&conf.EthConf, &addressLookup, service, service)
@@ -111,7 +110,7 @@ func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
 func (service *NodeService) HandleTransaction(transaction eth.Transaction) {
 	err := service.tryHandleTransaction(transaction)
 	if err != nil {
-		 log.Errorf("Faield to handle a transaction %s : %+v", transaction.Hash.Hex(), err)
+		log.Errorf("Faield to handle a transaction %s : %+v", transaction.Hash.Hex(), err)
 	}
 }
 
@@ -124,7 +123,7 @@ func (service *NodeService) tryHandleTransaction(transaction eth.Transaction) er
 	err := service.storage.TransactionStorage.AddTransaction(
 		eth.TransactionWithStatus{
 			Transaction: transaction,
-			Status: newStatus,
+			Status:      newStatus,
 		})
 	if err != nil {
 		return err

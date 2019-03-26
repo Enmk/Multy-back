@@ -6,30 +6,30 @@ See LICENSE for details
 package nseth
 
 import (
-	"math/big"
-	"time"
 	"fmt"
+	"math/big"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/jekabolt/slf"
 	"github.com/onrik/ethrpc"
 	"gopkg.in/mgo.v2/bson"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/jekabolt/slf"
-	
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+
 	"github.com/Multy-io/Multy-back/common/eth"
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 )
 
 const erc20TransferName = "transfer(address,uint256)"
+
 // Signature of ERC20/721 `Transfer` event.
 const transferEventName = "Transfer(address,address,uint256)"
 
 const transferEventTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 const nullHash = "0x0000000000000000000000000000000000000000000000000000000000000000"
-
 
 func (client *NodeClient) SendRawTransaction(rawTX string) (string, error) {
 	hash, err := client.Rpc.EthSendRawTransaction(rawTX)
@@ -152,7 +152,7 @@ func minInt(a, b int) int {
 // }
 
 // func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
-// 	// Some smart contracts put all arguments to the topics, other put 
+// 	// Some smart contracts put all arguments to the topics, other put
 // 	// only portion of arguments as topics, rest as data.
 // 	// So let's assume that if there are less topics than expected arguments,
 // 	// then remaining arguments are in the data.
@@ -207,7 +207,7 @@ func decodeTransactionCallInfo(rawTx ethrpc.Transaction, receipt *ethrpc.Transac
 
 	var methodInfo *eth.SmartContractMethodInfo
 	var err error
-	if len(rawTx.Input) > smartContractCallSigSize * 2 {
+	if len(rawTx.Input) > smartContractCallSigSize*2 {
 		methodInfo, err = DecodeSmartContractCall(rawTx.Input, eth.HexToAddress(rawTx.To))
 		if _, ok := err.(ABIError); !ok && err != nil {
 			log.Debugf("Failed to decode smart contract method call: %#v", err)
@@ -235,10 +235,10 @@ func decodeTransactionCallInfo(rawTx ethrpc.Transaction, receipt *ethrpc.Transac
 	}
 
 	return &eth.SmartContractCallInfo{
-		Status: eth.SmartContractCallStatus(receipt.Status),
-		Method: methodInfo,
+		Status:          eth.SmartContractCallStatus(receipt.Status),
+		Method:          methodInfo,
 		DeployedAddress: deployedAddress,
-		Events: events,
+		Events:          events,
 	}, nil
 }
 
