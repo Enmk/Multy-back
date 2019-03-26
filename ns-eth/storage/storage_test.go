@@ -66,7 +66,7 @@ func newEmptyStorage(test *testing.T) *Storage {
 
 func TestMain(m *testing.M) {
 	config = Config{
-		Address: GetenvOrDefault("MONGO_DB_ADDRESS", "localhost:27017"),
+		URL:      GetenvOrDefault("MONGO_DB_ADDRESS", "localhost:27017"),
 		Username: GetenvOrDefault("MONGO_DB_USER", ""),
 		Password: GetenvOrDefault("MONGO_DB_PASSWORD", ""),
 		Database: GetenvOrDefault("MONGO_DB_DATABASE_NS_STORE", "ns_test_db"),

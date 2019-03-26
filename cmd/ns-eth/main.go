@@ -62,7 +62,7 @@ func main() {
 	service := ns.NodeService{}
 	node, err := service.Init(&globalOpt)
 	if err != nil {
-		log.Fatalf("Server initialization: %s\n", err.Error())
+		log.Fatalf("Server initialization failed:\n%+v", err)
 	}
 	fmt.Println(node)
 

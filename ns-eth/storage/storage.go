@@ -20,7 +20,7 @@ type Storage struct {
 }
 
 type Config struct {
-	Address string
+	URL      string
 	Password string
 	Username string
 	Database string
@@ -33,7 +33,7 @@ func (self *Storage) getErrorContext() string {
 
 func NewStorage(config Config) (*Storage, error) {
 	mongoDBDial := mgo.DialInfo{
-		Addrs:		[]string{config.Address},
+		Addrs:		[]string{config.URL},
 		Username:	config.Username,
 		Password:	config.Password,
 		Timeout:	config.Timeout,

@@ -95,6 +95,7 @@ func (c *NodeClient) ReloadTxPool() error {
 			nonce_uint, err := strconv.ParseUint(nonce, 10, 64)
 			if err != nil {
 				log.Errorf("Impossible to convert nonce to int. Expected value: %v, Error: %v", nonce, err)
+				continue
 			}
 			if nonce_min > nonce_uint {
 				nonce_min = nonce_uint
@@ -106,7 +107,7 @@ func (c *NodeClient) ReloadTxPool() error {
 		mempool.Store(hash, gasPrice)
 		length++
 	}
-	log.Debugf("length adderss with tx : %v", length)
+	log.Debugf("Number of valid mempool transactions: %v", length)
 	length = 0
 	mempool.Range(func(_, _ interface{}) bool {
 		length++

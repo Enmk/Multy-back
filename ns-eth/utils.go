@@ -15,8 +15,9 @@ import (
 
 	"github.com/onrik/ethrpc"
 	"gopkg.in/mgo.v2/bson"
-	"github.com/jekabolt/slf"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/jekabolt/slf"
 	
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/common/eth"
@@ -165,21 +166,44 @@ func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
 	return arguments, nil
 }
 
-func (client *NodeClient) fetchTransactionCallInfo(rawTx ethrpc.Transaction) (result *eth.SmartContractCallInfo, err error) {
-	log := log.WithField("txid", rawTx.Hash)
+func (client *NodeClient) fetchTransactionCallInfo(rawTx ethrpc.Transaction) (*eth.SmartContractCallInfo, error) {
 	receipt, err := client.Rpc.EthGetTransactionReceipt(rawTx.Hash)
-	if err != nil {
+	if receipt == nil || err != nil {
 		return nil, errors.Wrapf(err, "Failed to fetch transaction receipt from Node; %+v", err)
 	}
-	if len(receipt.BlockHash) == 0 && len(receipt.TransactionHash) == 0 {
+
+	result, err := decodeTransactionCallInfo(rawTx, receipt)
+
+	originalReceipt := fmt.Sprintf("%#v", receipt)
+	// A sentinel to verify that we parse all receipts properly
+	if result != nil && len(result.Events) == 0 && strings.Contains(originalReceipt, transferEventTopic[2:]) {
+		log.Fatalf("\n\n%[1]s!!!!!!! Transaction receipt contains transfer log that was not parsed correctly !!!!!!!\n%[1]s\n\nreceipt: %s\nparsed: %s\n\ntx: %s\n\n",
+			"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+			spew.Sdump(receipt),
+			spew.Sdump(result),
+			spew.Sdump(rawTx))
+	}
+
+	return result, err
+}
+
+func decodeTransactionCallInfo(rawTx ethrpc.Transaction, receipt *ethrpc.TransactionReceipt) (*eth.SmartContractCallInfo, error) {
+	log := log.WithField("txid", rawTx.Hash)
+
+	if receipt == nil || (len(receipt.BlockHash) == 0 && len(receipt.TransactionHash) == 0) {
+		log.Infof("Got empty (or nil) receipt from server: %#+v", receipt)
 		// Since only recent recepts are available on node, empty receipt is not an error.
 		return nil, nil
 	}
 
-	methodInfo, err := DecodeSmartContractCall(rawTx.Input, eth.HexToAddress(rawTx.To))
-	if err != nil {
-		log.Infof("Failed to decode smart contract method call: %#v", err)
-		// NOTE: it is Ok if call can't be decoded, Input could be not a SC call or unknown method call.
+	var methodInfo *eth.SmartContractMethodInfo
+	var err error
+	if len(rawTx.Input) > smartContractCallSigSize * 2 {
+		methodInfo, err = DecodeSmartContractCall(rawTx.Input, eth.HexToAddress(rawTx.To))
+		if _, ok := err.(ABIError); !ok && err != nil {
+			log.Debugf("Failed to decode smart contract method call: %#v", err)
+			// NOTE: it is Ok if call can't be decoded, Input could be not a SC call or unknown method call.
+		}
 	}
 
 	var deployedAddress *eth.Address
@@ -191,25 +215,15 @@ func (client *NodeClient) fetchTransactionCallInfo(rawTx ethrpc.Transaction) (re
 	events := make([]eth.SmartContractEventInfo, 0, len(receipt.Logs))
 	for i, logEntry := range receipt.Logs {
 		logData := strings.Join(logEntry.Topics, "") + logEntry.Data
-		logData = strings.ReplaceAll(logData, "0x", "")
+		logData = "0x" + strings.ReplaceAll(logData, "0x", "")
 		event, err := DecodeSmartContractEvent(logData, eth.HexToAddress(logEntry.Address))
-		if err != nil {
-			log.Errorf("Failed to decode transaction log #%d : with error %#v", i, err)
-		} else {
+		if _, ok := err.(ABIError); !ok && err != nil {
+			log.Infof("Failed to decode transaction log #%d: %v", i, err)
+		}
+		if event != nil {
 			events = append(events, *event)
 		}
 	}
-
-	// A sentinel to verify that we parse all receipts properly
-	defer func() {
-		originalReceipt := fmt.Sprintf("%#v", receipt)
-		if len(result.Events) == 0 && strings.Contains(originalReceipt, transferEventTopic[2:]) {
-			log.Fatalf("\n\n%[1]sTransaction receipt contains transfer log that was not parsed correctly.%[1]s\n\noriginal %#v\nparsed: %#v\n\n\n\n",
-				"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
-				originalReceipt,
-				result)
-		}
-	}()
 
 	return &eth.SmartContractCallInfo{
 		Status: eth.SmartContractCallStatus(receipt.Status),
@@ -225,9 +239,12 @@ func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, block *
 	var err error
 	var callInfo *eth.SmartContractCallInfo
 
-	payload, err := hexutil.Decode(rawTX.Input)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to decode transaction payload.")
+	var payload []byte
+	if len(rawTX.Input) > 0 {
+		payload, err = hexutil.Decode(rawTX.Input)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to decode transaction payload from hex: %s.", rawTX.Input)
+		}
 	}
 
 	if rawTX.BlockNumber > 0 {

@@ -7,6 +7,8 @@ package nseth
 
 import (
 	"github.com/Multy-io/Multy-back/store"
+
+	"github.com/Multy-io/Multy-back/ns-eth/storage"
 )
 
 // Configuration is a struct with all service options
@@ -23,4 +25,5 @@ type Configuration struct {
 	EtherscanAPIKey string
 	PprofPort       string
 	ImmutableBlockDepth uint
+	DB              storage.Config
 }

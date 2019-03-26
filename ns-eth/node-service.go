@@ -10,14 +10,14 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jekabolt/slf"
 	"google.golang.org/grpc"
-	
 	_ "github.com/jekabolt/slflog"
+
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/common/eth"
-
 	"github.com/Multy-io/Multy-back/ns-eth/storage"
 )
 
@@ -41,8 +41,11 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	service = &NodeService{
 		Config: conf,
 	}
-
-	log.Infof("Users data initialization done")
+	storageInstance, err := storage.NewStorage(conf.DB)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "Failed to connect to DB")
+	}
+	service.storage = storageInstance
 
 	// init gRPC server
 	lis, err := net.Listen("tcp", conf.GrpcPort)

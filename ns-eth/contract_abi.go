@@ -27,6 +27,10 @@ var (
 	indexedEvents = indexEvents(erc20abi, erc721abi)
 )
 
+type ABIError struct {
+	error
+}
+
 type qualifiedMethod struct {
 	ABI     annotatedABI
 	Method  gethabi.Method
@@ -93,7 +97,7 @@ func readABI(description, json string) annotatedABI {
 
 func DecodeSmartContractCall(input string, address eth.Address) (*eth.SmartContractMethodInfo, error) {
 	if len(input) < smartContractCallSigSize * 2 {
-		return nil, errors.Errorf("Input is to small for smart contract call")
+		return nil, ABIError{errors.Errorf("Input is to small for smart contract call")}
 	}
 
 	inputBytes, err := hexutil.Decode(input)
@@ -106,12 +110,12 @@ func DecodeSmartContractCall(input string, address eth.Address) (*eth.SmartContr
 	var method qualifiedMethod
 	var ok bool
 	if method, ok = indexedMethods[string(sig)]; !ok {
-		return nil, errors.Errorf("Unknown method signature: %s", hexutil.Encode(sig))
+		return nil, ABIError{errors.Errorf("Unknown method signature: %s", hexutil.Encode(sig))}
 	}
 	
 	arguments, err := method.Method.Inputs.UnpackValues(inputBytes[smartContractCallSigSize:])
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to unpack method arguments %s", method.Method.Name)
+		return nil, ABIError{errors.Wrapf(err, "Failed to unpack method arguments %s", method.Method.Name)}
 	}
 
 	result := &eth.SmartContractMethodInfo{
@@ -126,8 +130,8 @@ func DecodeSmartContractCall(input string, address eth.Address) (*eth.SmartContr
 
 		value := convertType(arg)
 		if value == nil {
-			return nil, errors.Errorf("Failed to decode argument #%d %s %s of go-type: %v",
-					i, argDescription.Name, typeName, reflect.TypeOf(arg))
+			return nil, ABIError{errors.Errorf("Failed to decode argument #%d %s %s of go-type: %v",
+					i, argDescription.Name, typeName, reflect.TypeOf(arg))}
 		}
 
 		result.Arguments = append(result.Arguments, eth.SmartContractMethodArgument(value))
@@ -138,7 +142,7 @@ func DecodeSmartContractCall(input string, address eth.Address) (*eth.SmartContr
 
 func DecodeSmartContractEvent(input string, address eth.Address) (*eth.SmartContractEventInfo, error) {
 	if len(input) < smartContractEventSigSize * 2 {
-		return nil, errors.Errorf("Input is to small for smart contract event")
+		return nil, ABIError{errors.Errorf("Input is to small for smart contract event")}
 	}
 
 	inputBytes, err := hexutil.Decode(input)
@@ -151,7 +155,7 @@ func DecodeSmartContractEvent(input string, address eth.Address) (*eth.SmartCont
 	var event qualifiedEvent
 	var ok bool
 	if event, ok = indexedEvents[string(sig)]; !ok {
-		return nil, errors.Errorf("Unknown event signature: %s", hexutil.Encode(sig))
+		return nil, ABIError{errors.Errorf("Unknown event signature: %s", hexutil.Encode(sig))}
 	}
 	
 	// HACK to force ABI into parsing all event arguments,
@@ -182,8 +186,8 @@ func DecodeSmartContractEvent(input string, address eth.Address) (*eth.SmartCont
 
 		value := convertType(arg)
 		if value == nil {
-			return nil, errors.Errorf("Failed to decode argument #%d %s %s of go-type: %v",
-					i, input.Name, typeName, reflect.TypeOf(arg))
+			return nil, ABIError{errors.Errorf("Failed to decode argument #%d %s %s of go-type: %v",
+					i, input.Name, typeName, reflect.TypeOf(arg))}
 		}
 
 		result.Arguments = append(result.Arguments, eth.SmartContractEventArgument(value))
