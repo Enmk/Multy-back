@@ -55,7 +55,7 @@ type Multy struct {
 	restClient     *client.RestClient
 	firebaseClient *client.FirebaseClient
 
-	ETH *eth.ETHConn
+	ETH *eth.EthController
 
 	ExchangerFactory *exchanger.FactoryExchanger
 }

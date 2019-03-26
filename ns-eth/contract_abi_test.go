@@ -3,7 +3,7 @@ package nseth
 import (
 	"testing"
 	
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 
 	. "github.com/Multy-io/Multy-back/tests"
 	. "github.com/Multy-io/Multy-back/tests/eth"

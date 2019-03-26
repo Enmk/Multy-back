@@ -5,7 +5,7 @@ import (
 	
 	"github.com/pkg/errors"
 
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 )
 
 func ToTxHash(str string) eth.TransactionHash {

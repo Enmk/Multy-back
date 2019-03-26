@@ -6,7 +6,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	mgo "gopkg.in/mgo.v2"
 
-	eth "github.com/Multy-io/Multy-back/types/eth"
+	eth "github.com/Multy-io/Multy-back/common/eth"
 )
 
 // Stores all eth addresses that we filter transactions against

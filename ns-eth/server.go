@@ -166,7 +166,7 @@ func (s *Server) CheckRejectTxs(c context.Context, txs *pb.TxsToCheck) (*pb.Reje
 }
 
 func (s *Server) GetTransaction(c context.Context, transactionHash *pb.TransactionHash) (*pb.ETHTransaction, error) {
-	// TODO: push that transaction via parseETHTransaction()
+	// TODO: push that transaction via HandleEthTransaction()
 	transaction, err := s.EthCli.Rpc.EthGetTransactionByHash(transactionHash.GetHash())
 	if err != nil {
 		log.Errorf("GetTransaction: txHash: %s, error: %v", transactionHash.GetHash(), err)

@@ -1,4 +1,4 @@
-package types
+package common
 
 type TransactionFeeRateEstimation struct {
 	VerySlow uint64 `bson:"VerySlow" json:"VerySlow"`

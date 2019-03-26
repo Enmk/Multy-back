@@ -2,9 +2,9 @@ package storage
 
 import (
 	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	// "gopkg.in/mgo.v2/bson"
 
-	eth "github.com/Multy-io/Multy-back/types/eth"
+	eth "github.com/Multy-io/Multy-back/common/eth"
 )
 
 // Stores blocks in DB and provides convinient access to those
@@ -16,7 +16,7 @@ import (
 // * get all blocks from given id to immutable block
 
 const (
-	immutableBlockDocumentId = "immutableBlock"
+	lastSeenBlockDocumentId = "lastSeenBlock"
 )
 
 type BlockStorage struct {
@@ -61,20 +61,18 @@ func (self *BlockStorage) GetBlock(blockId eth.BlockHash) (*eth.Block, error) {
 	return &block, nil
 }
 
-func (self *BlockStorage) SetImmutableBlockId(imutableBlockId eth.BlockHash) error {
-	_, err := self.collection.UpsertId(immutableBlockDocumentId, bson.M{"immutable_block": imutableBlockId})
+func (self *BlockStorage) SetLastSeenBlockHeader(blockHeader eth.BlockHeader) error {
+	_, err := self.collection.UpsertId(lastSeenBlockDocumentId, blockHeader)
 
-	return reportError(self, err, "write immutable block id failed")
+	return reportError(self, err, "write last seen block id failed")
 }
 
-func (self *BlockStorage) GetImmutableBlockId() (*eth.BlockHash, error) {
-	var immutableBlockDoc bson.M
-	err := self.collection.FindId(immutableBlockDocumentId).One(&immutableBlockDoc)
+func (self *BlockStorage) GetLastSeenBlockHeader() (*eth.BlockHeader, error) {
+	result := eth.BlockHeader{}
+	err := self.collection.FindId(lastSeenBlockDocumentId).One(&result)
 	if err != nil {
-		return nil, reportError(self, err, "read immutable block id failed")
+		return nil, reportError(self, err, "read last seen block id failed")
 	}
 
-	blockHash := new(eth.BlockHash)
-	blockHash.SetBytes(immutableBlockDoc["immutable_block"].([]byte))
-	return blockHash, nil
+	return &result, nil
 }

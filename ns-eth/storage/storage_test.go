@@ -5,11 +5,10 @@ import (
 
 	"os"
 	"log"
-	"reflect"
 	"time"
 
 	mgo "gopkg.in/mgo.v2"
-	eth "github.com/Multy-io/Multy-back/types/eth"
+	eth "github.com/Multy-io/Multy-back/common/eth"
 	. "github.com/Multy-io/Multy-back/tests"
 	. "github.com/Multy-io/Multy-back/tests/eth"
 )
@@ -17,22 +16,30 @@ import (
 var (
 	config Config
 
-	mockTransaction = eth.Transaction{
-		ID: mockTransactionId,
-		Sender: ToAddress("sender"),
-		Receiver: ToAddress("receiver"),
-		Payload: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-		Amount: *eth.NewAmountFromInt64(1337),
-		Nonce: 42,
-		Fee : eth.TransactionFee{
-			GasLimit: 10000,
-			GasPrice: 100*eth.GWei,
-		},
-	}
+	// mockTransaction = eth.Transaction{
+	// 	ID: mockTransactionId,
+	// 	Sender: ToAddress("sender"),
+	// 	Receiver: ToAddress("receiver"),
+	// 	Payload: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+	// 	Amount: *eth.NewAmountFromInt64(1337),
+	// 	Nonce: 42,
+	// 	Fee : eth.TransactionFee{
+	// 		GasLimit: 10000,
+	// 		GasPrice: 100*eth.GWei,
+	// 	},
+	// }
+	mockTransaction = SampleTransaction()
 
 	mockTransactionId = ToTxHash("mock transaction id")
 	mockBlockId = ToBlockHash("mock block id")
 	mockAddress = ToAddress("mock address")
+
+	mockBlockHeader = eth.BlockHeader{
+		ID:     ToBlockHash("mock block hash in header"),
+		Height: 1337000,
+		Parent: ToBlockHash("mock block hash of parent in header"),
+		Time:   time.Now(),
+	}
 )
 
 func newEmptyStorage(test *testing.T) *Storage {
@@ -107,8 +114,8 @@ func TestBlockStorage(test *testing.T) {
 		test.Fatalf("failed to get block: %+v", err)
 	}
 
-	if !reflect.DeepEqual(*actualBlock, expectedBlock) {
-		test.Fatalf("block : expected(%+v) != actual(%+v)", expectedBlock, actualBlock)
+	if equal, l, r := TestEqual(*actualBlock, expectedBlock); !equal {
+		test.Fatalf("block: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
 	}
 
 	// Check that RemoveBlock removes
@@ -143,23 +150,23 @@ func TestBlockStorageEmpty(test *testing.T) {
 	}
 }
 
-func TestBlockStorageImmutableBlock(test *testing.T) {
+func TestBlockStorageLastSeenBlock(test *testing.T) {
 	storage := newEmptyStorage(test)
 	defer storage.Close()
 
-	expectedImmutableBlockID := ToBlockHash("immutable block id")
-	err := storage.BlockStorage.SetImmutableBlockId(expectedImmutableBlockID)
+	expectedBlockHeader := mockBlockHeader
+	err := storage.BlockStorage.SetLastSeenBlockHeader(expectedBlockHeader)
 	if err != nil {
 		test.Fatalf("failed to set immutable block: %+v", err)
 	}
 
-	actualImmutableBlockID, err := storage.BlockStorage.GetImmutableBlockId()
+	actualBlockHeader, err := storage.BlockStorage.GetLastSeenBlockHeader()
 	if err != nil {
 		test.Fatalf("failed to get immutable block")
 	}
 
-	if expectedImmutableBlockID != *actualImmutableBlockID {
-		test.Fatalf("immutable block id: expected(%+v) != actual(%+v)", expectedImmutableBlockID, actualImmutableBlockID)
+	if equal, l, r := TestEqual(expectedBlockHeader, *actualBlockHeader); !equal {
+		test.Fatalf("immutable block header: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
 	}
 }
 
@@ -276,8 +283,8 @@ func TestTransactionStorage(test *testing.T) {
 		test.Fatalf("Failed to load existing transaction from DB: %+v", err)
 	}
 
-	if !reflect.DeepEqual(expectedTx, *actualTx) {
-		test.Fatalf("transaction : expected(%+v) != actual(%+v)", expectedTx, actualTx)
+	if equal, l, r := TestEqual(expectedTx, *actualTx); !equal {
+		test.Fatalf("transaction: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
 	}
 }
 

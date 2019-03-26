@@ -19,7 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 )
 
 const erc20TransferName = "transfer(address,uint256)"
@@ -88,7 +88,7 @@ func (client *NodeClient) ResyncTransaction(txid string) error {
 		return err
 	}
 	if tx != nil {
-		client.parseETHTransaction(*tx, tx.BlockNumber, true)
+		client.HandleEthTransaction(*tx, tx.BlockNumber, true)
 	}
 	return nil
 }
@@ -317,7 +317,7 @@ func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, block *
 
 
 // TODO: provide eth.BlockHeader instead of blockHeight to use block time form node.
-func (client *NodeClient) parseETHTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) error {
+func (client *NodeClient) HandleEthTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) error {
 	log := log.WithFields(slf.Fields{"txid": rawTX.Hash, "blockHeight": blockHeight, "resync": isResync})
 
 	transaction, err := client.fetchTransactionInfo(rawTX, nil)
@@ -327,7 +327,7 @@ func (client *NodeClient) parseETHTransaction(rawTX ethrpc.Transaction, blockHei
 	}
 
 	if client.isTransactionOfKnownAddress(transaction) {
-		client.TransactionsStream <- *transaction
+		client.transactionsStream <- *transaction
 	}
 
 	return nil

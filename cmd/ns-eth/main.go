@@ -32,8 +32,9 @@ var (
 )
 
 var globalOpt = ns.Configuration{
-	CanaryTest: false,
-	Name:       "eth-node-service",
+	CanaryTest:          false,
+	Name:                "eth-node-service",
+	ImmutableBlockDepth: 50, // with block once 15 seconds, 50 blocks is approx 12.5 minutes
 }
 
 func main() {
@@ -58,8 +59,8 @@ func main() {
 		Buildtime: buildtime,
 	}
 
-	nc := ns.NodeService{}
-	node, err := nc.Init(&globalOpt)
+	service := ns.NodeService{}
+	node, err := service.Init(&globalOpt)
 	if err != nil {
 		log.Fatalf("Server initialization: %s\n", err.Error())
 	}

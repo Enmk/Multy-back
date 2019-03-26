@@ -16,22 +16,22 @@ import (
 	
 	_ "github.com/jekabolt/slflog"
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 
 	"github.com/Multy-io/Multy-back/ns-eth/storage"
-	"github.com/Multy-io/Multy-back/ns-eth/server"
 )
 
 var log = slf.WithContext("NodeService").WithCaller(slf.CallerShort)
 
 // NodeService is a main struct of service, handles all events and all logics
 type NodeService struct {
-	Config     *Configuration
+	Config       *Configuration
 	nodeClient   *NodeClient
-	GRPCserver *Server
-	// clients    *sync.Map // 'set' of addresses (eth.Address => struct{}{})
-	storage    *storage.Storage
-	eventManager *server.EventManager
+	GRPCserver   *Server
+	storage      *storage.Storage
+	eventManager *EventManager
+
+	lastSeenBlockHeader *eth.BlockHeader
 }
 
 // Init initializes Multy instance
@@ -51,13 +51,11 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	}
 
 	// New session to the node
-	ethCli := NewClient(&conf.EthConf, service.storage.AddressStorage)
+	service.nodeClient = NewClient(&conf.EthConf, service.storage.AddressStorage, service, service)
 	if err != nil {
 		return nil, fmt.Errorf("eth.NewClient initialization: %s", err.Error())
 	}
 	log.Infof("ETH client initialization done")
-
-	service.nodeClient = ethCli
 
 	// Dial to abi client to reach smart contracts methods
 	ABIconn, err := ethclient.Dial(conf.AbiClientUrl)
@@ -101,14 +99,92 @@ func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
 	return err
 }
 
-// func (service *NodeService) ProcessTransactionStream() {
-// 	// We've faced new transaction:
-// 	for tx := range service.TransactionStream {
-// 		log.Infof("NewTx history - %v", tx.ID)
-// 	}
-// }
+func (service *NodeService) HandleTransaction(transaction eth.Transaction) {
+	err := service.tryHandleTransaction(transaction)
+	if err != nil {
+		 log.Errorf("Faield to handle a transaction %s : %+v", transaction.ID.Hex(), err)
+	}
+}
 
+func (service *NodeService) tryHandleTransaction(transaction eth.Transaction) error {
+	// Steps to proceed:
+	// decide new status based on current transaction status + block height + current block height
+	// save TX to DB
+	// emit TX update event (TXID, BlockHash, Status)
+	newStatus := decideTransactionStatus(transaction, service.getImmutibleBlockHeight())
+	err := service.storage.TransactionStorage.AddTransaction(
+		eth.TransactionWithStatus{
+			Transaction: transaction,
+			Status: newStatus,
+		})
+	if err != nil {
+		return err
+	}
 
+	var blockHash eth.BlockHash
+	if transaction.BlockInfo != nil {
+		blockHash = transaction.BlockInfo.Hash
+	}
+
+	return service.eventManager.EmitTransactionStatusEvent(eth.TransactionStatusEvent{
+		ID: transaction.ID,
+		Status: newStatus,
+		BlockHash: blockHash,
+	})
+}
+
+func (service *NodeService) HandleBlock(blockHeader eth.BlockHeader) {
+	err := service.tryHandleBlock(blockHeader)
+	if err != nil {
+		log.Errorf("Faield to handle block %s : %+v", blockHeader.ID.Hex(), err)
+	}
+}
+
+func (service *NodeService) tryHandleBlock(blockHeader eth.BlockHeader) error {
+	err := service.storage.BlockStorage.AddBlock(eth.Block{
+		BlockHeader: blockHeader,
+	})
+	if err != nil {
+		return err
+	}
+
+	if service.lastSeenBlockHeader == nil || service.lastSeenBlockHeader.Height < blockHeader.Height {
+		err := service.storage.BlockStorage.SetLastSeenBlockHeader(blockHeader)
+		if err != nil {
+			return err
+		}
+
+		service.lastSeenBlockHeader = &blockHeader
+	}
+
+	return service.eventManager.EmitNewBlock(blockHeader)
+}
+
+func (service *NodeService) getImmutibleBlockHeight() uint64 {
+	if service.lastSeenBlockHeader == nil || service.lastSeenBlockHeader.Height < uint64(service.Config.ImmutableBlockDepth) {
+		return 0
+	}
+
+	return service.lastSeenBlockHeader.Height - uint64(service.Config.ImmutableBlockDepth)
+}
+
+func decideTransactionStatus(transaction eth.Transaction, immutibleBlockHeight uint64) eth.TransactionStatus {
+
+	if callInfo := transaction.CallInfo; callInfo != nil {
+		if callInfo.Status == eth.SmartContractCallStatusFailed {
+			return eth.TransactionStatusErrorSmartContractCallFailed
+		}
+	}
+
+	if blockInfo := transaction.BlockInfo; blockInfo != nil {
+		if blockInfo.Height <= immutibleBlockHeight {
+			return eth.TransactionStatusInImmutableBlock
+		}
+		return eth.TransactionStatusInBlock
+	}
+
+	return eth.TransactionStatusInMempool
+}
 
 func fetchResyncUrl(networkid int) string {
 	switch networkid {
@@ -136,7 +212,7 @@ func WatchReload(reload chan struct{}, service *NodeService) {
 			service.GRPCserver.GRPCserver.Stop()
 			log.Debugf("WatchReload:Successfully stopped")
 			for _ = range ticker.C {
-				close(service.nodeClient.RPCStream)
+				close(service.nodeClient.subscriptionsStream)
 				_, err := service.Init(service.Config)
 				if err != nil {
 					log.Errorf("WatchReload:Init %v ", err)

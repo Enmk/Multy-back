@@ -1,4 +1,4 @@
-package server
+package nseth
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"github.com/jekabolt/slf"
 	"github.com/pkg/errors"
 
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 	nsq "github.com/bitly/go-nsq"
 )
 
@@ -101,7 +101,7 @@ func NewEventManager(nsqAddr string, addressHandler AddressHandler, rawTxHandler
 	return &eventHandler, nil
 }
 
-func (self *EventManager) EmitTransactionStatusEvent(tx eth.TransactionWithStatus) error {
+func (self *EventManager) EmitTransactionStatusEvent(tx eth.TransactionStatusEvent) error {
 	return self.emitEvent(eth.NSQETHTxStatus, tx)
 }
 

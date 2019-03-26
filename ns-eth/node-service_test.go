@@ -10,7 +10,7 @@ import (
 
 	"github.com/jekabolt/config"
 	"github.com/onrik/ethrpc"
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 )
 
 var (
@@ -25,9 +25,13 @@ func (*mockAddressLookup) IsAddressExists(eth.Address) bool {
 	return false
 }
 
+type mockHandler struct{}
+func (*mockHandler) HandleBlock(eth.BlockHeader) {}
+func (*mockHandler) HandleTransaction(eth.Transaction) {}
+
 func newNodeClient() *NodeClient {
 
-	client := NewClient(&conf.EthConf, &mockAddressLookup{})
+	client := NewClient(&conf.EthConf, &mockAddressLookup{}, &mockHandler{}, &mockHandler{})
 	select {
 	case <- client.ready:
 		break;
@@ -40,7 +44,7 @@ func newNodeClient() *NodeClient {
 
 func TestMain(m *testing.M) {
 	// You may want to set --ConfigPath=absolute-path-to-config-file
-	config.ReadGlobalConfig(&conf, "NS-ETH config")
+	config.ReadGlobalConfig(&conf, "NS-ETH config for tests")
 
 	os.Exit(m.Run())
 }
@@ -54,5 +58,5 @@ func TestProcessTransaction(test *testing.T) {
 		Hash: "0x975914f6a8b7e62324ec22a8ebe478ae7480725e8886f0fb7c0539acae26512f",
 		Input: "0x0",
 	}
-	client.parseETHTransaction(transaction, 7371365, false)
+	client.HandleEthTransaction(transaction, 7371365, false)
 }

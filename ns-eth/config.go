@@ -22,4 +22,5 @@ type Configuration struct {
 	EtherscanAPIURL string
 	EtherscanAPIKey string
 	PprofPort       string
+	ImmutableBlockDepth uint
 }

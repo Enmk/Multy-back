@@ -81,7 +81,7 @@ func getHeaderDataSocketIO(headers http.Header) (*SocketIOUser, error) {
 	}, nil
 }
 func SetSocketIOHandlers(restClient *RestClient, r *gin.RouterGroup, address, nsqAddr string, ratesDB store.UserStore) (*SocketIOConnectedPool, error) {
-	// func SetSocketIOHandlers(restClient *RestClient, BTC *btc.BTCConn, ETH *eth.ETHConn, r *gin.RouterGroup, address, nsqAddr string, ratesDB store.UserStore) (*SocketIOConnectedPool, error) {
+	// func SetSocketIOHandlers(restClient *RestClient, BTC *btc.BTCConn, ETH *eth.EthController, r *gin.RouterGroup, address, nsqAddr string, ratesDB store.UserStore) (*SocketIOConnectedPool, error) {
 	server := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
 	pool, err := InitConnectedPool(server, address, nsqAddr, ratesDB)
 	if err != nil {

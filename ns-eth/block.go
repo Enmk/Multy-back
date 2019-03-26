@@ -1,9 +1,11 @@
 package nseth
 
 import (
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+	"time"
 
 	"github.com/onrik/ethrpc"
+
+	"github.com/Multy-io/Multy-back/common/eth"
 )
 
 // update mempool every ~5 minutes = 20 block
@@ -18,17 +20,21 @@ func (c *NodeClient) HandleNewHeadBlock(hash string) {
 		return
 	}
 
-	go func(blockNum int64) {
-		log.Debugf("new block number = %v", blockNum)
-		c.BlockStream <- pb.BlockHeight{
-			Height: blockNum,
+	// Run as goroutine to not block if channel is full.
+	go func(block *ethrpc.Block) {
+		c.blockStream <- eth.BlockHeader{
+			ID:     eth.HexToHash(block.Hash),
+			Height: uint64(block.Number),
+			Parent: eth.HexToHash(block.ParentHash),
+			Time:   time.Unix(int64(block.Timestamp), 0),
 		}
-	}(int64(block.Number))
+	}(block)
 
 	txs := []ethrpc.Transaction{}
 	if block.Transactions != nil {
 		txs = block.Transactions
 	} else {
+		log.Infof("No transactions in block: %s", block.Hash)
 		return
 	}
 
@@ -41,7 +47,12 @@ func (c *NodeClient) HandleNewHeadBlock(hash string) {
 
 	// TODO: there are many transactions should we start all that in goroutines and use sync.WaitGroup()?
 	for _, rawTx := range txs {
-		c.parseETHTransaction(rawTx, rawTx.BlockNumber, false)
+		err := c.HandleEthTransaction(rawTx, rawTx.BlockNumber, false)
+		if err != nil {
+			log.Errorf("Failed to handle a transaction %s from block %s : %+v",
+				rawTx.Hash, hash, err)
+		}
+
 		c.DeleteTxpoolTransaction(rawTx.Hash)
 	}
 }
@@ -57,6 +68,6 @@ func (c *NodeClient) ResyncBlock(block *ethrpc.Block) {
 	}
 
 	for _, rawTx := range txs {
-		c.parseETHTransaction(rawTx, rawTx.BlockNumber, false)
+		c.HandleEthTransaction(rawTx, rawTx.BlockNumber, false)
 	}
 }
