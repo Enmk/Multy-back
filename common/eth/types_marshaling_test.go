@@ -56,7 +56,7 @@ func checkSmartContractArgumentBSON(test *testing.T, expectedArg SmartContractMe
 	var actualArg SmartContractMethodArgument
 	err = bson.Unmarshal(data, &actualArg)
 	if err != nil {
-		test.Errorf("Failed to unmarshal SmartContractMethodArgument from BSON: %+v", err)
+		test.Errorf("Failed to unmarshal SmartContractMethodArgument from BSON: %s\nerror: %+v", data, err)
 		return
 	}
 
@@ -66,10 +66,10 @@ func checkSmartContractArgumentBSON(test *testing.T, expectedArg SmartContractMe
 }
 
 func TestSmartContractArgumentToAndFromBSON(test *testing.T) {
-	checkSmartContractArgumentBSON(test, ToArgument("foobar"))
+	checkSmartContractArgumentBSON(test, ToArgument("simple string"))
 	checkSmartContractArgumentBSON(test, ToArgument(false))
 	checkSmartContractArgumentBSON(test, ToArgument(true))
-	checkSmartContractArgumentBSON(test, ToArgument(big.NewInt(1337)))
+	checkSmartContractArgumentBSON(test, ToArgument(*big.NewInt(1337)))
 	checkSmartContractArgumentBSON(test, ToArgument(ToAddress("mock address")))
 	checkSmartContractArgumentBSON(test, ToArgument(ToHash("mock hash")))
 }

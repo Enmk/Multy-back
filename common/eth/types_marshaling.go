@@ -2,7 +2,6 @@ package eth
 
 import (
 	"math/big"
-	"encoding/json"
 
 	"github.com/pkg/errors"
 
@@ -29,70 +28,47 @@ func (a Amount) GetBSON() (interface{}, error) {
 	return a.Hex(), nil
 }
 
-type marshaler interface {
-	Marshal(interface{}) ([]byte, error)
-}
-
-type MarshalerFunc func(interface{}) ([]byte, error)
-func (f MarshalerFunc) Marshal(arg interface{}) ([]byte, error) {
-    return f(arg)
-}
-
-type unmarshaler interface {
-	Unmarshal([]byte, interface{}) error
-}
-type UnmarshalerFunc func([]byte, interface{}) error
-func (f UnmarshalerFunc) Unmarshal(data []byte, i interface{}) error {
-    return f(data, i)
-}
-
-func MarshalArgument(arg SmartContractMethodArgument, m marshaler) ([]byte, error) {
-	return marshalArgumentValue(arg.Value, m)
-}
-
-func UnmarshalArgument(value []byte, u unmarshaler) (*SmartContractMethodArgument, error) {
-	val, err := unmarshalArgumentValue(value, u)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SmartContractMethodArgument{
-		Value: val,
-	}, nil
-}
-
-func marshalArgumentValue(arg interface{}, m marshaler) ([]byte, error) {
-	value, err := m.Marshal(arg)
+func MarshalArgument(arg SmartContractMethodArgument) ([]byte, error) {
 	typeByte := make([]byte, 1)
+	var data []byte
 
-	switch v := arg.(type) {
-	case Address, *Address:
+	switch v := arg.Value.(type) {
+	case Address:
 		typeByte[0] = 'a'
+		data = v.Bytes()
+	case *Address:
+		typeByte[0] = 'a'
+		data = v.Bytes()
 	case *big.Int:
 		typeByte[0] = 'i'
+		data = v.Bytes()
 	case big.Int:
 		typeByte[0] = 'i'
-		value, err = m.Marshal(&v) // HACK: big.Int can only be marshalled from pointer
+		data = v.Bytes()
 	case string:
 		typeByte[0] = 's'
-		value, err = m.Marshal(arg)
+		data = []byte(v)
 	case bool:
 		typeByte[0] = 'b'
-	case Hash, *Hash:
+		if v {
+			data = []byte{1}
+		} else {
+			data = []byte{2}
+		}
+	case Hash:
 		typeByte[0] = 'h'
+		data = v.Bytes()
+	case *Hash:
+		typeByte[0] = 'h'
+		data = v.Bytes()
 	default:
 		return []byte{}, errors.Errorf("unknown argument type: %t", arg)
 	}
 
-	if err != nil {
-		return []byte{}, errors.Wrapf(err, "Failed to marshal %t", arg)
-	}
-
-	value = append(typeByte, value...)
-	return value, nil
+	return append(typeByte, data...), nil
 }
 
-func unmarshalArgumentValue(value []byte, u unmarshaler) (interface{}, error) {
+func UnmarshalArgument(value []byte) (*SmartContractMethodArgument, error) {
 	if len(value) == 0 {
 		return nil, errors.Errorf("not enough data to parse argument value")
 	}
@@ -106,44 +82,66 @@ func unmarshalArgumentValue(value []byte, u unmarshaler) (interface{}, error) {
 	switch t {
 	case 'a':
 		a := *new(Address)
-		err = u.Unmarshal(data, &a)
+		a.SetBytes(data)
 		result = a
 	case 'i':
 		i := new(big.Int)
-		err = u.Unmarshal(data, i)
+		i.SetBytes(data)
 		result = *i
 	case 's':
-		s := string("")
-		err = u.Unmarshal(data, &s)
+		s := string(data)
 		result = s
 	case 'b':
 		b := bool(false)
-		err = u.Unmarshal(data, &b)
+		if data[0] == 1 {
+			b = true
+		}
 		result = b
 	case 'h':
 		h := Hash{}
-		err = u.Unmarshal(data, &h)
+		h.SetBytes(data)
 		result = h
 	default:
-		return nil, errors.Errorf("unknown argument type prefix '%c'", t)
+		return nil, errors.Errorf("unknown argument type prefix '%c' (%d)", t, int(t))
 	}
 
-	return result, err
+	return &SmartContractMethodArgument{Value:result}, err
 }
 
 func (a *SmartContractMethodArgument) SetBSON(raw bson.Raw) error {
-	value, err := unmarshalArgumentValue(raw.Data, UnmarshalerFunc(json.Unmarshal))
+	var doc bson.M
+	err := raw.Unmarshal(&doc)
+	if err != nil {
+		return errors.Wrapf(err, "Faield to unmarshal []byte from BSON")
+	}
+
+	v, ok := doc["value"]
+	if !ok {
+		return errors.Errorf("Invalid SmartContractMethodArgument document: missing value")
+	}
+	data, ok := v.([]byte)
+	if !ok {
+		return errors.Errorf("Invalid SmartContractMethodArgument document: value is in unsupported format")
+	}
+
+	value, err := UnmarshalArgument(data)
 	if err != nil {
 		return err
 	}
+
 	if value == nil {
 		return errors.Errorf("Unmarshalled SmartContractMethodArgument is null")
 	}
 
-	a.Value = value
+	*a = *value
 	return nil
 }
 
 func (a SmartContractMethodArgument) GetBSON() (interface{}, error) {
-	return marshalArgumentValue(a.Value, MarshalerFunc(json.Marshal))
+	data, err := MarshalArgument(a)
+	if err != nil {
+		return nil, err
+	}
+
+	return bson.M{"value": data}, nil
 }
