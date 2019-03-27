@@ -1,11 +1,7 @@
 package nseth
 
 import (
-	"time"
-
 	"github.com/onrik/ethrpc"
-
-	"github.com/Multy-io/Multy-back/common/eth"
 )
 
 // update mempool every ~5 minutes = 20 block
@@ -16,19 +12,19 @@ const blockLengthForReloadTxpool = 20
 func (c *NodeClient) HandleNewHeadBlock(hash string) {
 	block, err := c.Rpc.EthGetBlockByHash(hash, true)
 	if err != nil {
-		log.Errorf("Get Block Err:%s", err.Error())
+		log.Errorf("Failed to fetch block by hash (%s): %+v", hash, err)
+		return
+	}
+	if block == nil {
+		log.Errorf("Failed to fetch block by hash (%s): NULL BLOCK", hash)
 		return
 	}
 
+	blockHeader := rpcBlockToBlockHeader(*block)
 	// Run as goroutine to not block if channel is full.
-	go func(block *ethrpc.Block) {
-		c.blockStream <- eth.BlockHeader{
-			Hash:   eth.HexToHash(block.Hash),
-			Height: uint64(block.Number),
-			Parent: eth.HexToHash(block.ParentHash),
-			Time:   time.Unix(int64(block.Timestamp), 0),
-		}
-	}(block)
+	go func() {
+		c.blockStream <- blockHeader
+	}()
 
 	txs := []ethrpc.Transaction{}
 	if block.Transactions != nil {
@@ -47,7 +43,7 @@ func (c *NodeClient) HandleNewHeadBlock(hash string) {
 
 	// TODO: there are many transactions should we start all that in goroutines and use sync.WaitGroup()?
 	for _, rawTx := range txs {
-		err := c.HandleEthTransaction(rawTx, rawTx.BlockNumber, false)
+		err := c.HandleEthTransaction(rawTx, &blockHeader, false)
 		if err != nil {
 			log.Errorf("Failed to handle a transaction %s from block %s : %+v",
 				rawTx.Hash, hash, err)
@@ -67,7 +63,8 @@ func (c *NodeClient) ResyncBlock(block *ethrpc.Block) {
 		return
 	}
 
+	blockHeader := rpcBlockToBlockHeader(*block)
 	for _, rawTx := range txs {
-		c.HandleEthTransaction(rawTx, rawTx.BlockNumber, false)
+		c.HandleEthTransaction(rawTx, &blockHeader, false)
 	}
 }

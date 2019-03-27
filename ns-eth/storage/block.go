@@ -71,18 +71,21 @@ func (self *BlockStorage) GetBlock(blockId eth.BlockHash) (*eth.Block, error) {
 	return &block, nil
 }
 
-func (self *BlockStorage) SetLastSeenBlockHeader(blockHeader eth.BlockHeader) error {
-	_, err := self.collection.UpsertId(lastSeenBlockDocumentId, blockHeader)
+func (self *BlockStorage) SetLastSeenBlock(blockHash eth.BlockHash) error {
+	_, err := self.collection.UpsertId(lastSeenBlockDocumentId, bson.M{"last_seen_block_hash": blockHash})
 
-	return reportError(self, err, "write last seen block id failed")
+	return reportError(self, err, "write last seen block hash failed")
 }
 
-func (self *BlockStorage) GetLastSeenBlockHeader() (*eth.BlockHeader, error) {
-	result := eth.BlockHeader{}
-	err := self.collection.FindId(lastSeenBlockDocumentId).One(&result)
+func (self *BlockStorage) GetLastSeenBlock() (eth.BlockHash, error) {
+	result := eth.BlockHash{}
+
+	var doc bson.M
+	err := self.collection.FindId(lastSeenBlockDocumentId).One(&doc)
 	if err != nil {
-		return nil, reportError(self, err, "read last seen block id failed")
+		return result, reportError(self, err, "read last seen block failed")
 	}
 
-	return &result, nil
+	result.SetBytes(doc["last_seen_block_hash"].([]byte))
+	return result, nil
 }

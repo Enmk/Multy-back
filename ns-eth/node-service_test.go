@@ -22,7 +22,7 @@ func init() {
 }
 
 type mockAddressLookup struct {}
-func (*mockAddressLookup) IsAddressExists(eth.Address) bool {
+func (*mockAddressLookup) IsKnownAddress(eth.Address) bool {
 	return false
 }
 

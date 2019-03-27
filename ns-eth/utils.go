@@ -28,6 +28,7 @@ const erc20TransferName = "transfer(address,uint256)"
 const transferEventName = "Transfer(address,address,uint256)"
 
 const transferEventTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+const nullHash = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 
 func (client *NodeClient) SendRawTransaction(rawTX string) (string, error) {
@@ -84,14 +85,24 @@ func (client *NodeClient) GetAddressNonce(address string) (big.Int, error) {
 }
 
 func (client *NodeClient) ResyncTransaction(txid string) error {
-	tx, err := client.Rpc.EthGetTransactionByHash(txid)
+	rawTX, err := client.Rpc.EthGetTransactionByHash(txid)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Failed to fetch transaction by hash (%s) during resync", txid)
 	}
-	if tx != nil {
-		client.HandleEthTransaction(*tx, tx.BlockNumber, true)
+	if rawTX == nil {
+		return errors.Wrapf(err, "Failed to fetch transaction by hash (%s) during resync: NULL TX", txid)
 	}
-	return nil
+
+	block, err := client.Rpc.EthGetBlockByHash(rawTX.BlockHash, false)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to fetch block by hash (%s) during resync", rawTX.BlockHash)
+	}
+	if block == nil {
+		return errors.Wrapf(err, "Failed to fetch block by hash (%s) during resync: NULL BLOCK", rawTX.BlockHash)
+	}
+	blockHeader := rpcBlockToBlockHeader(*block)
+
+	return client.HandleEthTransaction(*rawTX, &blockHeader, true)
 }
 
 type TransactionReceipt struct {
@@ -233,7 +244,7 @@ func decodeTransactionCallInfo(rawTx ethrpc.Transaction, receipt *ethrpc.Transac
 	}, nil
 }
 
-func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, block *eth.Block) (*eth.Transaction, error) {
+func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, blockHeader *eth.BlockHeader) (*eth.Transaction, error) {
 	log := log.WithField("txid", rawTX.Hash)
 
 	var err error
@@ -256,11 +267,28 @@ func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, block *
 	}
 
 	var blockInfo *eth.TransactionBlockInfo
-	if block != nil {
+	if blockHeader != nil {
 		blockInfo = &eth.TransactionBlockInfo{
-			Hash:   block.BlockHeader.Hash,
-			Height: block.BlockHeader.Height,
-			Time:   block.BlockHeader.Time,
+			Hash:   blockHeader.Hash,
+			Height: blockHeader.Height,
+			Time:   blockHeader.Time,
+		}
+	} else if len(rawTX.BlockHash) != 0 && rawTX.BlockHash != nullHash {
+		// Usualy should happen only on resync
+		// TODO: cache the block fetched this way, since we may need to fetch same block numerous times
+		block, err := client.Rpc.EthGetBlockByHash(rawTX.BlockHash, false)
+		if err != nil {
+			log.Infof("Failed to fetch block by hash %s : %+v", rawTX.BlockHash, err)
+			blockInfo = &eth.TransactionBlockInfo{
+				Hash: eth.HexToHash(rawTX.BlockHash),
+			}
+		} else {
+			log.Infof("Fetched block %s", rawTX.BlockHash)
+			blockInfo = &eth.TransactionBlockInfo{
+				Hash:   eth.HexToHash(block.Hash),
+				Height: uint64(block.Number),
+				Time:   time.Unix(int64(block.Timestamp), 0),
+			}
 		}
 	}
 
@@ -278,64 +306,19 @@ func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, block *
 		CallInfo:  callInfo,
 		BlockInfo: blockInfo,
 	}, nil
-
-	// if useTransaction == false {
-
-	// 	callInfo, err := DecodeSmartContractCall(rawTX.Input)
-	// 	if callInfo != nil {
-	// 		log.Infof("Smart contract call info: %v, err: %v", callInfo, err)
-	// 	}
-
-	// 	if callInfo != nil && callInfo.Name == erc20TransferName {
-	// 		address, ok := callInfo.Arguments[0].(eth.Address)
-	// 		if ok == true {
-	// 			useTransaction = client.IsAnyKnownAddress(address)
-	// 		} else {
-	// 			log.Errorf("Unexpected argument 0 type for erc20 `transfer()`: %#v, expected Address", callInfo)
-	// 		}
-	// 	}
-
-	// 	// Check if token was transferred to or from our user.
-	// 	if transactionReceipt != nil && len(transactionReceipt.TokenTransfers) > 0 {
-	// 		for _, t := range transactionReceipt.TokenTransfers {
-	// 			if client.IsAnyKnownAddress(t.From, t.To) == true {
-	// 				useTransaction = true
-	// 				break;
-	// 			}
-	// 		}
-	// 	}
-
-	// 	if useTransaction == false {
-	// 		// not our users tx
-	// 		return
-	// 	}
-	// }
-
-	// tx := rawToGenerated(rawTX)
-	// tx.Resync = isResync
-
-	// block, err := client.Rpc.EthGetBlockByHash(rawTX.BlockHash, false)
-	// if err != nil {
-	// 	if blockHeight == -1 {
-	// 		tx.TxpoolTime = time.Now().Unix()
-	// 	} else {
-	// 		tx.BlockTime = time.Now().Unix()
-	// 	}
-	// 	tx.BlockHeight = blockHeight
-	// } else {
-	// 	tx.BlockTime = int64(block.Timestamp)
-	// 	tx.BlockHeight = int64(block.Number)
-	// }
-
-	// if blockHeight == -1 {
-	// 	tx.TxpoolTime = time.Now().Unix()
-	// }
 }
 
+func rpcBlockToBlockHeader(block ethrpc.Block) eth.BlockHeader {
+	return eth.BlockHeader{
+		Hash:   eth.HexToHash(block.Hash),
+		Height: uint64(block.Number),
+		Time:   time.Unix(int64(block.Timestamp), 0),
+		Parent: eth.HexToHash(block.ParentHash),
+	}
+}
 
-// TODO: provide eth.BlockHeader instead of blockHeight to use block time form node.
-func (client *NodeClient) HandleEthTransaction(rawTX ethrpc.Transaction, blockHeight int64, isResync bool) error {
-	log := log.WithFields(slf.Fields{"txid": rawTX.Hash, "blockHeight": blockHeight, "resync": isResync})
+func (client *NodeClient) HandleEthTransaction(rawTX ethrpc.Transaction, blockHeader *eth.BlockHeader, isResync bool) error {
+	log := log.WithFields(slf.Fields{"txid": rawTX.Hash, "blockHeader": blockHeader, "resync": isResync})
 
 	transaction, err := client.fetchTransactionInfo(rawTX, nil)
 	if err != nil {
@@ -348,110 +331,6 @@ func (client *NodeClient) HandleEthTransaction(rawTX ethrpc.Transaction, blockHe
 	}
 
 	return nil
-
-	// // Transaction from known user
-	// useTransaction := client.IsAnyKnownAddress(transaction.Sender, transaction.Receiver)
-
-	// var transactionReceipt *TransactionReceipt
-	// var err error
-	// if blockHeight > 0 {
-	// 	// Only makes sence to fetch receipt for transactions that are included in any block.
-	// 	transactionReceipt, err = client.getTransactionReceipt(rawTX.Hash)
-	// 	// log.Debugf("\treceipt: %#v", transactionReceipt)
-	// 	if err != nil {
-	// 		log.Errorf("Failed to get transacion receipt: %+v", err)
-	// 	}
-	// }
-
-	// if useTransaction == false {
-
-	// 	callInfo, err := DecodeSmartContractCall(rawTX.Input)
-	// 	if callInfo != nil {
-	// 		log.Infof("Smart contract call info: %v, err: %v", callInfo, err)
-	// 	}
-
-	// 	if callInfo != nil && callInfo.Name == erc20TransferName {
-	// 		address, ok := callInfo.Arguments[0].(eth.Address)
-	// 		if ok == true {
-	// 			useTransaction = client.IsAnyKnownAddress(address)
-	// 		} else {
-	// 			log.Errorf("Unexpected argument 0 type for erc20 `transfer()`: %#v, expected Address", callInfo)
-	// 		}
-	// 	}
-
-	// 	// Check if token was transferred to or from our user.
-	// 	if transactionReceipt != nil && len(transactionReceipt.TokenTransfers) > 0 {
-	// 		for _, t := range transactionReceipt.TokenTransfers {
-	// 			if client.IsAnyKnownAddress(t.From, t.To) == true {
-	// 				useTransaction = true
-	// 				break;
-	// 			}
-	// 		}
-	// 	}
-
-	// 	if useTransaction == false {
-	// 		// not our users tx
-	// 		return
-	// 	}
-	// }
-
-	// tx := rawToGenerated(rawTX)
-	// tx.Resync = isResync
-
-	// block, err := client.Rpc.EthGetBlockByHash(rawTX.BlockHash, false)
-	// if err != nil {
-	// 	if blockHeight == -1 {
-	// 		tx.TxpoolTime = time.Now().Unix()
-	// 	} else {
-	// 		tx.BlockTime = time.Now().Unix()
-	// 	}
-	// 	tx.BlockHeight = blockHeight
-	// } else {
-	// 	tx.BlockTime = int64(block.Timestamp)
-	// 	tx.BlockHeight = int64(block.Number)
-	// }
-
-	// if blockHeight == -1 {
-	// 	tx.TxpoolTime = time.Now().Unix()
-	// }
-
-	/*
-		Fetching tx status and send
-	*/
-	// from v1 to v1
-	// if fromUser == toUser && fromUser != "" {
-	// tx.UserID = fromUser.UserID
-	// tx.WalletIndex = int32(fromUser.WalletIndex)
-	// tx.AddressIndex = int32(fromUser.AddressIndex)
-
-	// **********
-	// **** TODO: Send transacton with NSQ
-	// **********
-	// tx.Status = store.TxStatusAppearedInBlockOutcoming
-	// if blockHeight == -1 {
-	// 	tx.Status = store.TxStatusAppearedInMempoolOutcoming
-	// }
-	// // send to multy-back
-	// client.TransactionsStream <- tx
-	// // }
-
-	// **********
-	// **** TODO: Send transacton with NSQ
-	// **********
-
-	// from v1 to v2 outgoing
-	// if fromUser.UserID != "" {
-	// 	tx.UserID = fromUser.UserID
-	// 	tx.WalletIndex = int32(fromUser.WalletIndex)
-	// 	tx.AddressIndex = int32(fromUser.AddressIndex)
-	// 	tx.Status = store.TxStatusAppearedInBlockOutcoming
-	// 	if blockHeight == -1 {
-	// 		tx.Status = store.TxStatusAppearedInMempoolOutcoming
-	// 	}
-	// 	log.Warnf("outgoing ----- for uid %v ", fromUser.UserID)
-	// 	// send to multy-back
-	// 	client.TransactionsStream <- tx
-	// }
 }
 
 func rawToGenerated(rawTX ethrpc.Transaction) pb.ETHTransaction {
@@ -485,7 +364,7 @@ func isMempoolUpdate(mempool bool, status int) bson.M {
 
 func (client *NodeClient) IsAnyKnownAddress(addresses ...eth.Address) bool {
 	for _, address := range addresses {
-		if client.addressLookup.IsAddressExists(address) {
+		if client.addressLookup.IsKnownAddress(address) {
 			return true
 		}
 	}

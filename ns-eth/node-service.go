@@ -34,6 +34,19 @@ type NodeService struct {
 	lastSeenBlockHeader *eth.BlockHeader
 }
 
+type addressLookup struct {
+	addressStorage *storage.AddressStorage
+	defaultResponse bool
+}
+func (a *addressLookup) IsKnownAddress(address eth.Address) bool {
+	if a.addressStorage != nil {
+		return a.addressStorage.IsAddressExists(address)
+	}
+
+	return a.defaultResponse
+}
+
+
 // Init initializes Multy instance
 func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	resyncUrl := fetchResyncUrl(conf.NetworkID)
@@ -54,7 +67,11 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	}
 
 	// New session to the node
-	service.nodeClient = NewClient(&conf.EthConf, service.storage.AddressStorage, service, service)
+	addressLookup := addressLookup{
+		addressStorage:  nil,//service.storage.AddressStorage,
+		defaultResponse: true,
+	}
+	service.nodeClient = NewClient(&conf.EthConf, &addressLookup, service, service)
 	if err != nil {
 		return nil, fmt.Errorf("eth.NewClient initialization: %s", err.Error())
 	}
@@ -65,6 +82,12 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	if err != nil {
 		log.Fatalf("Failed to connect to infura %v", err)
 	}
+
+	eventManager, err := NewEventManager(conf.NSQURL, service, service)
+	if err != nil {
+		return nil, err
+	}
+	service.eventManager = eventManager
 
 	// Creates a new gRPC server
 	s := grpc.NewServer()
@@ -152,7 +175,7 @@ func (service *NodeService) tryHandleBlock(blockHeader eth.BlockHeader) error {
 	}
 
 	if service.lastSeenBlockHeader == nil || service.lastSeenBlockHeader.Height < blockHeader.Height {
-		err := service.storage.BlockStorage.SetLastSeenBlockHeader(blockHeader)
+		err := service.storage.BlockStorage.SetLastSeenBlock(blockHeader.Hash)
 		if err != nil {
 			return err
 		}

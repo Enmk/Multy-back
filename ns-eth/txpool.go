@@ -44,7 +44,7 @@ func (c *NodeClient) AddTransactionToTxpool(txHash string) {
 	if err != nil {
 		log.Errorf("c.Rpc.EthGetTransactionByHash:Get TX Err: %s", err.Error())
 	}
-	c.HandleEthTransaction(*rawTx, -1, false)
+	c.HandleEthTransaction(*rawTx, nil, false)
 
 	//c.parseETHMultisig(*rawTx, -1, false)
 

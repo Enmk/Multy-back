@@ -35,6 +35,7 @@ var globalOpt = ns.Configuration{
 	CanaryTest:          false,
 	Name:                "eth-node-service",
 	ImmutableBlockDepth: 50, // with block once 15 seconds, 50 blocks is approx 12.5 minutes
+	NSQURL:              "127.0.0.1:4150",
 }
 
 func main() {

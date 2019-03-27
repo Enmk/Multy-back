@@ -26,4 +26,5 @@ type Configuration struct {
 	PprofPort       string
 	ImmutableBlockDepth uint
 	DB              storage.Config
+	NSQURL          string
 }

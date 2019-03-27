@@ -213,19 +213,17 @@ func TestBlockStorageLastSeenBlock(test *testing.T) {
 	defer storage.Close()
 
 	expectedBlockHeader := mockBlockHeader
-	err := storage.BlockStorage.SetLastSeenBlockHeader(expectedBlockHeader)
+	err := storage.BlockStorage.SetLastSeenBlock(expectedBlockHeader.Hash)
 	if err != nil {
 		test.Fatalf("failed to set immutable block: %+v", err)
 	}
 
-	actualBlockHeader, err := storage.BlockStorage.GetLastSeenBlockHeader()
+	actualBlockHash, err := storage.BlockStorage.GetLastSeenBlock()
 	if err != nil {
 		test.Fatalf("failed to get immutable block")
 	}
 
-	if equal, l, r := TestEqual(expectedBlockHeader, *actualBlockHeader); !equal {
-		test.Fatalf("immutable block header: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
-	}
+	AssertEqual(test, expectedBlockHeader.Hash, actualBlockHash)
 }
 
 func TestAddressStorage(test *testing.T) {

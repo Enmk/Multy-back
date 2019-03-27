@@ -18,7 +18,7 @@ import (
 )
 
 type AddressLookup interface {
-	IsAddressExists(address eth.Address) bool
+	IsKnownAddress(address eth.Address) bool
 }
 
 type TransactionHandler interface {
@@ -148,6 +148,7 @@ func (c *NodeClient) RunProcess() error {
 		case string:
 			go c.AddTransactionToTxpool(v)
 		case map[string]interface{}:
+			// Here in `v` we have a block, but with no transaction hashes.
 			go c.HandleNewHeadBlock(v["hash"].(string))
 		case nil:
 			// defer func() {
