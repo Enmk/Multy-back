@@ -15,15 +15,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jekabolt/slf"
- 	
+
 	// exchanger "github.com/Multy-io/Multy-back-exchange-service"
-	"github.com/Multy-io/Multy-back/exchanger"
 	"github.com/Multy-io/Multy-back/client"
+	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
+	"github.com/Multy-io/Multy-back/exchanger"
 	ethpb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
-	"github.com/Multy-io/Multy-back/common"
 )
 
 var (
@@ -165,7 +165,7 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]c
 			intialAddresses := make([]*ethpb.Address, 0, len(usersData))
 
 			for address := range usersData {
-				intialAddresses = append(intialAddresses, &ethpb.Address{Address:address})
+				intialAddresses = append(intialAddresses, &ethpb.Address{Address: address})
 				// if ex.WalletIndex == -1 {
 				// 	genUd.Map[address] = &ethpb.AddressExtended{
 				// 		UserID:       "imported",
@@ -224,7 +224,7 @@ func (multy *Multy) initHttpRoutes(conf *Configuration) error {
 	restClient, err := client.SetRestHandlers(
 		multy.userStore,
 		router,
-		conf.DonationAddresses,
+		// conf.DonationAddresses,
 		//	multy.BTC,
 		multy.ETH,
 		conf.MultyVerison,

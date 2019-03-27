@@ -61,12 +61,6 @@ const (
 	AssetTypeMultisig        = 1
 	AssetTypeImportedAddress = 2
 
-	MultiSigFactory    = "0xf8f73808"
-	SubmitTransaction  = "0xc6427474"
-	ConfirmTransaction = "0xc01a8c84"
-	RevokeConfirmation = "0x20ea8d86"
-	ExecuteTransaction = "0xee22610b"
-
 	MaximumAvalibeEmptyWallets = 20
 
 	ETHStandardVeryFastFeeRate = 5000000000
@@ -74,10 +68,10 @@ const (
 
 // User represents a single app user
 type User struct {
-	UserID         string     `bson:"userID"` // User uqnique identifier
-	SeedPhraseType int        `bson:"seedPhraseType"`
-	Devices        []Device   `bson:"devices"` // All user devices
-	Wallets        []Wallet   `bson:"wallets"` // All user addresses in all chains
+	UserID         string   `bson:"userID"` // User uqnique identifier
+	SeedPhraseType int      `bson:"seedPhraseType"`
+	Devices        []Device `bson:"devices"` // All user devices
+	Wallets        []Wallet `bson:"wallets"` // All user addresses in all chains
 }
 
 type BTCTransaction struct {

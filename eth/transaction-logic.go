@@ -52,5 +52,5 @@ func (self *EthController) SendRawTransaction(rawTransaction ethcommon.RawTransa
 		log.Errorf("send raw transaction from GRPC error: %v", err)
 		return reply.GetMessage(), err
 	}
-	return "", nil
+	return reply.GetMessage(), nil
 }

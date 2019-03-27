@@ -24,14 +24,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	// MultiSigFactory    = "0xf8f73808"
-	submitTransaction  = "0xc6427474"
-	confirmTransaction = "0xc01a8c84"
-	revokeConfirmation = "0x20ea8d86"
-	executeTransaction = "0xee22610b"
-)
-
 var (
 	exRate    *mgo.Collection
 	usersData *mgo.Collection
@@ -407,24 +399,6 @@ func parseRevokeInput(input string) (int64, error) {
 	}
 
 	return 0, fmt.Errorf("low len input %v", input)
-}
-
-func signatuteToStatus(signature string) int {
-	switch signature {
-	case submitTransaction: // "c6427474": "submitTransaction(address,uint256,bytes)"
-		return store.NotifyPaymentReq
-	case confirmTransaction: // "c01a8c84": "confirmTransaction(uint256)"
-		return store.NotifyConfirmTx
-
-	case revokeConfirmation: // "20ea8d86": "revokeConfirmation(uint256)"
-		return store.NotifyRevokeTx
-
-	case "0x": // incoming transaction
-		return store.NotifyIncomingTx
-
-	default:
-		return store.NotifyPaymentReq
-	}
 }
 
 func msToUserData(addresses []string, usersData *mgo.Collection) map[string]store.User {

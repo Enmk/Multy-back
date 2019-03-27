@@ -7,25 +7,24 @@ package multyback
 
 import (
 	"github.com/Multy-io/Multy-back/client"
+	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/exchanger"
 	"github.com/Multy-io/Multy-back/store"
-	"github.com/Multy-io/Multy-back/common"
 )
 
 // Configuration is a struct with all service options
 type Configuration struct {
-	CanaryTest        bool
-	Name              string
-	Database          store.Conf
-	SocketioAddr      string
-	RestAddress       string
-	Firebase          client.FirebaseConf
-	NSQAddress        string
-	BTCNodeAddress    string
-	DonationAddresses []store.DonationInfo
-	MultyVerison      store.ServerConfig
-	ServicesInfo      []common.ServiceInfo
-	Secretkey         string
+	CanaryTest     bool
+	Name           string
+	Database       store.Conf
+	SocketioAddr   string
+	RestAddress    string
+	Firebase       client.FirebaseConf
+	NSQAddress     string
+	BTCNodeAddress string
+	MultyVerison   store.ServerConfig
+	ServicesInfo   []store.ServiceInfo
+	Secretkey      string
 	store.MobileVersions
 	BrowserDefault store.BrowserDefault
 

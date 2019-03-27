@@ -19,7 +19,7 @@ import (
 	common "github.com/Multy-io/Multy-back/common"
 )
 
-const gWei = 1000000000
+const gWei = 2000000000
 
 // RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
 type RPCTransaction struct {
