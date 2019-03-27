@@ -24,7 +24,7 @@ type Configuration struct {
 	BTCNodeAddress    string
 	DonationAddresses []store.DonationInfo
 	MultyVerison      store.ServerConfig
-	ServicesInfo      []store.ServiceInfo
+	ServicesInfo      []common.ServiceInfo
 	Secretkey         string
 	store.MobileVersions
 	BrowserDefault store.BrowserDefault

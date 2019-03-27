@@ -7,16 +7,16 @@ package nseth
 
 import (
 	"fmt"
-	"net"
 	"time"
+	"net/http"
+	"encoding/json"
+	"io/ioutil"
+	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jekabolt/slf"
-	"google.golang.org/grpc"
-	_ "github.com/jekabolt/slflog"
 
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/common/eth"
 	"github.com/Multy-io/Multy-back/ns-eth/storage"
 )
@@ -49,7 +49,7 @@ func (a *addressLookup) IsKnownAddress(address eth.Address) bool {
 
 // Init initializes Multy instance
 func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
-	resyncUrl := fetchResyncUrl(conf.NetworkID)
+	resyncUrl := getResyncUrl(conf.NetworkID)
 	conf.ResyncUrl = resyncUrl
 	service = &NodeService{
 		Config: conf,
@@ -59,12 +59,6 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 		return nil, errors.WithMessagef(err, "Failed to connect to DB")
 	}
 	service.storage = storageInstance
-
-	// init gRPC server
-	lis, err := net.Listen("tcp", conf.GrpcPort)
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen: %v", err.Error())
-	}
 
 	// New session to the node
 	addressLookup := addressLookup{
@@ -77,11 +71,11 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	}
 	log.Infof("ETH client initialization done")
 
-	// Dial to abi client to reach smart contracts methods
-	ABIconn, err := ethclient.Dial(conf.AbiClientUrl)
-	if err != nil {
-		log.Fatalf("Failed to connect to infura %v", err)
-	}
+	// // Dial to abi client to reach smart contracts methods
+	// ABIconn, err := ethclient.Dial(conf.AbiClientUrl)
+	// if err != nil {
+	// 	log.Fatalf("Failed to connect to infura %v", err)
+	// }
 
 	eventManager, err := NewEventManager(conf.NSQURL, service, service)
 	if err != nil {
@@ -90,24 +84,13 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	service.eventManager = eventManager
 
 	// Creates a new gRPC server
-	s := grpc.NewServer()
-	srv := Server{
-		EthCli:          service.nodeClient,
-		Info:            &conf.ServiceInfo,
-		NetworkID:       conf.NetworkID,
-		ResyncUrl:       resyncUrl,
-		EtherscanAPIKey: conf.EtherscanAPIKey,
-		EtherscanAPIURL: conf.EtherscanAPIURL,
-		ABIcli:          ABIconn,
-		GRPCserver:      s,
-		Listener:        lis,
-		ReloadChan:      make(chan struct{}),
+	srv, err := NewServer(conf.GrpcPort, service.nodeClient, service)
+	if err != nil {
+		return nil, err
 	}
 
-	service.GRPCserver = &srv
-
-	pb.RegisterNodeCommunicationsServer(s, &srv)
-	go s.Serve(lis)
+	service.GRPCserver = srv
+	go service.GRPCserver.Serve()
 
 	go WatchReload(srv.ReloadChan, service)
 
@@ -194,6 +177,93 @@ func (service *NodeService) getImmutibleBlockHeight() uint64 {
 	return service.lastSeenBlockHeader.Height - uint64(service.Config.ImmutableBlockDepth)
 }
 
+func (service *NodeService) ServerGetTransaction(transactionHash eth.TransactionHash) (result *eth.Transaction, err error) {
+
+	transactionWithStatus, err := service.storage.TransactionStorage.GetTransaction(transactionHash)
+	if _, ok := err.(storage.ErrorNotFound); ok {
+		transaction, err := service.nodeClient.FetchTransaction(transactionHash)
+		if err != nil {
+			return nil, err
+		}
+
+		err = service.storage.TransactionStorage.AddTransaction(eth.TransactionWithStatus{
+			Transaction: *transaction,
+		})
+		if err != nil {
+			log.Debugf("Failed to store transaction to DB: %+v", err)
+		}
+	} else if transactionWithStatus != nil {
+		result = &transactionWithStatus.Transaction
+	}
+
+	return result, nil
+}
+
+func (service *NodeService) ServerResyncAddress(address eth.Address) error {
+	log.Debugf("ServerResyncAddress")
+	log := log.WithField("address", address.Hex())
+
+	url := service.Config.ResyncUrl + address.Hex() + "&action=txlist&module=account"
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to compose HTTP request")
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrapf(err, "HTTP request failed")
+	}
+	defer res.Body.Close()
+
+	reTx := struct {
+		Message string `json:"message"`
+		Result  []struct {
+			Hash string `json:"hash"`
+		} `json:"result"`
+	}{}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to read HTTP response body")
+	}
+
+	if err := json.Unmarshal(body, &reTx); err != nil {
+		return errors.Wrapf(err, "Failed to unmarshal HTTP response body")
+	}
+
+	if !strings.Contains(reTx.Message, "OK") {
+		return errors.Wrapf(err, "Bad response from 3rd party.")
+	}
+
+	log.Debugf("EventResyncAddress total transactions: %d", len(reTx.Result))
+
+	for i, hash := range reTx.Result {
+		err := service.nodeClient.ResyncTransaction(hash.Hash)
+		if err != nil {
+			log.Debugf("resync of tx %d failed with: %+v", i, err)
+		}
+	}
+
+	return nil
+}
+
+func (service *NodeService) ServerGetServiceInfo() common.ServiceInfo {
+	return service.Config.ServiceInfo
+}
+
+func (service *NodeService) ServerSetUserAddresses(addresses []eth.Address) error {
+	// TODO: that is N locks and unlocks, N DB requests, make special method to do that at once.
+	for i, addr := range addresses {
+		err := service.storage.AddressStorage.AddAddress(addr)
+		if err != nil {
+			log.Debugf("Failed to add address %d, %s : %+v", i, addr.Hex(), err)
+		}
+	}
+
+	return nil
+}
+
 func decideTransactionStatus(transaction eth.Transaction, immutibleBlockHeight uint64) eth.TransactionStatus {
 
 	if callInfo := transaction.CallInfo; callInfo != nil {
@@ -212,7 +282,7 @@ func decideTransactionStatus(transaction eth.Transaction, immutibleBlockHeight u
 	return eth.TransactionStatusInMempool
 }
 
-func fetchResyncUrl(networkid int) string {
+func getResyncUrl(networkid int) string {
 	switch networkid {
 	case 4:
 		return "http://api-rinkeby.etherscan.io/api?sort=asc&endblock=99999999&startblock=0&address="
@@ -231,17 +301,17 @@ func WatchReload(reload chan struct{}, service *NodeService) {
 		select {
 		case _ = <-reload:
 			ticker := time.NewTicker(1000 * time.Millisecond)
-			err := service.GRPCserver.Listener.Close()
+			err := service.GRPCserver.Stop()
 			if err != nil {
-				log.Errorf("WatchReload:lis.Close %v", err.Error())
+				log.Errorf("WatchReload:server.Stop() : %+v", err)
 			}
-			service.GRPCserver.GRPCserver.Stop()
 			log.Debugf("WatchReload:Successfully stopped")
-			for _ = range ticker.C {
+
+			for range ticker.C {
 				close(service.nodeClient.subscriptionsStream)
 				_, err := service.Init(service.Config)
 				if err != nil {
-					log.Errorf("WatchReload:Init %v ", err)
+					log.Errorf("WatchReload:Init error: %+v", err)
 					continue
 				}
 				log.Debugf("WatchReload:Successfully reloaded")

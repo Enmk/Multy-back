@@ -58,6 +58,18 @@ func (client *NodeClient) GetTxByHash(hash string) (bool, error) {
 	}
 }
 
+func (client *NodeClient) FetchTransaction(hash eth.TransactionHash) (*eth.Transaction, error) {
+	tx, err := client.Rpc.EthGetTransactionByHash(hash.Hex())
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to fetch transaction by hash %s", hash.Hex())
+	}
+	if tx == nil {
+		return nil, errors.Errorf("Failed to fetch transaction by hash %s: NULL TRANSACTION", hash.Hex())
+	}
+
+	return client.fetchTransactionInfo(*tx, nil)
+}
+
 func (client *NodeClient) GetAddressPendingBalance(address string) (big.Int, error) {
 	balance, err := client.Rpc.EthGetBalance(address, "pending")
 	if err != nil {
@@ -105,20 +117,6 @@ func (client *NodeClient) ResyncTransaction(txid string) error {
 	return client.HandleEthTransaction(*rawTX, &blockHeader, true)
 }
 
-type TransactionReceipt struct {
-	Status    bool
-	TokenTransfers []TokenTransfer
-	DeployedContract eth.Address
-}
-
-type TokenTransfer struct {
-	Contract  eth.Address
-	From      eth.Address
-	To        eth.Address
-	Value     eth.Amount
-	Removed   bool // TODO: shall we keep this?
-}
-
 func minInt(a, b int) int {
 	if a < b {
 		return a
@@ -127,55 +125,55 @@ func minInt(a, b int) int {
 	return b
 }
 
-func getDataArguments(data string, numberOfArgs int) ([]string, error) {
-	// Parse arguments from hex-encoded data string, each argument is
-	// expected to be 64-char wide, which corresponds to 32-byte (uint256)
-	// alignment of arguments in smart contract call protocol.
-	// Data may have an "0x" prefix
+// func getDataArguments(data string, numberOfArgs int) ([]string, error) {
+// 	// Parse arguments from hex-encoded data string, each argument is
+// 	// expected to be 64-char wide, which corresponds to 32-byte (uint256)
+// 	// alignment of arguments in smart contract call protocol.
+// 	// Data may have an "0x" prefix
 
-	if strings.HasPrefix(data, "0x") {
-		data = data[2:]
-	}
+// 	if strings.HasPrefix(data, "0x") {
+// 		data = data[2:]
+// 	}
 
-	if len(data) < numberOfArgs * 64 {
-		return []string{}, errors.Errorf(
-			"Not enough data for %d arguments.", numberOfArgs)
-	}
+// 	if len(data) < numberOfArgs * 64 {
+// 		return []string{}, errors.Errorf(
+// 			"Not enough data for %d arguments.", numberOfArgs)
+// 	}
 
-	arguments := []string{}
-	for i := 0; i < numberOfArgs; i++ {
-		start := i * 64
-		end := (i + 1) * 64
+// 	arguments := []string{}
+// 	for i := 0; i < numberOfArgs; i++ {
+// 		start := i * 64
+// 		end := (i + 1) * 64
 
-		arguments = append(arguments, data[start:end])
-	}
+// 		arguments = append(arguments, data[start:end])
+// 	}
 
-	return arguments, nil
-}
+// 	return arguments, nil
+// }
 
-func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
-	// Some smart contracts put all arguments to the topics, other put 
-	// only portion of arguments as topics, rest as data.
-	// So let's assume that if there are less topics than expected arguments,
-	// then remaining arguments are in the data.
+// func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
+// 	// Some smart contracts put all arguments to the topics, other put 
+// 	// only portion of arguments as topics, rest as data.
+// 	// So let's assume that if there are less topics than expected arguments,
+// 	// then remaining arguments are in the data.
 
-	arguments := []string{}
+// 	arguments := []string{}
 
-	for i := 0; i < minInt(len(log.Topics), numberOfArgs); i++ {
-		arguments = append(arguments, log.Topics[i])
-	}
+// 	for i := 0; i < minInt(len(log.Topics), numberOfArgs); i++ {
+// 		arguments = append(arguments, log.Topics[i])
+// 	}
 
-	if len(arguments) < numberOfArgs {
-		dataArguments, err := getDataArguments(log.Data, numberOfArgs - len(arguments))
-		if err != nil {
-			return []string{}, err
-		}
+// 	if len(arguments) < numberOfArgs {
+// 		dataArguments, err := getDataArguments(log.Data, numberOfArgs - len(arguments))
+// 		if err != nil {
+// 			return []string{}, err
+// 		}
 
-		arguments = append(arguments, dataArguments...)
-	}
+// 		arguments = append(arguments, dataArguments...)
+// 	}
 
-	return arguments, nil
-}
+// 	return arguments, nil
+// }
 
 func (client *NodeClient) fetchTransactionCallInfo(rawTx ethrpc.Transaction) (*eth.SmartContractCallInfo, error) {
 	receipt, err := client.Rpc.EthGetTransactionReceipt(rawTx.Hash)
@@ -320,7 +318,7 @@ func rpcBlockToBlockHeader(block ethrpc.Block) eth.BlockHeader {
 func (client *NodeClient) HandleEthTransaction(rawTX ethrpc.Transaction, blockHeader *eth.BlockHeader, isResync bool) error {
 	log := log.WithFields(slf.Fields{"txid": rawTX.Hash, "blockHeader": blockHeader, "resync": isResync})
 
-	transaction, err := client.fetchTransactionInfo(rawTX, nil)
+	transaction, err := client.fetchTransactionInfo(rawTX, blockHeader)
 	if err != nil {
 		log.Errorf("fetchTransactionInfo: %#v", err)
 		return err

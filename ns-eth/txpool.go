@@ -52,7 +52,6 @@ func (c *NodeClient) AddTransactionToTxpool(txHash string) {
 	if rawTx.GasPrice.IsUint64() {
 		c.Mempool.Store(rawTx.Hash, rawTx.GasPrice.Uint64())
 	}
-
 }
 
 func (c *NodeClient) DeleteTxpoolTransaction(txHash string) {

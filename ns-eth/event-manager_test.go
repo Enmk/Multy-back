@@ -124,7 +124,7 @@ func TestTxStatusHandler(test *testing.T) {
 			return err
 		}
 		if equal, l, r := TestEqual(expectedStatusEvent, actualStatusEvent); !equal {
-			test.Errorf("event expected != actual\nexpected:\n%s\actual:\n%s", l, r)
+			test.Errorf("event expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
 		}
 		return nil
 	}))

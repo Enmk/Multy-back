@@ -6,8 +6,7 @@ See LICENSE for details
 package nseth
 
 import (
-	"github.com/Multy-io/Multy-back/store"
-
+	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/ns-eth/storage"
 )
 
@@ -17,7 +16,7 @@ type Configuration struct {
 	Name            string
 	GrpcPort        string
 	EthConf         Conf
-	ServiceInfo     store.ServiceInfo
+	ServiceInfo     common.ServiceInfo
 	NetworkID       int
 	ResyncUrl       string
 	AbiClientUrl    string

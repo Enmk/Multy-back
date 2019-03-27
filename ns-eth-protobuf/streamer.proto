@@ -113,6 +113,5 @@ message Empty {
 }
 
 message UsersData {
-    map<string, Address> map = 1;
-  //  map<string, string> UsersContracts = 2;
+    repeated Address addresses = 1;
 }

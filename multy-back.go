@@ -13,17 +13,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Multy-io/Multy-back/exchanger"
-
+	"github.com/gin-gonic/gin"
+	"github.com/jekabolt/slf"
+ 	
 	// exchanger "github.com/Multy-io/Multy-back-exchange-service"
+	"github.com/Multy-io/Multy-back/exchanger"
 	"github.com/Multy-io/Multy-back/client"
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
-
 	ethpb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
-	"github.com/gin-gonic/gin"
-	"github.com/jekabolt/slf"
+	"github.com/Multy-io/Multy-back/common"
 )
 
 var (
@@ -127,8 +127,8 @@ func (m *Multy) ConfigureExchangers() error {
 }
 
 // SetUserData make initial userdata to node service
-func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]store.ServiceInfo, error) {
-	servicesInfo := []store.ServiceInfo{}
+func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]common.ServiceInfo, error) {
+	servicesInfo := []common.ServiceInfo{}
 	for _, conCred := range ct {
 		usersData, err := userStore.FindUserDataChain(conCred.СurrencyID, conCred.NetworkID)
 		if err != nil {
@@ -162,12 +162,10 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 			//TODO: Restore state
 			go m.restoreState(conCred, cli)
 
-			genUd := ethpb.UsersData{
-				Map: map[string]*ethpb.Address{},
-				// UsersContracts: usersContracts,
-			}
+			intialAddresses := make([]*ethpb.Address, 0, len(usersData))
 
 			for address := range usersData {
+				intialAddresses = append(intialAddresses, &ethpb.Address{Address:address})
 				// if ex.WalletIndex == -1 {
 				// 	genUd.Map[address] = &ethpb.AddressExtended{
 				// 		UserID:       "imported",
@@ -175,12 +173,11 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 				// 		AddressIndex: int32(ex.AddressIndex),
 				// 	}
 				// } else {
-				genUd.Map[address] = &ethpb.Address{
-					Address: address,
-				}
 				// }
 			}
-			resp, err := cli.EventInitialAdd(context.Background(), &genUd)
+			resp, err := cli.EventInitialAdd(context.Background(), &ethpb.UsersData{
+				Addresses: intialAddresses,
+			})
 			if err != nil {
 				return servicesInfo, fmt.Errorf("SetUserData: Ether.EventInitialAdd: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
 			}
@@ -190,7 +187,7 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]s
 			if err != nil {
 				return servicesInfo, fmt.Errorf("SetUserData:  cli.ServiceInfo: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
 			}
-			servicesInfo = append(servicesInfo, store.ServiceInfo{
+			servicesInfo = append(servicesInfo, common.ServiceInfo{
 				Branch:    sv.Branch,
 				Commit:    sv.Commit,
 				Buildtime: sv.Buildtime,

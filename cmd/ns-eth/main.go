@@ -12,11 +12,12 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	ns "github.com/Multy-io/Multy-back/ns-eth"
-	"github.com/Multy-io/Multy-back/store"
 	"github.com/jekabolt/config"
 	"github.com/jekabolt/slf"
 	_ "github.com/jekabolt/slflog"
+
+	ns "github.com/Multy-io/Multy-back/ns-eth"
+	"github.com/Multy-io/Multy-back/common"
 )
 
 var (
@@ -44,6 +45,7 @@ func main() {
 	log.Infof("branch: %s", branch)
 	log.Infof("commit: %s", commit)
 	log.Infof("build time: %s", buildtime)
+	log.Infof("tag: %s", lasttag)
 
 	log.Info("Reading configuration...")
 	config.ReadGlobalConfig(&globalOpt, "multy configuration")
@@ -54,10 +56,11 @@ func main() {
 		return
 	}
 
-	globalOpt.ServiceInfo = store.ServiceInfo{
+	globalOpt.ServiceInfo = common.ServiceInfo{
 		Branch:    branch,
 		Commit:    commit,
 		Buildtime: buildtime,
+		Lasttag:   lasttag,
 	}
 
 	service := ns.NodeService{}

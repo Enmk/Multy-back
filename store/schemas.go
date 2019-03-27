@@ -399,13 +399,6 @@ type Donation struct {
 	Status    int    `json:"status"`
 }
 
-type ServiceInfo struct {
-	Branch    string
-	Commit    string
-	Buildtime string
-	Lasttag   string
-}
-
 type MobileVersions struct {
 	Android struct {
 		Hard int `json:"hard"`
