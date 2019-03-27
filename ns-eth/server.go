@@ -2,42 +2,76 @@ package nseth
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
-	"strings"
-	"sync"
 
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/store"
+	"github.com/Multy-io/Multy-back/common"
+	"github.com/Multy-io/Multy-back/common/eth"
 )
+
+type ServerRequestHandler interface {
+	ServerGetTransaction(eth.TransactionHash) (*eth.Transaction, error)
+	ServerGetServiceInfo() common.ServiceInfo
+
+	ServerSetUserAddresses([]eth.Address) error
+	ServerResyncAddress(eth.Address) error
+}
 
 // Server implements streamer interface and is a gRPC server
 type Server struct {
-	UsersData       *sync.Map
-	EthCli          *Client
-	Info            *store.ServiceInfo
-	NetworkID       int
-	ResyncUrl       string
-	EtherscanAPIKey string
-	EtherscanAPIURL string
-	ABIcli          *ethclient.Client
-	GRPCserver      *grpc.Server
-	Listener        net.Listener
+	EthCli          *NodeClient
+	gRPCserver      *grpc.Server
+	listener        net.Listener
 	ReloadChan      chan struct{}
+
+	RequestHandler  ServerRequestHandler
+}
+
+func NewServer(grpcPort string, nodeClient *NodeClient, requestHandler  ServerRequestHandler) (server *Server, err error) {
+	// init gRPC server
+	lis, err := net.Listen("tcp", grpcPort)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to listen on %s", grpcPort)
+	}
+
+	gRPCserver := grpc.NewServer()
+	result := &Server{
+		EthCli:         nodeClient,
+		gRPCserver:     gRPCserver,
+		listener:       lis,
+		ReloadChan:     make(chan struct{}),
+		RequestHandler: requestHandler,
+	}
+	pb.RegisterNodeCommunicationsServer(gRPCserver, result)
+
+	return result, nil
+}
+
+func (server *Server) Serve() {
+	server.gRPCserver.Serve(server.listener)
+}
+
+func (server *Server) Stop() error {
+	err := server.listener.Close()
+	if err != nil {
+		return errors.Wrapf(err, "Faield to close listener")
+	}
+
+	server.gRPCserver.Stop()
+	return nil
 }
 
 func (s *Server) GetServiceVersion(c context.Context, in *pb.Empty) (*pb.ServiceVersion, error) {
+	info := s.RequestHandler.ServerGetServiceInfo()
+
 	return &pb.ServiceVersion{
-		Branch:    s.Info.Branch,
-		Commit:    s.Info.Commit,
-		Buildtime: s.Info.Buildtime,
-		Lasttag:   "",
+		Branch:    info.Branch,
+		Commit:    info.Commit,
+		Buildtime: info.Buildtime,
+		Lasttag:   info.Lasttag,
 	}, nil
 }
 
@@ -62,15 +96,6 @@ func (s *Server) GetFeeRateEstimation(c context.Context, in *pb.Address) (*pb.Fe
 	}
 
 	return feeRateEstimation, nil
-
-	// // gasPriceEstimate := s.EthCli.EstimateTransactionGasPrice()
-	// return &pb.GasPriceEstimation{
-	// 	VerySlow: gasPriceEstimate.VerySlow,
-	// 	Slow:     gasPriceEstimate.Slow,
-	// 	Medium:   gasPriceEstimate.Medium,
-	// 	Fast:     gasPriceEstimate.Fast,
-	// 	VeryFast: gasPriceEstimate.VeryFast,
-	// }, nil
 }
 
 func (s *Server) GetAddressInfo(c context.Context, in *pb.Address) (*pb.AddressInfo, error) {
@@ -95,63 +120,15 @@ func (s *Server) GetAddressInfo(c context.Context, in *pb.Address) (*pb.AddressI
 	}, nil
 }
 
-type resyncTx struct {
-	Message string `json:"message"`
-	Result  []struct {
-		Hash string `json:"hash"`
-	} `json:"result"`
-}
-
 func (s *Server) ResyncAddress(c context.Context, address *pb.Address) (*pb.ReplyInfo, error) {
-	log.Debugf("EventResyncAddress")
-	addr := address.GetAddress()
-	url := s.ResyncUrl + addr + "&action=txlist&module=account"
-
-	req, err := http.NewRequest("GET", url, nil)
+	err := s.RequestHandler.ServerResyncAddress(eth.HexToAddress(address.Address))
 	if err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventResyncAddress: http.NewRequest = %s", err.Error()),
-		}, nil
-	}
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventResyncAddress: http.DefaultClient.Do = %s", err.Error()),
-		}, nil
-	}
-	defer res.Body.Close()
-
-	reTx := resyncTx{}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventResyncAddress: ioutil.ReadAll = %s", err.Error()),
-		}, nil
-	}
-
-	if err := json.Unmarshal(body, &reTx); err != nil {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventResyncAddress: json.Unmarshal = %s", err.Error()),
-		}, nil
-	}
-
-	if !strings.Contains(reTx.Message, "OK") {
-		return &pb.ReplyInfo{
-			Message: fmt.Sprintf("EventResyncAddress: bad resp form 3-party"),
-		}, nil
-	}
-
-	log.Debugf("EventResyncAddress %d", len(reTx.Result))
-
-	for _, hash := range reTx.Result {
-		s.EthCli.ResyncAddress(hash.Hash)
+		return nil, err
 	}
 
 	return &pb.ReplyInfo{
 		Message: "ok",
 	}, nil
-
 }
 
 func (s *Server) CheckRejectTxs(c context.Context, txs *pb.TxsToCheck) (*pb.RejectedTxs, error) {
@@ -166,30 +143,12 @@ func (s *Server) CheckRejectTxs(c context.Context, txs *pb.TxsToCheck) (*pb.Reje
 }
 
 func (s *Server) GetTransaction(c context.Context, transactionHash *pb.TransactionHash) (*pb.ETHTransaction, error) {
-	// TODO: push that transaction via parseETHTransaction()
-	transaction, err := s.EthCli.Rpc.EthGetTransactionByHash(transactionHash.GetHash())
+	transaction, err := s.RequestHandler.ServerGetTransaction(eth.HexToHash(transactionHash.Hash))
 	if err != nil {
-		log.Errorf("GetTransaction: txHash: %s, error: %v", transactionHash.GetHash(), err)
 		return nil, err
 	}
-	return &pb.ETHTransaction{
-		Hash:     transaction.Hash,
-		From:     transaction.From,
-		To:       transaction.To,
-		Amount:   transaction.Value.String(),
-		Payload:  transaction.Input,
-		GasPrice: transaction.GasPrice.Uint64(),
-		GasLimit: uint64(transaction.Gas),
-		Nonce:    uint64(transaction.Nonce),
-		// int64 BlockTime = 9;
-		// int64 TxpoolTime = 10;
-		BlockHeight: transaction.BlockNumber,
-		// bool Resync = 12;
-		// string Contract = 18;
-		// string Method = 19;
-		// string return = 20;
-	}, nil
 
+	return pb.TransactionToProtobuf(*transaction)
 }
 
 func (s *Server) SyncState(c context.Context, in *pb.BlockHeight) (*pb.ReplyInfo, error) {
@@ -215,14 +174,23 @@ func (s *Server) SyncState(c context.Context, in *pb.BlockHeight) (*pb.ReplyInfo
 
 // TODO: Refactor this method and
 func (s *Server) EventInitialAdd(c context.Context, ud *pb.UsersData) (*pb.ReplyInfo, error) {
-	log.Debugf("EventInitialAdd len - %v", len(ud.Map))
 
-	udMap := sync.Map{}
-	for addr, ex := range ud.GetMap() {
-		udMap.Store(strings.ToLower(addr), ex.GetAddress())
+	addresses := ud.GetAddresses()
+	if addresses == nil {
+		return nil, errors.Errorf("EventInitialAdd addresses is nil")
 	}
 
-	*s.UsersData = udMap
+	log.Debugf("EventInitialAdd total addresses: %d", len(addresses))
+	ethAddresses := make([]eth.Address, 0, len(addresses))
+	for _, addr := range addresses {
+		ethAddress := eth.HexToAddress(addr.Address)
+		ethAddresses = append(ethAddresses, ethAddress)
+	}
+
+	err := s.RequestHandler.ServerSetUserAddresses(ethAddresses)
+	if err != nil {
+		return nil, err
+	}
 
 	return &pb.ReplyInfo{
 		Message: "ok",

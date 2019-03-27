@@ -18,7 +18,7 @@ import (
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
 	"github.com/Multy-io/Multy-back/store"
-	typeseth "github.com/Multy-io/Multy-back/types/eth"
+	typeseth "github.com/Multy-io/Multy-back/common/eth"
 	"github.com/jekabolt/slf"
 
 	"github.com/gin-gonic/gin"
@@ -64,7 +64,7 @@ type RestClient struct {
 	mobileVersions    store.MobileVersions
 	ERC20TokenList    store.VerifiedTokenList
 
-	ETH              *eth.ETHConn
+	ETH              *eth.EthController
 	MultyVersion     store.ServerConfig
 	BrowserDefault   store.BrowserDefault
 	Secretkey        string
@@ -76,7 +76,7 @@ func SetRestHandlers(
 	userDB store.UserStore,
 	r *gin.Engine,
 	donationAddresses []store.DonationInfo,
-	eth *eth.ETHConn,
+	eth *eth.EthController,
 	mv store.ServerConfig,
 	secretkey string,
 	mobileVer store.MobileVersions,

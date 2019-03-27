@@ -4,7 +4,7 @@ import (
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	eth "github.com/Multy-io/Multy-back/types/eth"
+	eth "github.com/Multy-io/Multy-back/common/eth"
 )
 
 // Stores blocks in DB and provides convinient access to those
@@ -16,17 +16,27 @@ import (
 // * get all blocks from given id to immutable block
 
 const (
-	immutableBlockDocumentId = "immutableBlock"
+	lastSeenBlockDocumentId = "lastSeenBlock"
 )
 
 type BlockStorage struct {
 	collection *mgo.Collection
 }
 
-func NewBlockStorage(collection *mgo.Collection) *BlockStorage {
-	return &BlockStorage {
+func NewBlockStorage(collection *mgo.Collection) (*BlockStorage, error) {
+	result := &BlockStorage {
 		collection: collection,
 	}
+
+	err := collection.EnsureIndex(mgo.Index{
+		Key:    []string{"hash"},
+		Unique: true,
+	})
+	if err != nil {
+		return nil, reportError(result, err, "Failed to create index.")
+	}
+
+	return result, nil
 }
 
 func (self *BlockStorage) getErrorContext() string {
@@ -43,7 +53,7 @@ func (self *BlockStorage) AddBlock(newBlock eth.Block) error {
 }
 
 func (self *BlockStorage) RemoveBlock(blockId eth.BlockHash) error {
-	err := self.collection.RemoveId(blockId)
+	err := self.collection.Remove(bson.M{"hash":blockId})
 	if err != nil {
 		return reportError(self, err, "delete block failed")
 	}
@@ -53,7 +63,7 @@ func (self *BlockStorage) RemoveBlock(blockId eth.BlockHash) error {
 
 func (self *BlockStorage) GetBlock(blockId eth.BlockHash) (*eth.Block, error) {
 	block := eth.Block{}
-	err := self.collection.FindId(blockId).One(&block)
+	err := self.collection.Find(bson.M{"hash":blockId}).One(&block)
 	if err != nil {
 		return nil, reportError(self, err, "read block failed")
 	}
@@ -61,20 +71,21 @@ func (self *BlockStorage) GetBlock(blockId eth.BlockHash) (*eth.Block, error) {
 	return &block, nil
 }
 
-func (self *BlockStorage) SetImmutableBlockId(imutableBlockId eth.BlockHash) error {
-	_, err := self.collection.UpsertId(immutableBlockDocumentId, bson.M{"immutable_block": imutableBlockId})
+func (self *BlockStorage) SetLastSeenBlock(blockHash eth.BlockHash) error {
+	_, err := self.collection.UpsertId(lastSeenBlockDocumentId, bson.M{"last_seen_block_hash": blockHash})
 
-	return reportError(self, err, "write immutable block id failed")
+	return reportError(self, err, "write last seen block hash failed")
 }
 
-func (self *BlockStorage) GetImmutableBlockId() (*eth.BlockHash, error) {
-	var immutableBlockDoc bson.M
-	err := self.collection.FindId(immutableBlockDocumentId).One(&immutableBlockDoc)
+func (self *BlockStorage) GetLastSeenBlock() (eth.BlockHash, error) {
+	result := eth.BlockHash{}
+
+	var doc bson.M
+	err := self.collection.FindId(lastSeenBlockDocumentId).One(&doc)
 	if err != nil {
-		return nil, reportError(self, err, "read immutable block id failed")
+		return result, reportError(self, err, "read last seen block failed")
 	}
 
-	blockHash := new(eth.BlockHash)
-	blockHash.SetBytes(immutableBlockDoc["immutable_block"].([]byte))
-	return blockHash, nil
+	result.SetBytes(doc["last_seen_block_hash"].([]byte))
+	return result, nil
 }

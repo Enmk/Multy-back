@@ -12,25 +12,26 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/Multy-io/Multy-back/types"
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/jekabolt/slf"
+
+	common "github.com/Multy-io/Multy-back/common"
 )
 
 const gWei = 1000000000
 
 // RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
 type RPCTransaction struct {
-	BlockHash        common.Hash     `json:"blockHash"`
+	BlockHash        gethcommon.Hash     `json:"blockHash"`
 	BlockNumber      *hexutil.Big    `json:"blockNumber"`
-	From             common.Address  `json:"from"`
+	From             gethcommon.Address  `json:"from"`
 	Gas              hexutil.Uint64  `json:"gas"`
 	GasPrice         *hexutil.Big    `json:"gasPrice"`
-	Hash             common.Hash     `json:"hash"`
+	Hash             gethcommon.Hash     `json:"hash"`
 	Input            hexutil.Bytes   `json:"input"`
 	Nonce            hexutil.Uint64  `json:"nonce"`
-	To               *common.Address `json:"to"`
+	To               *gethcommon.Address `json:"to"`
 	TransactionIndex hexutil.Uint    `json:"transactionIndex"`
 	Value            *hexutil.Big    `json:"value"`
 	V                *hexutil.Big    `json:"v"`
@@ -38,12 +39,12 @@ type RPCTransaction struct {
 	S                *hexutil.Big    `json:"s"`
 }
 
-func (c *Client) AddTransactionToTxpool(txHash string) {
+func (c *NodeClient) AddTransactionToTxpool(txHash string) {
 	rawTx, err := c.Rpc.EthGetTransactionByHash(txHash)
 	if err != nil {
 		log.Errorf("c.Rpc.EthGetTransactionByHash:Get TX Err: %s", err.Error())
 	}
-	c.parseETHTransaction(*rawTx, -1, false)
+	c.HandleEthTransaction(*rawTx, nil, false)
 
 	//c.parseETHMultisig(*rawTx, -1, false)
 
@@ -51,14 +52,13 @@ func (c *Client) AddTransactionToTxpool(txHash string) {
 	if rawTx.GasPrice.IsUint64() {
 		c.Mempool.Store(rawTx.Hash, rawTx.GasPrice.Uint64())
 	}
-
 }
 
-func (c *Client) DeleteTxpoolTransaction(txHash string) {
+func (c *NodeClient) DeleteTxpoolTransaction(txHash string) {
 	c.Mempool.Delete(txHash)
 }
 
-func (c *Client) ReloadTxPool() error {
+func (c *NodeClient) ReloadTxPool() error {
 
 	mp, err := c.GetAllTxPool()
 	if err != nil {
@@ -94,6 +94,7 @@ func (c *Client) ReloadTxPool() error {
 			nonce_uint, err := strconv.ParseUint(nonce, 10, 64)
 			if err != nil {
 				log.Errorf("Impossible to convert nonce to int. Expected value: %v, Error: %v", nonce, err)
+				continue
 			}
 			if nonce_min > nonce_uint {
 				nonce_min = nonce_uint
@@ -105,7 +106,7 @@ func (c *Client) ReloadTxPool() error {
 		mempool.Store(hash, gasPrice)
 		length++
 	}
-	log.Debugf("length adderss with tx : %v", length)
+	log.Debugf("Number of valid mempool transactions: %v", length)
 	length = 0
 	mempool.Range(func(_, _ interface{}) bool {
 		length++
@@ -117,11 +118,11 @@ func (c *Client) ReloadTxPool() error {
 	return nil
 }
 
-func (c *Client) EstimateTransactionGasPrice() types.TransactionFeeRateEstimation {
+func (c *NodeClient) EstimateTransactionGasPrice() common.TransactionFeeRateEstimation {
 	return estimateTransactionGasPriceFromTxpool(c.Mempool, uint64(gWei))
 }
 
-func estimateTransactionGasPriceFromTxpool(mempool *sync.Map, minReturnValue uint64) types.TransactionFeeRateEstimation {
+func estimateTransactionGasPriceFromTxpool(mempool *sync.Map, minReturnValue uint64) common.TransactionFeeRateEstimation {
 	var fees []uint64
 	mempool.Range(func(_, v interface{}) bool {
 		amount, err := v.(uint64)
@@ -145,7 +146,7 @@ func estimateTransactionGasPriceFromTxpool(mempool *sync.Map, minReturnValue uin
 	if len(fees) > 500 {
 		var firstPack int = len(fees) / 10
 		var step int = (len(fees) - firstPack) / 4
-		return types.TransactionFeeRateEstimation{
+		return common.TransactionFeeRateEstimation{
 			VeryFast: max(average(fees[:firstPack]), minReturnValue),
 			Fast:     max(average(fees[firstPack:(firstPack+1*step)]), minReturnValue),
 			Medium:   max(average(fees[(firstPack+1*step):(firstPack+2*step)]), minReturnValue),
@@ -153,7 +154,7 @@ func estimateTransactionGasPriceFromTxpool(mempool *sync.Map, minReturnValue uin
 			VerySlow: max(average(fees[(firstPack+3*step):]), minReturnValue),
 		}
 	}
-	return types.TransactionFeeRateEstimation{
+	return common.TransactionFeeRateEstimation{
 		VerySlow: 9 * gWei,
 		Slow:     10 * gWei,
 		Medium:   14 * gWei,

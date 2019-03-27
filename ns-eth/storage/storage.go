@@ -20,7 +20,7 @@ type Storage struct {
 }
 
 type Config struct {
-	Address string
+	URL      string
 	Password string
 	Username string
 	Database string
@@ -33,7 +33,7 @@ func (self *Storage) getErrorContext() string {
 
 func NewStorage(config Config) (*Storage, error) {
 	mongoDBDial := mgo.DialInfo{
-		Addrs:		[]string{config.Address},
+		Addrs:		[]string{config.URL},
 		Username:	config.Username,
 		Password:	config.Password,
 		Timeout:	config.Timeout,
@@ -51,10 +51,15 @@ func NewStorage(config Config) (*Storage, error) {
 	})
 
 	db := dbSession.DB(config.Database)
+	blockStorage, err := NewBlockStorage(db.C(blockCollectionName))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Storage{
 		db,
 		NewAddressStorage(db.C(addressCollectionName)),
-		NewBlockStorage(db.C(blockCollectionName)),
+		blockStorage,
 		NewTransactionStorage(db.C(transactionCollectionName)),
 	}, nil
 }

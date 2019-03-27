@@ -4,10 +4,10 @@ import (
 	"context"
 
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	typeseth "github.com/Multy-io/Multy-back/types/eth"
+	typeseth "github.com/Multy-io/Multy-back/common/eth"
 )
 
-func (self *ETHConn) GetAddressInfo(address typeseth.Address) (typeseth.AddressInfo, error) {
+func (self *EthController) GetAddressInfo(address typeseth.Address) (typeseth.AddressInfo, error) {
 	addressInfo, err := self.GRPCClient.GetAddressInfo(context.Background(), &pb.Address{
 		Address: address.Hex(),
 	})
@@ -33,7 +33,7 @@ func (self *ETHConn) GetAddressInfo(address typeseth.Address) (typeseth.AddressI
 	}, nil
 }
 
-func (self *ETHConn) ResyncAddress(address typeseth.Address) error {
+func (self *EthController) ResyncAddress(address typeseth.Address) error {
 	_, err := self.GRPCClient.ResyncAddress(context.Background(), &pb.Address{
 		Address: address.Hex(),
 	})

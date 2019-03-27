@@ -4,7 +4,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	mgo "gopkg.in/mgo.v2"
 
-	eth "github.com/Multy-io/Multy-back/types/eth"
+	eth "github.com/Multy-io/Multy-back/common/eth"
 )
 
 type TransactionStorage struct {
@@ -32,7 +32,7 @@ func (self *TransactionStorage) GetTransaction(transactionId eth.TransactionHash
 }
 
 func (self *TransactionStorage) AddTransaction(transaction eth.TransactionWithStatus) error {
-	_, err := self.collection.UpsertId(transaction.ID, &transaction);
+	_, err := self.collection.UpsertId(transaction.Hash, &transaction);
 
 	return reportError(self, err, "write transaction failed")
 }

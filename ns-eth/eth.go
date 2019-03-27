@@ -14,25 +14,39 @@ import (
 	"github.com/onrik/ethrpc"
 	_ "github.com/jekabolt/slflog"
 	
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 )
 
+type AddressLookup interface {
+	IsKnownAddress(address eth.Address) bool
+}
+
+type TransactionHandler interface {
+	HandleTransaction(eth.Transaction)
+}
+
+type BlockHandler interface {
+	HandleBlock(eth.BlockHeader)
+}
+
 // TODO: rename to NodeClient
-type Client struct {
-	Rpc                *ethrpc.EthRPC
-	Client             *rpc.Client
-	config             *Conf
-	TransactionsStream chan eth.Transaction
-	BlockStream        chan pb.BlockHeight
-	RPCStream          chan interface{}
-	Done               <-chan interface{}
-	Stop               chan struct{}
-	ready              chan struct{} // signalled once when the client is ready
-	UsersData          *sync.Map
-	AbiClient          *ethclient.Client
-	Mempool            *sync.Map
-	MempoolReloadBlock int
+type NodeClient struct {
+	Rpc                 *ethrpc.EthRPC
+	Client              *rpc.Client
+	config              *Conf
+	transactionsStream  chan eth.Transaction
+	blockStream         chan eth.BlockHeader
+	subscriptionsStream chan interface{}
+	Done                <-chan interface{}
+	Stop                chan struct{}
+	ready               chan struct{} // signalled once when the client is ready
+	AbiClient           *ethclient.Client
+	Mempool             *sync.Map
+	MempoolReloadBlock  int
+
+	addressLookup      AddressLookup
+	transactionHandler TransactionHandler
+	blockHandler       BlockHandler
 }
 
 type Conf struct {
@@ -42,41 +56,42 @@ type Conf struct {
 	WsOrigin string
 }
 
-func NewClient(conf *Conf, usersData *sync.Map) *Client {
+func NewClient(conf *Conf, addressLookup AddressLookup, txHandler TransactionHandler, blockHandler BlockHandler) *NodeClient {
 
-	c := &Client{
+	c := &NodeClient{
 		config:             conf,
-		TransactionsStream: make(chan eth.Transaction),
-		BlockStream:        make(chan pb.BlockHeight),
+		transactionsStream: make(chan eth.Transaction, 1000),
+		blockStream:        make(chan eth.BlockHeader, 10),
 		Done:               make(chan interface{}),
 		Stop:               make(chan struct{}),
 		ready:              make(chan struct{}, 1), // writing a single event shouldn't block even if nobody listens.
-		UsersData:          usersData,
 		Mempool:            &sync.Map{},
+		addressLookup:      addressLookup,
+		transactionHandler: txHandler,
+		blockHandler:       blockHandler,
 	}
 
 	go c.RunProcess()
 	return c
 }
 
-func (c *Client) Shutdown() {
+func (c *NodeClient) Shutdown() {
 	log.Info("Closing connection to ETH Node.")
 	c.Client.Close()
 }
 
 func waitForSubCancellation(sub *rpc.ClientSubscription, name string) error {
-	for {
-		select {
-		case err := <-sub.Err():
-			log.Warnf("Got a subscription error on %s: %+v", name, err)
-			return err
-		}
-	}
-	return nil
+	err, _ := <-sub.Err()
+	log.Warnf("Got a subscription error on %s: %+v", name, err)
+	return err
 }
 
-func (c *Client) RunProcess() error {
+func (c *NodeClient) RunProcess() error {
 	log.Info("Run ETH Process")
+
+	go c.processBlocks()
+	go c.processTransactions()
+
 	c.Rpc = ethrpc.NewEthRPC("http" + c.config.Address + c.config.RpcPort)
 	log.Infof("ETH RPC Connection %s", "http"+c.config.Address+c.config.RpcPort)
 
@@ -102,17 +117,17 @@ func (c *Client) RunProcess() error {
 	c.Client = client
 	log.Infof("ETH RPC Connection %s", "ws"+c.config.Address+c.config.WsPort)
 
-	c.RPCStream = make(chan interface{})
+	c.subscriptionsStream = make(chan interface{})
 
 	// Subscribe to node events, for details see https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
 	// TODO: handle errors via context.Err() channel
-	sub1, err := c.Client.Subscribe(context.Background(), "eth", c.RPCStream, "newHeads")
+	sub1, err := c.Client.Subscribe(context.Background(), "eth", c.subscriptionsStream, "newHeads")
 	if err != nil {
 		log.Errorf("Run: client.Subscribe: newHeads %s", err.Error())
 		return err
 	}
 
-	sub2, err := c.Client.Subscribe(context.Background(), "eth", c.RPCStream, "newPendingTransactions")
+	sub2, err := c.Client.Subscribe(context.Background(), "eth", c.subscriptionsStream, "newPendingTransactions")
 	if err != nil {
 		log.Errorf("Run: client.Subscribe: newPendingTransactions %s", err.Error())
 		return err
@@ -127,12 +142,13 @@ func (c *Client) RunProcess() error {
 	c.ready <- struct{}{}
 
 	for {
-		switch v := (<-c.RPCStream).(type) {
+		switch v := (<-c.subscriptionsStream).(type) {
 		default:
 			log.Errorf("Not found type: %v", v)
 		case string:
 			go c.AddTransactionToTxpool(v)
 		case map[string]interface{}:
+			// Here in `v` we have a block, but with no transaction hashes.
 			go c.HandleNewHeadBlock(v["hash"].(string))
 		case nil:
 			// defer func() {
@@ -143,5 +159,26 @@ func (c *Client) RunProcess() error {
 			return nil
 		}
 	}
+}
 
+func (nodeClient *NodeClient) processTransactions() {
+	for {
+		tx, ok := <-nodeClient.transactionsStream
+		if !ok {
+			log.Errorf("Failed to read value from transactionsStream")
+			break
+		}
+		nodeClient.transactionHandler.HandleTransaction(tx)
+	}
+}
+
+func (nodeClient *NodeClient) processBlocks() {
+	for {
+		block, ok := <-nodeClient.blockStream
+		if !ok {
+			log.Errorf("Failed to read value from blockStream")
+			break
+		}
+		nodeClient.blockHandler.HandleBlock(block)
+	}
 }

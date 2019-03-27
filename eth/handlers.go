@@ -9,10 +9,10 @@ import (
 	"context"
 
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 )
 
-func (ethcli *ETHConn) setGRPCHandlers(networkID int, accuracyRange int) {
+func (ethcli *EthController) setGRPCHandlers(networkID int, accuracyRange int) {
 
 	// TODO: Write method  transaction handler with NSQ from ns-eth
 

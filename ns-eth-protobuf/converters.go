@@ -1,14 +1,11 @@
 package nsethprotobuf
 
 import (
-	"encoding/json"
-	"math/big"
 	"github.com/pkg/errors"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 )
 
 type converterError struct {
@@ -28,7 +25,7 @@ func TransactionToProtobuf(transaction eth.Transaction) (result *ETHTransaction,
 	}()
 
 	result = &ETHTransaction{
-		Hash:     transaction.ID.Hex(),
+		Hash:     transaction.Hash.Hex(),
 		From:     transaction.Sender.Hex(),
 		To:       transaction.Receiver.Hex(),
 		Amount:   transaction.Amount.Hex(),
@@ -85,7 +82,7 @@ func TransactionFromProtobuf(transaction ETHTransaction) (result *eth.Transactio
 	}
 
 	result = &eth.Transaction{
-		ID:       common.HexToHash(transaction.Hash),
+		Hash:     eth.HexToHash(transaction.Hash),
 		Sender:   eth.HexToAddress(transaction.From),
 		Receiver: eth.HexToAddress(transaction.To),
 		Payload:  payload,
@@ -130,42 +127,23 @@ func SmartContractMethodInfoToProtobuf(methodInfo *eth.SmartContractMethodInfo) 
 		return nil
 	}
 
+	address := Address{
+		Address: methodInfo.Address.Hex(),
+	}
 	result := &SmartContractCall{
+		Address: &address,
 		Name: methodInfo.Name,
 	}
 
 	arguments := make([][]byte, 0, len(methodInfo.Arguments))
 	for i, arg := range methodInfo.Arguments {
-		value, err := json.Marshal(arg)
-		typeByte := make([]byte, 1)
-
-		switch v := arg.(type) {
-		case eth.Address, *eth.Address:
-			typeByte[0] = 'a'
-		case *big.Int:
-			typeByte[0] = 'i'
-		case big.Int:
-			typeByte[0] = 'i'
-			value, err = json.Marshal(&v)
-		case string:
-			typeByte[0] = 's'
-		case bool:
-			typeByte[0] = 'b'
-		case eth.Hash, *eth.Hash:
-			typeByte[0] = 'h'
-		default:
-			panic(converterError{errors.Errorf("unknown argument type #%d of '%s': %t",
-					i, methodInfo.Name, arg)})
-		}
-
+		value, err := eth.MarshalArgument(arg)
 		if err != nil {
-			// This is a pretty severe errors, since all values should be marshallable.
 			panic(converterError{errors.Wrapf(err,
-					"failed to marshall argument #%d of '%s'",
+					"argument #%d of '%s'",
 					i, methodInfo.Name)})
 		}
 
-		value = append(typeByte, value...)
 		arguments = append(arguments, value)
 	}
 	result.Arguments = arguments
@@ -180,53 +158,27 @@ func SmartContractMethodInfoFromProtobuf(callInfo *SmartContractCall) *eth.Smart
 
 	arguments := make([]eth.SmartContractMethodArgument, 0, len(callInfo.Arguments))
 	for i, arg := range callInfo.Arguments {
-		var value interface{}
-		if len(arg) == 0 {
-			panic(converterError{errors.Errorf("not enough data to parse argument #%d of '%s'",
+
+		value, err := eth.UnmarshalArgument(arg)
+		if err != nil {
+			panic(converterError{errors.Wrapf(err, "argument #%d of '%s'",
+					i, callInfo.Name)})
+		}
+		if value == nil {
+			panic(converterError{errors.Errorf("got nil argument instance for argument #%d of '%s'",
 					i, callInfo.Name)})
 		}
 
-		t := arg[0]
-		data := arg[1:]
-		var err error
+		arguments = append(arguments, *value)
+	}
 
-		switch t {
-		case 'a':
-			a := *new(eth.Address)
-			err = json.Unmarshal(data, &a)
-			value = a
-		case 'i':
-			i := new(big.Int)
-			err = json.Unmarshal(data, i)
-			value = *i
-		case 's':
-			s := string("")
-			err = json.Unmarshal(data, &s)
-			value = s
-		case 'b':
-			b := bool(false)
-			err = json.Unmarshal(data, &b)
-			value = b
-		case 'h':
-			h := eth.Hash{}
-			err = json.Unmarshal(data, &h)
-			value = h
-		default:
-			panic(converterError{errors.Errorf("unknown argument type #%d of '%s': %c",
-					i, callInfo.Name, t)})
-		}
-
-		if err != nil {
-			// This is a pretty severe errors, since all values should be marshallable.
-			panic(converterError{errors.Wrapf(err,
-					"failed to unmarshall argument #%d of '%s' into %+#v",
-					i, callInfo.Name, value)})
-		}
-
-		arguments = append(arguments, value)
+	var address eth.Address
+	if callInfo.Address != nil {
+		address = eth.HexToAddress(callInfo.Address.Address)
 	}
 
 	return &eth.SmartContractMethodInfo{
+		Address:   address,
 		Name:      callInfo.Name,
 		Arguments: arguments,
 	}

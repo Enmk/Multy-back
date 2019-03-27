@@ -84,7 +84,6 @@ type UserStore interface {
 
 	FindAllUserETHTransactions(sel bson.M) ([]TransactionETH, error)
 	FindUserDataChain(CurrencyID, NetworkID int) (map[string]AddressExtended, error)
-	FindUsersContractsChain(CurrencyID, NetworkID int) (map[string]string, error)
 
 	FetchUserAddresses(currencyID, networkID int, userid string, addreses []string) (AddressExtended, error)
 
@@ -96,7 +95,6 @@ type UserStore interface {
 	CheckAddWallet(wp *WalletParams, jwt string) error
 
 	CheckTx(tx string) bool
-	GetUsersReceiverAddressesByUserIds(userIds []string) ([]StartupReceiver, error)
 }
 
 type MongoUserStore struct {
@@ -192,23 +190,6 @@ func (mStore *MongoUserStore) FindUserDataChain(CurrencyID, NetworkID int) (map[
 	return usersData, nil
 }
 
-func (mStore *MongoUserStore) FindUsersContractsChain(CurrencyID, NetworkID int) (map[string]string, error) {
-	users := []User{}
-	UsersContracts := map[string]string{} // addres -> factory address
-	err := mStore.usersData.Find(nil).All(&users)
-	if err != nil {
-		return UsersContracts, err
-	}
-	for _, user := range users {
-		for _, multisig := range user.Multisigs {
-			if multisig.CurrencyID == CurrencyID && multisig.NetworkID == NetworkID {
-				UsersContracts[multisig.ContractAddress] = multisig.FactoryAddress
-			}
-		}
-	}
-	return UsersContracts, nil
-}
-
 func (mStore *MongoUserStore) FetchUserAddresses(currencyID, networkID int, userid string, addreses []string) (AddressExtended, error) {
 	user := User{}
 	err := mStore.usersData.Find(bson.M{"userID": userid}).One(&user)
@@ -239,38 +220,6 @@ func (mStore *MongoUserStore) FetchUserAddresses(currencyID, networkID int, user
 		}
 	}
 	return AddressExtended{}, nil
-}
-
-func (mStore *MongoUserStore) GetUsersReceiverAddressesByUserIds(userIds []string) ([]StartupReceiver, error) {
-	users := []User{}
-	receivers := []StartupReceiver{}
-
-	err := mStore.usersData.Find(bson.M{"userID": bson.M{"$in": userIds}}).All(&users)
-	if err != nil {
-		return receivers, err
-	}
-
-	for _, user := range users {
-		receiverStruct := StartupReceiver{
-			ID: user.UserID,
-		}
-
-		for _, wallet := range user.Wallets {
-			if wallet.Status == WalletStatusOK {
-				for _, address := range wallet.Adresses {
-					receiverStruct.SupportedAddresses = append(receiverStruct.SupportedAddresses, SupportedAddress{
-						CurrencyID: wallet.CurrencyID,
-						NetworkID:  wallet.NetworkID,
-						Address:    address.Address,
-					})
-				}
-			}
-		}
-
-		receivers = append(receivers, receiverStruct)
-	}
-
-	return receivers, nil
 }
 
 func (mStore *MongoUserStore) ConvertToBroken(addresses []string, userid string) {

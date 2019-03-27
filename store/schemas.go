@@ -6,12 +6,7 @@ See LICENSE for details
 package store
 
 import (
-	"errors"
-	"fmt"
-	"reflect"
 	"time"
-
-	gosocketio "github.com/graarh/golang-socketio"
 )
 
 const (
@@ -83,7 +78,6 @@ type User struct {
 	SeedPhraseType int        `bson:"seedPhraseType"`
 	Devices        []Device   `bson:"devices"` // All user devices
 	Wallets        []Wallet   `bson:"wallets"` // All user addresses in all chains
-	Multisigs      []Multisig `bson:"multisig"`
 }
 
 type BTCTransaction struct {
@@ -284,15 +278,6 @@ type WalletParams struct {
 	IsImported   bool   `json:"isImported"`
 }
 
-type MultisigWallet struct {
-	IsMultisig         bool   `json:"isMultisig"`
-	SignaturesRequired int    `json:"signaturesRequired"`
-	OwnersCount        int    `json:"ownersCount"`
-	InviteCode         string `json:"inviteCode"`
-	IsImported         bool   `json:"isImported"`
-	ContractAddress    string `json:"contractAddress"`
-}
-
 // type EtherscanResp struct {
 // 	Status  string               `json:"status"`
 // 	Message string               `json:"message"`
@@ -348,45 +333,11 @@ type TransactionETH struct {
 	StockExchangeRate []ExchangeRatesRecord `json:"stockexchangerate"`
 }
 
-type MultisigTx struct {
-	Contract         string         `json:"contract,omitempty"`
-	MethodInvoked    string         `json:"methodinvoked,omitempty"`
-	Input            string         `json:"input"`
-	InvocationStatus bool           `json:"invocationstatus"`
-	RequestID        int64          `json:"requestid"`
-	Return           string         `json:"return,omitempty"`
-	Owners           []OwnerHistory `json:"owners,omitempty"`
-	Confirmed        bool           `json:"confirmed"`
-}
-
 type ERC20Tx struct {
 	From            string `json:"from"`
 	To              string `json:"to"`
 	ContractAddress string `json:"ContractAddress"`
 	Value           string `json:"value"`
-}
-
-type Multisig struct {
-	CurrencyID      int               `bson:"currencyid" json:"currencyid"`
-	NetworkID       int               `bson:"networkid" json:"networkid"`
-	Confirmations   int               `bson:"confirmations" json:"confirmations"`
-	WalletName      string            `bson:"walletName" json:"walletName"`
-	FactoryAddress  string            `bson:"factoryAddress" json:"factoryAddress"`
-	ContractAddress string            `bson:"contractAddress" json:"contractAddress"`
-	TxOfCreation    string            `bson:"txOfCreation" json:"txOfCreation"`
-	LastActionTime  int64             `bson:"lastActionTime" json:"lastActionTime"`
-	DateOfCreation  int64             `bson:"dateOfCreation" json:"dateOfCreation"`
-	Owners          []AddressExtended `bson:"owners" json:"owners"`
-	DeployStatus    int               `bson:"deployStatus" json:"deployStatus"`
-	Status          string            `bson:"status" json:"status"`
-	InviteCode      string            `bson:"inviteCode" json:"inviteCode"`
-	OwnersCount     int               `bson:"ownersCount" json:"ownersCount"`
-	Imported        bool              `bson:"imported" json:"imported"`
-}
-
-type MultisigExtended struct {
-	Multisig      Multisig `json:"multisig" bson:"multisig"`
-	KickedAddress string   `json:"kickedAddress" bson:"kickedAddress"`
 }
 
 type OwnerHistory struct {
@@ -448,13 +399,6 @@ type Donation struct {
 	Status    int    `json:"status"`
 }
 
-type ServiceInfo struct {
-	Branch    string
-	Commit    string
-	Buildtime string
-	Lasttag   string
-}
-
 type MobileVersions struct {
 	Android struct {
 		Hard int `json:"hard"`
@@ -466,47 +410,10 @@ type MobileVersions struct {
 	} `json:"ios"`
 }
 
-type Receiver struct {
-	ID         string `json:"userid"`
-	UserCode   string `json:"usercode"`
-	CurrencyID int    `json:"currencyid"`
-	NetworkID  int    `json:"networkid"`
-	Address    string `json:"address"`
-	Amount     string `json:"amount"`
-	Socket     *gosocketio.Channel
-}
-
-type StartupReceiver struct {
-	ID                 string             `json:"userid"`
-	UserCode           string             `json:"usercode"`
-	SupportedAddresses []SupportedAddress `json:"supportedAddresses,omitempty"`
-	Socket             *gosocketio.Channel
-}
-
 type SupportedAddress struct {
 	CurrencyID int    `json:"currencyid"`
 	NetworkID  int    `json:"networkid"`
 	Address    string `json:"address"`
-}
-
-type Sender struct {
-	ID       string `json:"userid"`
-	UserCode string `json:"usercode"`
-	Visible  map[string]bool
-	Socket   *gosocketio.Channel
-}
-
-type ReceiverInData struct {
-	ID         string `json:"userid"`
-	CurrencyID int    `json:"currencyid"`
-	Amount     int64  `json:"amount"`
-	UserCode   string `json:"usercode"`
-}
-
-type SenderInData struct {
-	Code    string   `json:"usercode"`
-	UserID  string   `json:"userid"`
-	Visible []string `json:"userid"`
 }
 
 type PaymentData struct {
@@ -514,10 +421,6 @@ type PaymentData struct {
 	ToID       string `json:"toid"`
 	CurrencyID int    `json:"currencyid"`
 	Amount     int64  `json:"amount"`
-}
-
-type NearVisible struct {
-	IDs []string `json:"ids"`
 }
 
 type RawHDTx struct {
@@ -555,17 +458,6 @@ type WsResponse struct {
 	Payload interface{} `bson:"payload"`
 }
 
-type MultisigMsg struct {
-	UserID        string `json:"userid"`
-	Address       string `json:"address"`
-	InviteCode    string `json:"invitecode"`
-	AddressToKick string `json:"addresstokick,omitempty"`
-	WalletIndex   int    `json:"walletindex"`
-	CurrencyID    int    `json:"currencyid"`
-	NetworkID     int    `json:"networkid"`
-	TxID          string `json:"txid,omitempty"`
-}
-
 type BtcComResp struct {
 	Data struct {
 		TotalCount int `json:"total_count"`
@@ -589,36 +481,4 @@ type BrowserDefault struct {
 	URL        string `json:"url"`
 	CurrencyID int    `json:"currencyid"`
 	NetworkID  int    `json:"networkid"`
-}
-
-func (s *MultisigMsg) FillStruct(m map[string]interface{}) error {
-	for k, v := range m {
-		err := SetField(s, k, v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func SetField(obj interface{}, name string, value interface{}) error {
-	structValue := reflect.ValueOf(obj).Elem()
-	structFieldValue := structValue.FieldByName(name)
-
-	if !structFieldValue.IsValid() {
-		return fmt.Errorf("No such field: %s in obj", name)
-	}
-
-	if !structFieldValue.CanSet() {
-		return fmt.Errorf("Cannot set %s field value", name)
-	}
-
-	structFieldType := structFieldValue.Type()
-	val := reflect.ValueOf(value)
-	if structFieldType != val.Type() {
-		return errors.New("Provided value type didn't match obj field type")
-	}
-
-	structFieldValue.Set(val)
-	return nil
 }

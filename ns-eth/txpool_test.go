@@ -5,14 +5,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Multy-io/Multy-back/types"
+	"github.com/Multy-io/Multy-back/common"
 )
 
 func TestEstimateGasPrice(t *testing.T) {
 	// test empty map
 	mempoolTransactionGasPrices := &sync.Map{}
 	actualEstimation := estimateTransactionGasPriceFromTxpool(mempoolTransactionGasPrices, 1)
-	expectedEstimation := types.TransactionFeeRateEstimation{
+	expectedEstimation := common.TransactionFeeRateEstimation{
 		VerySlow: 9 * 1000000000,
 		Slow:     10 * 1000000000,
 		Medium:   14 * 1000000000,
@@ -42,7 +42,7 @@ func TestEstimateGasPrice(t *testing.T) {
 		mempoolTransactionGasPrices.Store(strconv.FormatUint(i, 10)+"1", i)
 	}
 
-	expectedEstimation = types.TransactionFeeRateEstimation{
+	expectedEstimation = common.TransactionFeeRateEstimation{
 		VerySlow: 67,
 		Slow:     202,
 		Medium:   337,
@@ -61,7 +61,7 @@ func TestEstimateGasPrice(t *testing.T) {
 		mempoolTransactionGasPrices.Store(strconv.FormatUint(i, 10)+"1", i)
 	}
 
-	expectedEstimation = types.TransactionFeeRateEstimation{
+	expectedEstimation = common.TransactionFeeRateEstimation{
 		VerySlow: 846,
 		Slow:     1139,
 		Medium:   1431,

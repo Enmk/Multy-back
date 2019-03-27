@@ -5,11 +5,11 @@ import (
 
 	"os"
 	"log"
-	"reflect"
 	"time"
+	"math/rand"
 
 	mgo "gopkg.in/mgo.v2"
-	eth "github.com/Multy-io/Multy-back/types/eth"
+	eth "github.com/Multy-io/Multy-back/common/eth"
 	. "github.com/Multy-io/Multy-back/tests"
 	. "github.com/Multy-io/Multy-back/tests/eth"
 )
@@ -17,22 +17,31 @@ import (
 var (
 	config Config
 
-	mockTransaction = eth.Transaction{
-		ID: mockTransactionId,
-		Sender: ToAddress("sender"),
-		Receiver: ToAddress("receiver"),
-		Payload: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-		Amount: *eth.NewAmountFromInt64(1337),
-		Nonce: 42,
-		Fee : eth.TransactionFee{
-			GasLimit: 10000,
-			GasPrice: 100*eth.GWei,
-		},
-	}
+	// mockTransaction = eth.Transaction{
+	// 	ID: mockTransactionId,
+	// 	Sender: ToAddress("sender"),
+	// 	Receiver: ToAddress("receiver"),
+	// 	Payload: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+	// 	Amount: *eth.NewAmountFromInt64(1337),
+	// 	Nonce: 42,
+	// 	Fee : eth.TransactionFee{
+	// 		GasLimit: 10000,
+	// 		GasPrice: 100*eth.GWei,
+	// 	},
+	// }
+	mockTransaction = SampleTransaction()
 
 	mockTransactionId = ToTxHash("mock transaction id")
 	mockBlockId = ToBlockHash("mock block id")
 	mockAddress = ToAddress("mock address")
+
+	mockBlockHeader = eth.BlockHeader{
+		Hash:     ToBlockHash("mock block hash in header"),
+		Height: 1337000,
+		Parent: ToBlockHash("mock block hash of parent in header"),
+		//looks like bson marshaling/unmarshaling looses fraction of seconds
+		Time:   time.Unix(time.Now().Unix(), 0), 
+	}
 )
 
 func newEmptyStorage(test *testing.T) *Storage {
@@ -59,7 +68,7 @@ func newEmptyStorage(test *testing.T) *Storage {
 
 func TestMain(m *testing.M) {
 	config = Config{
-		Address: GetenvOrDefault("MONGO_DB_ADDRESS", "localhost:27017"),
+		URL:      GetenvOrDefault("MONGO_DB_ADDRESS", "localhost:27017"),
 		Username: GetenvOrDefault("MONGO_DB_USER", ""),
 		Password: GetenvOrDefault("MONGO_DB_PASSWORD", ""),
 		Database: GetenvOrDefault("MONGO_DB_DATABASE_NS_STORE", "ns_test_db"),
@@ -87,12 +96,12 @@ func TestBlockStorage(test *testing.T) {
 
 	expectedBlock := eth.Block{
 		BlockHeader: eth.BlockHeader{
-			ID: mockBlockId,
+			Hash: mockBlockId,
 			Height: 10,
 			Parent: ToBlockHash("mock block parent"),
 		},
-		Transactions: []eth.Transaction{
-			mockTransaction,
+		Transactions: []eth.TransactionHash{
+			mockTransaction.Hash,
 		},
 	}
 
@@ -102,26 +111,26 @@ func TestBlockStorage(test *testing.T) {
 		test.Fatalf("failed to add a block: %+v", err)
 	}
 
-	actualBlock, err := storage.BlockStorage.GetBlock(expectedBlock.ID)
+	actualBlock, err := storage.BlockStorage.GetBlock(expectedBlock.Hash)
 	if err != nil {
 		test.Fatalf("failed to get block: %+v", err)
 	}
 
-	if !reflect.DeepEqual(*actualBlock, expectedBlock) {
-		test.Fatalf("block : expected(%+v) != actual(%+v)", expectedBlock, actualBlock)
+	if equal, l, r := TestEqual(*actualBlock, expectedBlock); !equal {
+		test.Fatalf("block: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
 	}
 
 	// Check that RemoveBlock removes
-	err = storage.BlockStorage.RemoveBlock(expectedBlock.ID)
+	err = storage.BlockStorage.RemoveBlock(expectedBlock.Hash)
 	if err != nil {
 		test.Fatalf("failed to delete block: %+v", err)
 	}
 	// Second remove fails
-	if _, ok := storage.BlockStorage.RemoveBlock(expectedBlock.ID).(ErrorNotFound); !ok {
+	if _, ok := storage.BlockStorage.RemoveBlock(expectedBlock.Hash).(ErrorNotFound); !ok {
 		test.Fatalf("Expected storage.ErrorNotFound on already deleted block, got: %+v", err)
 	}
 	// Get fails after removal
-	_, err = storage.BlockStorage.GetBlock(expectedBlock.ID)
+	_, err = storage.BlockStorage.GetBlock(expectedBlock.Hash)
 	if _, ok := err.(ErrorNotFound); !ok {
 		test.Fatalf("Expected storage.ErrorNotFound on getting non-existing block form DB, got: %+v", err)
 	}
@@ -143,24 +152,78 @@ func TestBlockStorageEmpty(test *testing.T) {
 	}
 }
 
-func TestBlockStorageImmutableBlock(test *testing.T) {
+func randomHash() eth.Hash {
+	l := len(eth.Hash{})
+	result := make([]byte, l)
+
+	for i := 0; i < l; i++ {
+		result[i] = byte(rand.Int31n(255))
+	}
+
+	return ToBlockHash(string(result))
+}
+
+func TestBlockStorageManyBlocks(test *testing.T) {
 	storage := newEmptyStorage(test)
 	defer storage.Close()
 
-	expectedImmutableBlockID := ToBlockHash("immutable block id")
-	err := storage.BlockStorage.SetImmutableBlockId(expectedImmutableBlockID)
+	sampleBlock := eth.Block{
+		BlockHeader: mockBlockHeader,
+		Transactions: []eth.TransactionHash{
+			mockTransaction.Hash,
+		},
+	}
+
+	blocks := make([]eth.Block, 0, 100)
+
+	prevBlockHash := sampleBlock.BlockHeader.Parent
+	for i := 0; i < 100; i++ {
+		block := sampleBlock
+		block.BlockHeader.Hash = randomHash()
+		block.BlockHeader.Height++
+		block.BlockHeader.Parent = prevBlockHash
+		block.BlockHeader.Time = time.Unix(int64(i) * 1000000*1000, 0)
+
+		prevBlockHash = block.BlockHeader.Hash
+
+		for t := 0; t < 10; t++ {
+			block.Transactions = append(block.Transactions, randomHash())
+		}
+
+		err := storage.BlockStorage.AddBlock(block)
+		if err != nil {
+			test.Fatalf("failed to add a block #%d: %+v", i, err)
+		}
+
+		blocks = append(blocks, block)
+	}
+
+	for _, expectedBlock := range blocks {
+		actualBlock, err := storage.BlockStorage.GetBlock(expectedBlock.Hash)
+		if err != nil {
+			test.Fatalf("Faield to get block: %+v", err)
+		}
+
+		AssertEqual(test, expectedBlock, *actualBlock)
+	}
+}
+
+func TestBlockStorageLastSeenBlock(test *testing.T) {
+	storage := newEmptyStorage(test)
+	defer storage.Close()
+
+	expectedBlockHeader := mockBlockHeader
+	err := storage.BlockStorage.SetLastSeenBlock(expectedBlockHeader.Hash)
 	if err != nil {
 		test.Fatalf("failed to set immutable block: %+v", err)
 	}
 
-	actualImmutableBlockID, err := storage.BlockStorage.GetImmutableBlockId()
+	actualBlockHash, err := storage.BlockStorage.GetLastSeenBlock()
 	if err != nil {
 		test.Fatalf("failed to get immutable block")
 	}
 
-	if expectedImmutableBlockID != *actualImmutableBlockID {
-		test.Fatalf("immutable block id: expected(%+v) != actual(%+v)", expectedImmutableBlockID, actualImmutableBlockID)
-	}
+	AssertEqual(test, expectedBlockHeader.Hash, actualBlockHash)
 }
 
 func TestAddressStorage(test *testing.T) {
@@ -271,13 +334,13 @@ func TestTransactionStorage(test *testing.T) {
 		test.Fatalf("failed to save transaction to the DB second time: %+v", err)
 	}
 
-	actualTx, err := storage.TransactionStorage.GetTransaction(expectedTx.ID)
+	actualTx, err := storage.TransactionStorage.GetTransaction(expectedTx.Hash)
 	if err != nil {
 		test.Fatalf("Failed to load existing transaction from DB: %+v", err)
 	}
 
-	if !reflect.DeepEqual(expectedTx, *actualTx) {
-		test.Fatalf("transaction : expected(%+v) != actual(%+v)", expectedTx, actualTx)
+	if equal, l, r := TestEqual(expectedTx, *actualTx); !equal {
+		test.Fatalf("transaction: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
 	}
 }
 
@@ -291,12 +354,12 @@ func TestTransactionStorageTransactionStatus(test *testing.T) {
 	}
 
 	// On empty DB: should fail with storage.ErrorNotFound
-	err := storage.TransactionStorage.UpdateTransactionStatus(expectedTx.ID, eth.TransactionStatusError)
+	err := storage.TransactionStorage.UpdateTransactionStatus(expectedTx.Hash, eth.TransactionStatusError)
 	if _, ok := err.(ErrorNotFound); !ok {
 		test.Fatalf("expected storage.ErrorNotFound on updating non-existing transaction, got: %+v", err)
 	}
 
-	_, err = storage.TransactionStorage.GetTransactionStatus(expectedTx.ID)
+	_, err = storage.TransactionStorage.GetTransactionStatus(expectedTx.Hash)
 	if _, ok := err.(ErrorNotFound); !ok {
 		test.Fatalf("expected storage.ErrorNotFound on getting status of non-existing transaction, got: %+v", err)
 	}
@@ -308,7 +371,7 @@ func TestTransactionStorageTransactionStatus(test *testing.T) {
 	}
 
 	// Non-empty DB, shouldn't fail now
-	status, err := storage.TransactionStorage.GetTransactionStatus(expectedTx.ID)
+	status, err := storage.TransactionStorage.GetTransactionStatus(expectedTx.Hash)
 	if err != nil {
 		test.Fatalf("failed to get transaction status from DB: %+v", err)
 	}
@@ -318,12 +381,12 @@ func TestTransactionStorageTransactionStatus(test *testing.T) {
 
 	// Change status and verify that new value is read on next call
 	newExpectedStatus := eth.TransactionStatusError
-	err = storage.TransactionStorage.UpdateTransactionStatus(expectedTx.ID, newExpectedStatus)
+	err = storage.TransactionStorage.UpdateTransactionStatus(expectedTx.Hash, newExpectedStatus)
 	if err != nil {
 		test.Fatalf("failed to update transaction status: %+v", err)
 	}
 
-	status, err = storage.TransactionStorage.GetTransactionStatus(expectedTx.ID)
+	status, err = storage.TransactionStorage.GetTransactionStatus(expectedTx.Hash)
 	if err != nil {
 		test.Fatalf("failed to get transaction status from DB: %+v", err)
 	}
@@ -332,7 +395,7 @@ func TestTransactionStorageTransactionStatus(test *testing.T) {
 	}
 
 	// Check that whole transaction have new status too
-	transaction, err := storage.TransactionStorage.GetTransaction(expectedTx.ID)
+	transaction, err := storage.TransactionStorage.GetTransaction(expectedTx.Hash)
 	if err != nil {
 		test.Fatalf("failed to get transaction from DB: %+v", err)
 	}

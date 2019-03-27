@@ -1,4 +1,4 @@
-package server
+package nseth
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"github.com/jekabolt/slf"
 	"github.com/pkg/errors"
 
-	"github.com/Multy-io/Multy-back/types/eth"
+	"github.com/Multy-io/Multy-back/common/eth"
 	nsq "github.com/bitly/go-nsq"
 )
 
@@ -18,7 +18,7 @@ type RawTxHandler interface {
 	HandleSendRawTx(rawTx eth.RawTransaction) error
 }
 
-type ETHNSEventHandler struct {
+type EventManager struct {
 	addressNSQ            string
 	addressHandler        AddressHandler
 	rawTxHandler          RawTxHandler
@@ -28,14 +28,14 @@ type ETHNSEventHandler struct {
 	log                   slf.StructuredLogger
 }
 
-func NewEventHandler(nsqAddr string, addressHandler AddressHandler, rawTxHandler RawTxHandler) (*ETHNSEventHandler, error) {
+func NewEventManager(nsqAddr string, addressHandler AddressHandler, rawTxHandler RawTxHandler) (*EventManager, error) {
 	if addressHandler == nil {
 		return nil, errors.New("Not set addressHandler")
 	}
 	if rawTxHandler == nil {
 		return nil, errors.New("Not set rawTxHandler")
 	}
-	eventHandler := ETHNSEventHandler{
+	eventHandler := EventManager{
 		log:            slf.WithContext("ns-eth NSQ").WithCaller(slf.CallerShort),
 		addressNSQ:     nsqAddr,
 		addressHandler: addressHandler,
@@ -101,15 +101,15 @@ func NewEventHandler(nsqAddr string, addressHandler AddressHandler, rawTxHandler
 	return &eventHandler, nil
 }
 
-func (self *ETHNSEventHandler) EmitTransactionStatusEvent(tx eth.TransactionWithStatus) error {
+func (self *EventManager) EmitTransactionStatusEvent(tx eth.TransactionStatusEvent) error {
 	return self.emitEvent(eth.NSQETHTxStatus, tx)
 }
 
-func (self *ETHNSEventHandler) EmitNewBlock(block eth.BlockHeader) error {
+func (self *EventManager) EmitNewBlock(block eth.BlockHeader) error {
 	return self.emitEvent(eth.NSQETHNewBlock, block)
 }
 
-func (self *ETHNSEventHandler) emitEvent(topic string, data interface{}) error {
+func (self *EventManager) emitEvent(topic string, data interface{}) error {
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrapf(err, " error on Marshal event: %v", data)
@@ -121,7 +121,7 @@ func (self *ETHNSEventHandler) emitEvent(topic string, data interface{}) error {
 	return nil
 }
 
-func (self *ETHNSEventHandler) Close() {
+func (self *EventManager) Close() {
 	self.nsqProducer.Stop()
 	self.nsqConsumerNewAddress.Stop()
 	self.nsqConsumerRawTx.Stop()

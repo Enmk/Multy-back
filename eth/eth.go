@@ -11,29 +11,30 @@ import (
 	"google.golang.org/grpc"
 	mgo "gopkg.in/mgo.v2"
 
-	"github.com/Multy-io/Multy-back/currencies"
-	"github.com/Multy-io/Multy-back/eth/client"
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	"github.com/Multy-io/Multy-back/store"
-	"github.com/Multy-io/Multy-back/types"
 	nsq "github.com/bitly/go-nsq"
 	gosocketio "github.com/graarh/golang-socketio"
 	"github.com/jekabolt/slf"
+
+	"github.com/Multy-io/Multy-back/currencies"
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+	"github.com/Multy-io/Multy-back/store"
+	"github.com/Multy-io/Multy-back/common"
+	ethtypes "github.com/Multy-io/Multy-back/common/eth"
 )
 
-// ETHConn is a main struct of package, rename to EthController
-type ETHConn struct {
+// EthController is a main struct of package
+type EthController struct {
 	FirebaseNsqProducer *nsq.Producer // a producer for sending data to clients
 	// CliTest      pb.NodeCommunicationsClient
 	GRPCClient        pb.NodeCommunicationsClient
-	NSQClient         *client.ETHEventHandler
+	NSQClient         *EventManager
 	WatchAddress      chan UserAddress
-	blockHandler      client.EthBlockHandler
-	transactionStatus client.EthTransactionStatusHandler
-	// NSQClientTest client.ETHEventHandler
+	// blockHandler      BlockHandler
+	// transactionStatus TransactionStatusHandler
+	// NSQClientTest client.EventManager
 	// WatchAddressTest chan userAddress
 
-	ETHDefaultGasPrice types.TransactionFeeRateEstimation
+	ETHDefaultGasPrice common.TransactionFeeRateEstimation
 
 	WsServer *gosocketio.Server
 }
@@ -41,21 +42,20 @@ type ETHConn struct {
 var log = slf.WithContext("eth").WithCaller(slf.CallerShort)
 
 //InitHandlers init nsq mongo and ws connection to node
-// return main client , test client , err
-func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string) (*ETHConn, error) {
+func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string) (*EthController, error) {
 	//declare pacakge struct
-	cli := &ETHConn{}
+	controller := &EthController{}
 
-	cli.WatchAddress = make(chan UserAddress)
-	// cli.WatchAddressTest = make(chan userAddress)
+	controller.WatchAddress = make(chan UserAddress)
+	// controller.WatchAddressTest = make(chan userAddress)
 
 	config := nsq.NewConfig()
 	p, err := nsq.NewProducer(nsqAddr, config)
 	if err != nil {
-		return cli, fmt.Errorf("nsq producer: %s", err.Error())
+		return controller, fmt.Errorf("nsq producer: %s", err.Error())
 	}
 
-	cli.FirebaseNsqProducer = p
+	controller.FirebaseNsqProducer = p
 	log.Infof("InitHandlers: nsq.NewProducer: √")
 
 	addr := []string{dbConf.Address}
@@ -69,7 +69,7 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	db, err := mgo.DialWithInfo(mongoDBDial)
 	if err != nil {
 		log.Errorf("RunProcess: can't connect to DB: %s", err.Error())
-		return cli, fmt.Errorf("mgo.Dial: %s", err.Error())
+		return controller, fmt.Errorf("mgo.Dial: %s", err.Error())
 	}
 	log.Infof("InitHandlers: mgo.Dial: √")
 
@@ -95,29 +95,26 @@ func InitHandlers(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr string
 	// setup main net
 	coinTypeMain, err := store.FetchCoinType(coinTypes, currencies.Ether, currencies.ETHMain)
 	if err != nil {
-		return cli, fmt.Errorf("fetchCoinType: %s", err.Error())
+		return nil, fmt.Errorf("fetchCoinType: %s", err.Error())
 	}
 	grpcClient, err := initGrpcClient(coinTypeMain.GRPCUrl)
 	if err != nil {
-		return cli, fmt.Errorf("initGrpcClient: %s", err.Error())
+		return nil, fmt.Errorf("initGrpcClient: %s", err.Error())
 	}
 
-	cli.GRPCClient = grpcClient
+	controller.GRPCClient = grpcClient
 
-	cli.setGRPCHandlers(currencies.ETHMain, coinTypeMain.AccuracyRange)
+	controller.setGRPCHandlers(currencies.ETHMain, coinTypeMain.AccuracyRange)
 	log.Infof("InitHandlers: initGrpcClient: Main: √")
 
-	cli.blockHandler = client.EthBlockHandler{}
-	cli.transactionStatus = client.EthTransactionStatusHandler{}
-
-	cli.NSQClient, err = client.NewEventHandler(nsqAddr, &cli.blockHandler, &cli.transactionStatus)
+	controller.NSQClient, err = NewEventHandler(nsqAddr, controller, controller)
 
 	if err != nil {
 		log.Errorf("init NSQclient error: %s", err.Error())
-		return cli, err
+		return nil, err
 	}
 
-	return cli, nil
+	return controller, nil
 }
 
 func initGrpcClient(url string) (pb.NodeCommunicationsClient, error) {
@@ -132,6 +129,16 @@ func initGrpcClient(url string) (pb.NodeCommunicationsClient, error) {
 	return client, nil
 }
 
+func (controller *EthController) HandleBlock(block ethtypes.BlockHeader) error {
+	log.Infof("HandleBlock: %#v", block)
+	return nil
+}
+
+func (controller *EthController) HandleTransactionStatus(txStatus ethtypes.TransactionStatusEvent) error {
+	log.Infof("HandleTransactionStatus: %#v", txStatus)
+	return nil
+}
+
 // EthTransaction stuct for ws notifications
 type Transaction struct {
 	TransactionType int    `json:"transactionType"`
@@ -140,7 +147,7 @@ type Transaction struct {
 	Address         string `json:"address"`
 }
 
-// BtcTransactionWithUserID sub-stuct for ws notifications
+// TransactionWithUserID sub-stuct for ws notifications
 type TransactionWithUserID struct {
 	NotificationMsg *Transaction
 	UserID          string

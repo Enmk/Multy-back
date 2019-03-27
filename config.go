@@ -9,7 +9,7 @@ import (
 	"github.com/Multy-io/Multy-back/client"
 	"github.com/Multy-io/Multy-back/exchanger"
 	"github.com/Multy-io/Multy-back/store"
-	"github.com/Multy-io/Multy-back/types"
+	"github.com/Multy-io/Multy-back/common"
 )
 
 // Configuration is a struct with all service options
@@ -24,12 +24,12 @@ type Configuration struct {
 	BTCNodeAddress    string
 	DonationAddresses []store.DonationInfo
 	MultyVerison      store.ServerConfig
-	ServicesInfo      []store.ServiceInfo
+	ServicesInfo      []common.ServiceInfo
 	Secretkey         string
 	store.MobileVersions
 	BrowserDefault store.BrowserDefault
 
-	ETHDefaultGasPrice types.TransactionFeeRateEstimation
+	ETHDefaultGasPrice common.TransactionFeeRateEstimation
 
 	SupportedNodes []store.CoinType
 	Exchangers     []exchanger.BasicExchangeConfiguration

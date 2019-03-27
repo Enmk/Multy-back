@@ -12,11 +12,12 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	ns "github.com/Multy-io/Multy-back/ns-eth"
-	"github.com/Multy-io/Multy-back/store"
 	"github.com/jekabolt/config"
 	"github.com/jekabolt/slf"
 	_ "github.com/jekabolt/slflog"
+
+	ns "github.com/Multy-io/Multy-back/ns-eth"
+	"github.com/Multy-io/Multy-back/common"
 )
 
 var (
@@ -32,8 +33,10 @@ var (
 )
 
 var globalOpt = ns.Configuration{
-	CanaryTest: false,
-	Name:       "eth-node-service",
+	CanaryTest:          false,
+	Name:                "eth-node-service",
+	ImmutableBlockDepth: 50, // with block once 15 seconds, 50 blocks is approx 12.5 minutes
+	NSQURL:              "127.0.0.1:4150",
 }
 
 func main() {
@@ -42,6 +45,7 @@ func main() {
 	log.Infof("branch: %s", branch)
 	log.Infof("commit: %s", commit)
 	log.Infof("build time: %s", buildtime)
+	log.Infof("tag: %s", lasttag)
 
 	log.Info("Reading configuration...")
 	config.ReadGlobalConfig(&globalOpt, "multy configuration")
@@ -52,16 +56,17 @@ func main() {
 		return
 	}
 
-	globalOpt.ServiceInfo = store.ServiceInfo{
+	globalOpt.ServiceInfo = common.ServiceInfo{
 		Branch:    branch,
 		Commit:    commit,
 		Buildtime: buildtime,
+		Lasttag:   lasttag,
 	}
 
-	nc := ns.NodeClient{}
-	node, err := nc.Init(&globalOpt)
+	service := ns.NodeService{}
+	node, err := service.Init(&globalOpt)
 	if err != nil {
-		log.Fatalf("Server initialization: %s\n", err.Error())
+		log.Fatalf("Server initialization failed:\n%+v", err)
 	}
 	fmt.Println(node)
 

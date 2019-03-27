@@ -54,17 +54,17 @@ message BlockHeight{
     int64 height = 1;
 }
 
-message ETHTransaction {                     
-    string Hash = 1;                       
-    string From = 2;                      
-    string To = 3;  
+message ETHTransaction {
+    string Hash = 1;
+    string From = 2;
+    string To = 3;
     string Amount = 4;
     string Payload = 5;
-    uint64 GasPrice = 6;        
-    uint64 GasLimit = 7;          
-    uint64 Nonce = 8;               
-    int64 BlockTime = 9;         
-    int64 TxpoolTime = 10;        
+    uint64 GasPrice = 6;
+    uint64 GasLimit = 7;
+    uint64 Nonce = 8;
+    int64 BlockTime = 9;
+    int64 TxpoolTime = 10;
     int64 BlockHeight = 11;
     bool Resync = 12;
     SmartContractInfo ContractInfo = 13;
@@ -78,8 +78,9 @@ message SmartContractInfo {
 }
 
 message SmartContractCall {
-    string Name = 1;
-    repeated bytes Arguments = 2;
+    Address Address = 1;
+    string Name = 2;
+    repeated bytes Arguments = 3;
 }
 
 message Address {
@@ -112,6 +113,5 @@ message Empty {
 }
 
 message UsersData {
-    map<string, Address> map = 1;
-  //  map<string, string> UsersContracts = 2;
+    repeated Address addresses = 1;
 }
