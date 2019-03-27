@@ -23,7 +23,7 @@ func (c *NodeClient) HandleNewHeadBlock(hash string) {
 	// Run as goroutine to not block if channel is full.
 	go func(block *ethrpc.Block) {
 		c.blockStream <- eth.BlockHeader{
-			ID:     eth.HexToHash(block.Hash),
+			Hash:   eth.HexToHash(block.Hash),
 			Height: uint64(block.Number),
 			Parent: eth.HexToHash(block.ParentHash),
 			Time:   time.Unix(int64(block.Timestamp), 0),

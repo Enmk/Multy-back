@@ -59,7 +59,7 @@ func SampleTransaction() eth.Transaction {
 	// but converting from protobuf to eth Transaction produces value-arguments.
 	// so comparison would fail.
 	return eth.Transaction{
-		ID:       ToTxHash("mock transaction hash"),
+		Hash:     ToTxHash("mock transaction hash"),
 		Sender:   ToAddress("mock sender address"),
 		Receiver: ToAddress("mock receiver address"),
 		Payload:  []byte("mock payload"),

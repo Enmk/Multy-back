@@ -32,7 +32,7 @@ func (self *TransactionStorage) GetTransaction(transactionId eth.TransactionHash
 }
 
 func (self *TransactionStorage) AddTransaction(transaction eth.TransactionWithStatus) error {
-	_, err := self.collection.UpsertId(transaction.ID, &transaction);
+	_, err := self.collection.UpsertId(transaction.Hash, &transaction);
 
 	return reportError(self, err, "write transaction failed")
 }

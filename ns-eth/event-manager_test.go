@@ -104,9 +104,9 @@ func TestTxStatusHandler(test *testing.T) {
 	defer eventManager.Close()
 
 	expectedStatusEvent := eth.TransactionStatusEvent{
-		ID:        ToTxHash("test-ID"),
-		Status:    eth.TransactionStatusInMempool,
-		BlockHash: ToBlockHash("Block hash"),
+		TransactionHash: ToTxHash("test-ID"),
+		Status:          eth.TransactionStatusInMempool,
+		BlockHash:       ToBlockHash("Block hash"),
 	}
 
 	// Register handler for check get message
@@ -150,7 +150,7 @@ func TestBlockHandler(test *testing.T) {
 
 	var testId eth.BlockHash = ToBlockHash("zxc")
 	testBlockHeader := eth.BlockHeader{
-		ID:     testId,
+		Hash:   testId,
 		Height: 1,
 		Parent: testId,
 	}

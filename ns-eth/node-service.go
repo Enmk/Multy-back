@@ -105,7 +105,7 @@ func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
 func (service *NodeService) HandleTransaction(transaction eth.Transaction) {
 	err := service.tryHandleTransaction(transaction)
 	if err != nil {
-		 log.Errorf("Faield to handle a transaction %s : %+v", transaction.ID.Hex(), err)
+		 log.Errorf("Faield to handle a transaction %s : %+v", transaction.Hash.Hex(), err)
 	}
 }
 
@@ -130,16 +130,16 @@ func (service *NodeService) tryHandleTransaction(transaction eth.Transaction) er
 	}
 
 	return service.eventManager.EmitTransactionStatusEvent(eth.TransactionStatusEvent{
-		ID: transaction.ID,
-		Status: newStatus,
-		BlockHash: blockHash,
+		TransactionHash: transaction.Hash,
+		Status:          newStatus,
+		BlockHash:       blockHash,
 	})
 }
 
 func (service *NodeService) HandleBlock(blockHeader eth.BlockHeader) {
 	err := service.tryHandleBlock(blockHeader)
 	if err != nil {
-		log.Errorf("Faield to handle block %s : %+v", blockHeader.ID.Hex(), err)
+		log.Errorf("Faield to handle block %s : %+v", blockHeader.Hash.Hex(), err)
 	}
 }
 

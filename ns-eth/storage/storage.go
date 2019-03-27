@@ -51,10 +51,15 @@ func NewStorage(config Config) (*Storage, error) {
 	})
 
 	db := dbSession.DB(config.Database)
+	blockStorage, err := NewBlockStorage(db.C(blockCollectionName))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Storage{
 		db,
 		NewAddressStorage(db.C(addressCollectionName)),
-		NewBlockStorage(db.C(blockCollectionName)),
+		blockStorage,
 		NewTransactionStorage(db.C(transactionCollectionName)),
 	}, nil
 }

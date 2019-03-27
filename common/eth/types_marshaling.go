@@ -145,3 +145,23 @@ func (a SmartContractMethodArgument) GetBSON() (interface{}, error) {
 
 	return bson.M{"value": data}, nil
 }
+
+// Marshalling tricks: since transaction stores Amount by-value, 
+// big.Int marshalling is no applicable and Amount is marshalled as struct, merely to "Int: {}":
+// https://github.com/golang/go/issues/28946#issuecomment-441684687
+
+// MarshalJSON implements the json.Marshaler interface. 
+func (amount Amount) MarshalJSON() ([]byte, error) {
+	return []byte(amount.Hex()), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface. 
+func (amount *Amount) UnmarshalJSON(text []byte) error {
+	newAmount, err := HexToAmount(string(text))
+	if err != nil {
+		return err
+	}
+
+	*amount = newAmount
+	return nil
+}

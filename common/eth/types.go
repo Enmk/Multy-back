@@ -43,21 +43,21 @@ type AddressInfo struct {
 // Transaction is an Ethereun blockchain transaction
 
 type Transaction struct {
-	ID       TransactionHash			`json:"_id" bson:"_id"`
-	Sender   Address					`json:"sender" bson:"sender"`
-	Receiver Address					`json:"receiver" bson:"receiver"`
-	Payload  TransactionPayload			`json:"payload" bson:"payload"`
-	Amount   Amount						`json:"amount" bson:"amount"`
-	Nonce    TransactionNonce			`json:"nonce" bson:"nonce"`
-	Fee      TransactionFee				`json:"fee" bson:"fee"`
-	CallInfo *SmartContractCallInfo		`json:"call_info,omitempty" bson:"call_info,omitempty"`
-	BlockInfo *TransactionBlockInfo		`json:"block,omitempty" bson:"block,omitempty"`
+	Hash     TransactionHash			//`json:"_id" bson:"_id"`
+	Sender   Address					//`json:"sender" bson:"sender"`
+	Receiver Address					//`json:"receiver" bson:"receiver"`
+	Payload  TransactionPayload			//`json:"payload" bson:"payload"`
+	Amount   Amount						//`json:"amount" bson:"amount"`
+	Nonce    TransactionNonce			//`json:"nonce" bson:"nonce"`
+	Fee      TransactionFee				//`json:"fee" bson:"fee"`
+	CallInfo *SmartContractCallInfo		//`json:"call_info,omitempty" bson:"call_info,omitempty"`
+	BlockInfo *TransactionBlockInfo		//`json:"block,omitempty" bson:"block,omitempty"`
 }
 
 type TransactionBlockInfo struct{
-	Hash   BlockHash		`json:"hash" bson:"hash"`
-	Height uint64			`json:"height" bson:"height"`
-	Time   time.Time		`json:"time" bson:"time"`
+	Hash   BlockHash		//`json:"hash" bson:"hash"`
+	Height uint64			//`json:"height" bson:"height"`
+	Time   time.Time		//`json:"time" bson:"time"`
 }
 
 type GasLimit uint64
@@ -70,19 +70,19 @@ type TransactionFee struct {
 
 type SmartContractCallInfo struct {
 	// Status of the call
-	Status SmartContractCallStatus		`json:"status" bson:"status"`
+	Status SmartContractCallStatus		//`json:"status" bson:"status"`
 	// Method that was called, maybe null if unknown or unable to parse, may be null.
-	Method *SmartContractMethodInfo		`json:"method" bson:"method"`
+	Method *SmartContractMethodInfo		//`json:"method" bson:"method"`
 	// Events that were generated during execution, only non-removed events.
-	Events []SmartContractEventInfo		`json:"events" bson:"events"`
+	Events []SmartContractEventInfo		//`json:"events" bson:"events"`
 	// Address of new deployed contract, may be null
-	DeployedAddress *Address			`json:"deployed_address" bson:"deployed_address"`
+	DeployedAddress *Address			//`json:"deployed_address" bson:"deployed_address"`
 }
 
 type SmartContractMethodInfo struct {
-	Address Address								`json:"address" bson:"address"`
-	Name string									`json:"name" bson:"name"`
-	Arguments []SmartContractMethodArgument		`json:"arguments" bson:"arguments"`
+	Address Address								//`json:"address" bson:"address"`
+	Name string									//`json:"name" bson:"name"`
+	Arguments []SmartContractMethodArgument		//`json:"arguments" bson:"arguments"`
 }
 
 type SmartContractMethodArgument struct {
@@ -100,7 +100,7 @@ const (
 
 type TransactionWithStatus struct {
 	Transaction                   `json:",inline" bson:",inline"`
-	Status      TransactionStatus `json:"status" bson:"status"`
+	Status      TransactionStatus //`json:"status" bson:"status"`
 }
 
 // Positive values mean non-error statuses, Negative mean different error conditions
@@ -149,7 +149,7 @@ const (
 
 // BlockHeader is a header of the Ethereum blockchain block
 type BlockHeader struct {
-	ID     BlockHash	//`json:"hash" bson:"_id"`
+	Hash   BlockHash	//`json:"hash" bson:"_id"`
 	Height uint64		//`json:"height" bson:"height"`
 	Parent BlockHash	//`json:"parent_id" bson:"parent_id"`
 	Time   time.Time
@@ -158,7 +158,7 @@ type BlockHeader struct {
 // Block is an Ethereum blockchain block
 type Block struct {
 	BlockHeader  `json:",inline" bson:",inline"`
-	Transactions []Transaction `json:"transactions" bson:"transactions"`
+	Transactions []TransactionHash //`json:"transactions" bson:"transactions"`
 }
 
 func NewAmountFromInt64(value int64) *Amount {
@@ -209,24 +209,4 @@ func HexToAmount(hexString string) (Amount, error) {
 
 func (amount Amount) Hex() string {
 	return "0x" + amount.Text(16)
-}
-
-// Marshalling tricks: since transaction stores Amount by-value, 
-// big.Int marshalling is no applicable and Amount is marshalled as struct, merely to "Int: {}":
-// https://github.com/golang/go/issues/28946#issuecomment-441684687
-
-// MarshalJSON implements the json.Marshaler interface. 
-func (amount Amount) MarshalJSON() ([]byte, error) {
-	return []byte(amount.Hex()), nil
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface. 
-func (amount *Amount) UnmarshalJSON(text []byte) error {
-	newAmount, err := HexToAmount(string(text))
-	if err != nil {
-		return err
-	}
-
-	*amount = newAmount
-	return nil
 }

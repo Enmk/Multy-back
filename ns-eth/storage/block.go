@@ -2,7 +2,7 @@ package storage
 
 import (
 	mgo "gopkg.in/mgo.v2"
-	// "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 
 	eth "github.com/Multy-io/Multy-back/common/eth"
 )
@@ -23,10 +23,20 @@ type BlockStorage struct {
 	collection *mgo.Collection
 }
 
-func NewBlockStorage(collection *mgo.Collection) *BlockStorage {
-	return &BlockStorage {
+func NewBlockStorage(collection *mgo.Collection) (*BlockStorage, error) {
+	result := &BlockStorage {
 		collection: collection,
 	}
+
+	err := collection.EnsureIndex(mgo.Index{
+		Key:    []string{"hash"},
+		Unique: true,
+	})
+	if err != nil {
+		return nil, reportError(result, err, "Failed to create index.")
+	}
+
+	return result, nil
 }
 
 func (self *BlockStorage) getErrorContext() string {
@@ -43,7 +53,7 @@ func (self *BlockStorage) AddBlock(newBlock eth.Block) error {
 }
 
 func (self *BlockStorage) RemoveBlock(blockId eth.BlockHash) error {
-	err := self.collection.RemoveId(blockId)
+	err := self.collection.Remove(bson.M{"hash":blockId})
 	if err != nil {
 		return reportError(self, err, "delete block failed")
 	}
@@ -53,7 +63,7 @@ func (self *BlockStorage) RemoveBlock(blockId eth.BlockHash) error {
 
 func (self *BlockStorage) GetBlock(blockId eth.BlockHash) (*eth.Block, error) {
 	block := eth.Block{}
-	err := self.collection.FindId(blockId).One(&block)
+	err := self.collection.Find(bson.M{"hash":blockId}).One(&block)
 	if err != nil {
 		return nil, reportError(self, err, "read block failed")
 	}

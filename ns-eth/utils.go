@@ -258,14 +258,14 @@ func (client *NodeClient) fetchTransactionInfo(rawTX ethrpc.Transaction, block *
 	var blockInfo *eth.TransactionBlockInfo
 	if block != nil {
 		blockInfo = &eth.TransactionBlockInfo{
-			Hash:   block.BlockHeader.ID,
+			Hash:   block.BlockHeader.Hash,
 			Height: block.BlockHeader.Height,
 			Time:   block.BlockHeader.Time,
 		}
 	}
 
 	return &eth.Transaction{
-		ID:       eth.HexToHash(rawTX.Hash),
+		Hash:     eth.HexToHash(rawTX.Hash),
 		Sender:   eth.HexToAddress(rawTX.From),
 		Receiver: eth.HexToAddress(rawTX.To),
 		Payload:  payload,
