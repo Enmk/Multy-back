@@ -501,7 +501,7 @@ func (client *NodeClient) isTransactionOfKnownAddress(transaction *eth.Transacti
 	if callInfo := transaction.CallInfo; callInfo != nil {
 		if method := callInfo.Method; method != nil {
 			if method.Name == erc20TransferName && len(method.Arguments) > 0 {
-				address, ok := method.Arguments[0].(eth.Address)
+				address, ok := method.Arguments[0].Value.(eth.Address)
 				if ok == true {
 					if client.IsAnyKnownAddress(address) {
 						return true
@@ -514,11 +514,11 @@ func (client *NodeClient) isTransactionOfKnownAddress(transaction *eth.Transacti
 
 		for _, event := range callInfo.Events {
 			if event.Name == transferEventName && len(event.Arguments) >= 3 {
-				fromAddress, ok := event.Arguments[0].(eth.Address)
+				fromAddress, ok := event.Arguments[0].Value.(eth.Address)
 				if ok && client.IsAnyKnownAddress(fromAddress) {
 					return true
 				}
-				toAddress, ok := event.Arguments[1].(eth.Address)
+				toAddress, ok := event.Arguments[1].Value.(eth.Address)
 				if ok && client.IsAnyKnownAddress(toAddress) {
 					return true
 				}

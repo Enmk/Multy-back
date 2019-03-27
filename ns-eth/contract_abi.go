@@ -134,7 +134,7 @@ func DecodeSmartContractCall(input string, address eth.Address) (*eth.SmartContr
 					i, argDescription.Name, typeName, reflect.TypeOf(arg))}
 		}
 
-		result.Arguments = append(result.Arguments, eth.SmartContractMethodArgument(value))
+		result.Arguments = append(result.Arguments, eth.SmartContractMethodArgument{Value:value})
 	}
 
 	return result, nil
@@ -190,7 +190,7 @@ func DecodeSmartContractEvent(input string, address eth.Address) (*eth.SmartCont
 					i, input.Name, typeName, reflect.TypeOf(arg))}
 		}
 
-		result.Arguments = append(result.Arguments, eth.SmartContractEventArgument(value))
+		result.Arguments = append(result.Arguments, eth.SmartContractEventArgument{Value:value})
 	}
 
 	return result, nil

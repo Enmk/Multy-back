@@ -2,7 +2,6 @@ package nsethprotobuf
 
 import (
 	"encoding/json"
-	"math/big"
 	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -140,36 +139,44 @@ func SmartContractMethodInfoToProtobuf(methodInfo *eth.SmartContractMethodInfo) 
 
 	arguments := make([][]byte, 0, len(methodInfo.Arguments))
 	for i, arg := range methodInfo.Arguments {
-		value, err := json.Marshal(arg)
-		typeByte := make([]byte, 1)
+		// value, err := json.Marshal(arg)
+		// typeByte := make([]byte, 1)
 
-		switch v := arg.(type) {
-		case eth.Address, *eth.Address:
-			typeByte[0] = 'a'
-		case *big.Int:
-			typeByte[0] = 'i'
-		case big.Int:
-			typeByte[0] = 'i'
-			value, err = json.Marshal(&v)
-		case string:
-			typeByte[0] = 's'
-		case bool:
-			typeByte[0] = 'b'
-		case eth.Hash, *eth.Hash:
-			typeByte[0] = 'h'
-		default:
-			panic(converterError{errors.Errorf("unknown argument type #%d of '%s': %t",
-					i, methodInfo.Name, arg)})
-		}
+		// switch v := arg.(type) {
+		// case eth.Address, *eth.Address:
+		// 	typeByte[0] = 'a'
+		// case *big.Int:
+		// 	typeByte[0] = 'i'
+		// case big.Int:
+		// 	typeByte[0] = 'i'
+		// 	value, err = json.Marshal(&v)
+		// case string:
+		// 	typeByte[0] = 's'
+		// case bool:
+		// 	typeByte[0] = 'b'
+		// case eth.Hash, *eth.Hash:
+		// 	typeByte[0] = 'h'
+		// default:
+		// 	panic(converterError{errors.Errorf("unknown argument type #%d of '%s': %t",
+		// 			i, methodInfo.Name, arg)})
+		// }
 
+		// if err != nil {
+		// 	// This is a pretty severe errors, since all values should be marshallable.
+		// 	panic(converterError{errors.Wrapf(err,
+		// 			"failed to marshall argument #%d of '%s'",
+		// 			i, methodInfo.Name)})
+		// }
+
+		// value = append(typeByte, value...)
+		value, err := eth.MarshalArgument(arg, eth.MarshalerFunc(json.Marshal))
 		if err != nil {
 			// This is a pretty severe errors, since all values should be marshallable.
 			panic(converterError{errors.Wrapf(err,
-					"failed to marshall argument #%d of '%s'",
+					"argument #%d of '%s'",
 					i, methodInfo.Name)})
 		}
 
-		value = append(typeByte, value...)
 		arguments = append(arguments, value)
 	}
 	result.Arguments = arguments
@@ -184,50 +191,57 @@ func SmartContractMethodInfoFromProtobuf(callInfo *SmartContractCall) *eth.Smart
 
 	arguments := make([]eth.SmartContractMethodArgument, 0, len(callInfo.Arguments))
 	for i, arg := range callInfo.Arguments {
-		var value interface{}
-		if len(arg) == 0 {
-			panic(converterError{errors.Errorf("not enough data to parse argument #%d of '%s'",
+
+		value, err := eth.UnmarshalArgument(arg, eth.UnmarshalerFunc(json.Unmarshal))
+		if err != nil {
+			panic(converterError{errors.Wrapf(err, "argument #%d of '%s'",
 					i, callInfo.Name)})
 		}
-
-		t := arg[0]
-		data := arg[1:]
-		var err error
-
-		switch t {
-		case 'a':
-			a := *new(eth.Address)
-			err = json.Unmarshal(data, &a)
-			value = a
-		case 'i':
-			i := new(big.Int)
-			err = json.Unmarshal(data, i)
-			value = *i
-		case 's':
-			s := string("")
-			err = json.Unmarshal(data, &s)
-			value = s
-		case 'b':
-			b := bool(false)
-			err = json.Unmarshal(data, &b)
-			value = b
-		case 'h':
-			h := eth.Hash{}
-			err = json.Unmarshal(data, &h)
-			value = h
-		default:
-			panic(converterError{errors.Errorf("unknown argument type #%d of '%s': %c",
-					i, callInfo.Name, t)})
+		if value == nil {
+			panic(converterError{errors.Errorf("got nil argument instance for argument #%d of '%s'",
+					i, callInfo.Name)})
 		}
+		// if len(arg) == 0 {
+		// 	panic(converterError{errors.Errorf("not enough data to parse argument #%d of '%s'",
+		// 			i, callInfo.Name)})
+		// }
 
-		if err != nil {
-			// This is a pretty severe errors, since all values should be marshallable.
-			panic(converterError{errors.Wrapf(err,
-					"failed to unmarshall argument #%d of '%s' into %+#v",
-					i, callInfo.Name, value)})
-		}
+		// t := arg[0]
+		// data := arg[1:]
+		// var err error
 
-		arguments = append(arguments, value)
+		// switch t {
+		// case 'a':
+		// 	a := *new(eth.Address)
+		// 	err = json.Unmarshal(data, &a)
+		// 	value = a
+		// case 'i':
+		// 	i := new(big.Int)
+		// 	err = json.Unmarshal(data, i)
+		// 	value = *i
+		// case 's':
+		// 	s := string("")
+		// 	err = json.Unmarshal(data, &s)
+		// 	value = s
+		// case 'b':
+		// 	b := bool(false)
+		// 	err = json.Unmarshal(data, &b)
+		// 	value = b
+		// case 'h':
+		// 	h := eth.Hash{}
+		// 	err = json.Unmarshal(data, &h)
+		// 	value = h
+		// default:
+		// }
+
+		// if err != nil {
+		// 	// This is a pretty severe errors, since all values should be marshallable.
+		// 	panic(converterError{errors.Wrapf(err,
+		// 			"failed to unmarshall argument #%d of '%s' into %+#v",
+		// 			i, callInfo.Name, value)})
+		// }
+
+		arguments = append(arguments, *value)
 	}
 
 	var address eth.Address

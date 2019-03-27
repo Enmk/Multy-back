@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 
 	geth "github.com/ethereum/go-ethereum/common"
 )
@@ -86,7 +85,9 @@ type SmartContractMethodInfo struct {
 	Arguments []SmartContractMethodArgument		`json:"arguments" bson:"arguments"`
 }
 
-type SmartContractMethodArgument interface{}
+type SmartContractMethodArgument struct {
+	Value interface{}
+}
 type SmartContractEventInfo = SmartContractMethodInfo
 type SmartContractEventArgument = SmartContractMethodArgument
 
@@ -148,9 +149,9 @@ const (
 
 // BlockHeader is a header of the Ethereum blockchain block
 type BlockHeader struct {
-	ID     BlockHash	`json:"_id" bson:"_id"`
-	Height uint64		`json:"height" bson:"height"`
-	Parent BlockHash	`json:"parent_id" bson:"parent_id"`
+	ID     BlockHash	//`json:"hash" bson:"_id"`
+	Height uint64		//`json:"height" bson:"height"`
+	Parent BlockHash	//`json:"parent_id" bson:"parent_id"`
 	Time   time.Time
 }
 
@@ -228,24 +229,4 @@ func (amount *Amount) UnmarshalJSON(text []byte) error {
 
 	*amount = newAmount
 	return nil
-}
-
-func (a *Amount) SetBSON(raw bson.Raw) error {
-	var amountString string
-	err := raw.Unmarshal(&amountString)
-	if err != nil {
-		return errors.Wrap(err, "Faield to parse amount from BSON")
-	}
-
-	amount, err := HexToAmount(amountString)
-	if err != nil {
-		return err
-	}
-	*a = amount
-
-	return nil
-}
-
-func (a Amount) GetBSON() (interface{}, error) {
-	return a.Hex(), nil
 }

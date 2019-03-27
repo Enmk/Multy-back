@@ -79,10 +79,10 @@ func TestDecodeSmartContractCall(test *testing.T) {
 		"0xa9059cbb00000000000000000000000079c949c831aadb44d5562f43b38508797c09fa100000000000000000000000000000000000000000000000410d586a20a4c00000",
 		eth.SmartContractMethodInfo{
 			Name: "transfer(address,uint256)",
-			Arguments: []eth.SmartContractMethodArgument{
+			Arguments: ToArguments(
 				eth.HexToAddress("79c949c831aadb44d5562f43b38508797c09fa10"),
 				*NewBigIntFromHex("410d586a20a4c00000"),
-			},
+			),
 		})
 
 	checkDecodeSmartContractCallError(test, "")
@@ -108,11 +108,11 @@ func TestDecodeSmartContractEvent(test *testing.T) {
 		"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef000000000000000000000000676fd83da5960cabc6ec745306793fc3673f76d9000000000000000000000000c3cfacce8e454b8b2b058f0be4e4c61e27e765a50000000000000000000000000000000000000000000000004563918244f40000",
 		eth.SmartContractEventInfo{
 			Name: "Transfer(address,address,uint256)",
-			Arguments: []eth.SmartContractEventArgument{
+			Arguments: ToArguments(
 				eth.HexToAddress("676fd83da5960cabc6ec745306793fc3673f76d9"),
 				eth.HexToAddress("c3cfacce8e454b8b2b058f0be4e4c61e27e765a5"),
 				*NewBigIntFromHex("4563918244f40000"),
-			},
+			),
 		})
 
 	checkDecodeSmartContractEventError(test, "")

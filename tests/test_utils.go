@@ -3,6 +3,7 @@ package tests
 import (
 	"reflect"
 	"os"
+	"testing"
 
 	"github.com/davecgh/go-spew/spew"
 )
@@ -16,6 +17,15 @@ func TestEqual(left, right interface{}) (eq bool, leftS, rightS string) {
 	}
 
 	return eq, leftS, rightS
+}
+
+func AssertEqual(test *testing.T, left, right interface{}) bool {
+	if equal, l, r := TestEqual(left, right); !equal {
+		test.Errorf("Assertion failed: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
+		return false
+	}
+
+	return true
 }
 
 func GetenvOrDefault(key, defaultValue string) (result string) {

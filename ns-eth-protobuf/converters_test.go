@@ -68,19 +68,18 @@ func TestTransactionToProtobufAndBack(test *testing.T) {
 
 	// Check that pointer arguments work too, however, since we do pointer to values on convertion, do not compare for equality.
 	tx2 := tx1
-	args := tx2.CallInfo.Events[1].Arguments
-	args = append(args, big.NewInt(123456), ToAddressPtr("*Address"), &eth.Hash{})
-	tx2.CallInfo.Events[1].Arguments = args
+	event := tx2.CallInfo.Events[1]
+	event.Arguments = append(event.Arguments, ToArguments(big.NewInt(123456), ToAddressPtr("*Address"), &eth.Hash{})...)
 
 	checkTransactionToAndFromProtobufNoCheck(test, tx2)
 }
 
 func TestTransactionToProtobufAndBackError(test *testing.T){
 	errTx1 := SampleTransaction()
-	errTx1.CallInfo.Method.Arguments[0] = struct{}{}
+	errTx1.CallInfo.Method.Arguments[0] = ToArgument(struct{}{})
 	checkTransactionToProtobufError(test, errTx1)
 
 	errTx2 := SampleTransaction()
-	errTx2.CallInfo.Method.Arguments[0] = nil
+	errTx2.CallInfo.Method.Arguments[0] = ToArgument(nil)
 	checkTransactionToProtobufError(test, errTx2)
 }
