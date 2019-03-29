@@ -6,10 +6,11 @@ See LICENSE for details
 package store
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/Multy-io/Multy-back/currencies"
 	mgo "gopkg.in/mgo.v2"
@@ -63,6 +64,12 @@ type Conf struct {
 	Password string
 }
 
+type QualifiedAddress struct {
+	UserID string
+	WalletIndex int
+	AddressIndex int
+}
+
 type UserStore interface {
 	GetUserByDevice(device bson.M, user *User)
 	Update(sel, update bson.M) error
@@ -76,6 +83,8 @@ type UserStore interface {
 	FindUserAddresses(query bson.M, sel bson.M, ws *WalletsSelect) error
 	InsertExchangeRate(ExchangeRates, string) error
 	GetExchangeRatesDay() ([]RatesAPIBitstamp, error)
+
+	FindAllUserAddresses(address string) ([]QualifiedAddress, error)
 
 	//TODo update this method by eth
 	GetAllWalletEthTransactions(userid string, currencyID, networkID int, walletTxs *[]TransactionETH) error
@@ -410,4 +419,36 @@ func (mStore *MongoUserStore) CheckAddWallet(wp *WalletParams, jwt string) error
 	}
 
 	return nil
+}
+
+func (store *MongoUserStore) FindAllUserAddresses(address string) ([]QualifiedAddress, error) {
+
+	query := bson.M{"wallets.addresses.address": address}
+	iter := store.usersData.Find(query).Iter()
+	defer iter.Close()
+
+	result := make([]QualifiedAddress, 0, 10)
+
+	// Alternative would be using projections and pipes, but that is too much rocket-science for now.
+	var user User
+	for iter.Next(&user) {
+		for _, w := range user.Wallets {
+			for _, a := range w.Adresses {
+				if a.Address == address {
+					result = append(result, QualifiedAddress{
+						UserID: user.UserID,
+						WalletIndex: w.WalletIndex,
+						AddressIndex: a.AddressIndex,
+					})
+				}
+			}
+		}
+
+		err := iter.Err()
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to fetch qualified addresses from DB.")
+		}
+	}
+
+	return result, nil
 }

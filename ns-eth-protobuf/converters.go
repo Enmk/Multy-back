@@ -1,8 +1,10 @@
 package nsethprotobuf
 
 import (
+	"time"
 	"github.com/pkg/errors"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/Multy-io/Multy-back/common/eth"
@@ -181,5 +183,29 @@ func SmartContractMethodInfoFromProtobuf(callInfo *SmartContractCall) *eth.Smart
 		Address:   address,
 		Name:      callInfo.Name,
 		Arguments: arguments,
+	}
+}
+
+func TransactionBlockInfoToProtobuf(blockInfo *eth.TransactionBlockInfo) *BlockInfo {
+	if blockInfo == nil {
+		return nil
+	}
+
+	return &BlockInfo{
+		Hash: blockInfo.Hash.Bytes(),
+		Height: blockInfo.Height,
+		Time: blockInfo.Time.Unix(),
+	}
+}
+
+func TransactionBlockInfoFromProtobuf(blockInfo *BlockInfo) *eth.TransactionBlockInfo {
+	if blockInfo == nil {
+		return nil
+	}
+
+	return &eth.TransactionBlockInfo{
+		Hash:   gethcommon.BytesToHash(blockInfo.Hash),
+		Height: blockInfo.Height,
+		Time:   time.Unix(blockInfo.Time, 0),
 	}
 }

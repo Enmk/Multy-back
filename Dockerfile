@@ -1,7 +1,7 @@
 # Builder image that builds all the multy-back and all node services
 # multyio/multy-back-builder has all dependencies cached
-# Based on golang:1.9.4
-FROM multyio/multy-back-builder:dev_alpine as builder
+# Based on golang:1.12-alpine2.9
+FROM multyio/multy-back-builder:dgaming as builder
 
 WORKDIR $GOPATH/src/github.com/Multy-io/Multy-back
 # Build an image from sources of local directory.
@@ -12,7 +12,7 @@ RUN make build -B
 # Base image for all images with executable application
 # Sets important arguments and labels.
 # As for Dec 3 2018 alpine:3.8 had no known vulnerabilities
-FROM alpine:3.8 as base
+FROM alpine:3.9 as base
 # Common stuff to put into all derived containers
 ONBUILD LABEL org.label-schema.schema-version = "1.0"
 ONBUILD LABEL org.label-schema.url = "http://multy.io"

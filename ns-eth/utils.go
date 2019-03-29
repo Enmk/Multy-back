@@ -117,64 +117,6 @@ func (client *NodeClient) ResyncTransaction(txid string) error {
 	return client.HandleEthTransaction(*rawTX, &blockHeader, true)
 }
 
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-
-	return b
-}
-
-// func getDataArguments(data string, numberOfArgs int) ([]string, error) {
-// 	// Parse arguments from hex-encoded data string, each argument is
-// 	// expected to be 64-char wide, which corresponds to 32-byte (uint256)
-// 	// alignment of arguments in smart contract call protocol.
-// 	// Data may have an "0x" prefix
-
-// 	if strings.HasPrefix(data, "0x") {
-// 		data = data[2:]
-// 	}
-
-// 	if len(data) < numberOfArgs * 64 {
-// 		return []string{}, errors.Errorf(
-// 			"Not enough data for %d arguments.", numberOfArgs)
-// 	}
-
-// 	arguments := []string{}
-// 	for i := 0; i < numberOfArgs; i++ {
-// 		start := i * 64
-// 		end := (i + 1) * 64
-
-// 		arguments = append(arguments, data[start:end])
-// 	}
-
-// 	return arguments, nil
-// }
-
-// func getEventLogArguments(log ethrpc.Log, numberOfArgs int) ([]string, error) {
-// 	// Some smart contracts put all arguments to the topics, other put
-// 	// only portion of arguments as topics, rest as data.
-// 	// So let's assume that if there are less topics than expected arguments,
-// 	// then remaining arguments are in the data.
-
-// 	arguments := []string{}
-
-// 	for i := 0; i < minInt(len(log.Topics), numberOfArgs); i++ {
-// 		arguments = append(arguments, log.Topics[i])
-// 	}
-
-// 	if len(arguments) < numberOfArgs {
-// 		dataArguments, err := getDataArguments(log.Data, numberOfArgs - len(arguments))
-// 		if err != nil {
-// 			return []string{}, err
-// 		}
-
-// 		arguments = append(arguments, dataArguments...)
-// 	}
-
-// 	return arguments, nil
-// }
-
 func (client *NodeClient) fetchTransactionCallInfo(rawTx ethrpc.Transaction) (*eth.SmartContractCallInfo, error) {
 	receipt, err := client.Rpc.EthGetTransactionReceipt(rawTx.Hash)
 	if receipt == nil || err != nil {

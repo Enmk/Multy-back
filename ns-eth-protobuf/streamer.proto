@@ -71,6 +71,13 @@ message ETHTransaction {
     int64 BlockHeight = 11;
     bool Resync = 12;
     SmartContractInfo ContractInfo = 13;
+    BlockInfo BlockInfo = 14;
+}
+
+message BlockInfo {
+    bytes Hash = 1;
+    uint64 Height = 2;
+    int64 Time = 3;
 }
 
 message SmartContractInfo {

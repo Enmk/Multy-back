@@ -80,6 +80,7 @@ type SmartContractCallInfo struct {
 }
 
 type SmartContractMethodInfo struct {
+	// Smart contract address method or event occurred on.
 	Address Address								//`json:"address" bson:"address"`
 	Name string									//`json:"name" bson:"name"`
 	Arguments []SmartContractMethodArgument		//`json:"arguments" bson:"arguments"`

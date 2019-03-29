@@ -47,11 +47,10 @@ func (self *EthController) SendRawTransaction(rawTransaction ethcommon.RawTransa
 		return reply.GetMessage(), nil
 	}
 
-	err = self.NSQClient.EmitRawTransactionEvent(rawTransaction)
+	err = self.eventManager.EmitRawTransactionEvent(rawTransaction)
 	if err != nil {
-		log.Errorf("No push raw transaction to NSQ, error: %v", err)
+		log.Errorf("Failed to push raw transaction to NSQ, error: %+v", err)
 		return "", err
 	}
-	log.Info("We push Tx to message queue")
 	return "", nil
 }

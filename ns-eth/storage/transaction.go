@@ -38,7 +38,7 @@ func (self *TransactionStorage) AddTransaction(transaction eth.TransactionWithSt
 }
 
 func (self *TransactionStorage) UpdateTransactionStatus(transactionId eth.TransactionHash, newStatus eth.TransactionStatus) error {
-	err := self.collection.UpdateId(transactionId, bson.M{"status": newStatus})
+	err := self.collection.UpdateId(transactionId, bson.M{"$set": bson.M{"status": newStatus}})
 
 	return reportError(self, err, "transaction status update failed")
 }

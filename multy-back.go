@@ -75,7 +75,7 @@ func Init(conf *Configuration) (*Multy, error) {
 	log.Infof("UserStore initialization done on %s √", conf.Database)
 
 	// ETH
-	ethCli, err := eth.InitHandlers(&conf.Database, conf.SupportedNodes, conf.NSQAddress)
+	ethCli, err := eth.NewController(&conf.Database, conf.SupportedNodes, conf.NSQAddress, userStore)
 	if err != nil {
 		return nil, fmt.Errorf("Init: ETH.InitHandlers: %s", err.Error())
 	}

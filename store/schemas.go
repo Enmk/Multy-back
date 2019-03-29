@@ -316,14 +316,19 @@ type TransactionETH struct {
 	Amount            string                `json:"txoutamount"`
 	GasPrice          uint64                `json:"gasprice"`
 	GasLimit          uint64                `json:"gaslimit"`
-	Nonce             int                   `json:"nonce"`
+	Nonce             uint64                `json:"nonce"`
+	// Status holds both transaction status and direction
+	// e.g. TxStatusAppearedInMempoolOutcoming
+	// TODO: split Status into Status and Direction field
 	Status            int                   `json:"txstatus" bson:"txstatus"`
 	BlockTime         int64                 `json:"blocktime"`
-	PoolTime          int64                 `json:"mempooltime"`
 	BlockHeight       int64                 `json:"blockheight"`
-	Confirmations     int                   `json:"confirmations"`
-	IsInternal        bool                  `json:"isinternal"`
-	ERC20Token        *ERC20Tx              `json:"erc20Token,omitempty"`
+	BlockHash         string                `json:"blockhash"`
+	PoolTime          int64                 `json:"mempooltime"`
+	Token             string                `json:"token"` // empty if ETH, contract address if ERC20/721 token
+	Confirmations     int                   `json:"confirmations"` // we shouldn't keep that in DB
+	// IsInternal        bool                  `json:"isinternal"`
+	// ERC20Token        *ERC20Tx              `json:"erc20Token,omitempty"`
 	StockExchangeRate []ExchangeRatesRecord `json:"stockexchangerate"`
 }
 

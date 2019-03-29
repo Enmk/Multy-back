@@ -31,7 +31,7 @@ var (
 	txsData *mgo.Collection
 	// multisigData *mgo.Collection
 
-	txsDataTest *mgo.Collection
+	// txsDataTest *mgo.Collection
 	// multisigDataTest *mgo.Collection
 
 	restoreState *mgo.Collection
@@ -153,7 +153,7 @@ func setExchangeRates(tx *store.TransactionETH, isReSync bool, TxTime int64) {
 }
 
 // TODO: refactor this method where rewrite notify user about transaction
-func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, netid int, userid ...string) {
+func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, netid int, userid ...string) error {
 	//TODO: make correct notify
 
 	if tx.Status == store.TxStatusAppearedInBlockIncoming || tx.Status == store.TxStatusAppearedInMempoolIncoming || tx.Status == store.TxStatusInBlockConfirmedIncoming {
@@ -175,7 +175,7 @@ func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, net
 		if len(userid) > 0 {
 			txMsq.UserID = userid[0]
 		}
-		sendNotify(&txMsq, nsqProducer)
+		return sendNotify(&txMsq, nsqProducer)
 	}
 
 	if tx.Status == store.TxStatusAppearedInBlockOutcoming || tx.Status == store.TxStatusAppearedInMempoolOutcoming || tx.Status == store.TxStatusInBlockConfirmedOutcoming {
@@ -194,23 +194,26 @@ func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, net
 				//	Multisig:        tx.Multisig.Contract,
 			},
 		}
-		sendNotify(&txMsq, nsqProducer)
+		return sendNotify(&txMsq, nsqProducer)
 	}
+
+	log.Errorf("!!! TX %s NOTIFICATION WAS NOT SENT TO USER (unknown tx status: %d)", tx.Hash, tx.Status)
+	return nil
 }
 
-func sendNotify(txMsq *store.TransactionWithUserID, nsqProducer *nsq.Producer) {
+func sendNotify(txMsq *store.TransactionWithUserID, nsqProducer *nsq.Producer) error {
 	newTxJSON, err := json.Marshal(txMsq)
 	if err != nil {
 		log.Errorf("sendNotifyToClients: [%+v] %s\n", txMsq, err.Error())
-		return
+		return err
 	}
 	err = nsqProducer.Publish(store.TopicTransaction, newTxJSON)
 	if err != nil {
 		log.Errorf("nsq publish new transaction: [%+v] %s\n", txMsq, err.Error())
-		return
+		return err
 	}
 
-	return
+	return nil
 }
 
 func generatedTxDataToStore(tx *ethpb.ETHTransaction, TransactionStatus int) store.TransactionETH {
@@ -237,7 +240,7 @@ func generatedTxDataToStore(tx *ethpb.ETHTransaction, TransactionStatus int) sto
 		Amount:       tx.GetAmount(),
 		GasPrice:     tx.GetGasPrice(),
 		GasLimit:     tx.GetGasLimit(),
-		Nonce:        int(tx.GetNonce()),
+		Nonce:        tx.GetNonce(),
 		Status:       TransactionStatus, // int(tx.GetStatus()),
 		BlockTime:    tx.GetBlockTime(),
 		PoolTime:     tx.GetTxpoolTime(),
@@ -251,8 +254,8 @@ func saveTransaction(tx store.TransactionETH, networtkID int, resync bool) error
 	switch networtkID {
 	case currencies.ETHMain:
 		txStore = txsData
-	case currencies.ETHTest:
-		txStore = txsDataTest
+	// case currencies.ETHTest:
+	// 	txStore = txsDataTest
 	default:
 		return errors.New("saveMultyTransaction: wrong networkID")
 	}
