@@ -102,7 +102,12 @@ func (service *NodeService) HandleNewAddress(address eth.Address) error {
 }
 
 func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
-	_, err := service.nodeClient.SendRawTransaction(string(rawTx))
+	hash, err := service.nodeClient.SendRawTransaction(string(rawTx))
+	if err != nil {
+		log.Errorf("error send raw tx from NSQ to Node err: %v", err)
+	}
+	log.Infof("Send transaction: %v", hash)
+
 	// TODO: add a TX hash to a pool of monitored transactions
 	return err
 }

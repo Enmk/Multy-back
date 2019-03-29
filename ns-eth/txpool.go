@@ -19,24 +19,24 @@ import (
 	common "github.com/Multy-io/Multy-back/common"
 )
 
-const gWei = 2000000000
+const gWei = 1000000000
 
 // RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
 type RPCTransaction struct {
 	BlockHash        gethcommon.Hash     `json:"blockHash"`
-	BlockNumber      *hexutil.Big    `json:"blockNumber"`
+	BlockNumber      *hexutil.Big        `json:"blockNumber"`
 	From             gethcommon.Address  `json:"from"`
-	Gas              hexutil.Uint64  `json:"gas"`
-	GasPrice         *hexutil.Big    `json:"gasPrice"`
+	Gas              hexutil.Uint64      `json:"gas"`
+	GasPrice         *hexutil.Big        `json:"gasPrice"`
 	Hash             gethcommon.Hash     `json:"hash"`
-	Input            hexutil.Bytes   `json:"input"`
-	Nonce            hexutil.Uint64  `json:"nonce"`
+	Input            hexutil.Bytes       `json:"input"`
+	Nonce            hexutil.Uint64      `json:"nonce"`
 	To               *gethcommon.Address `json:"to"`
-	TransactionIndex hexutil.Uint    `json:"transactionIndex"`
-	Value            *hexutil.Big    `json:"value"`
-	V                *hexutil.Big    `json:"v"`
-	R                *hexutil.Big    `json:"r"`
-	S                *hexutil.Big    `json:"s"`
+	TransactionIndex hexutil.Uint        `json:"transactionIndex"`
+	Value            *hexutil.Big        `json:"value"`
+	V                *hexutil.Big        `json:"v"`
+	R                *hexutil.Big        `json:"r"`
+	S                *hexutil.Big        `json:"s"`
 }
 
 func (c *NodeClient) AddTransactionToTxpool(txHash string) {
@@ -119,7 +119,7 @@ func (c *NodeClient) ReloadTxPool() error {
 }
 
 func (c *NodeClient) EstimateTransactionGasPrice() common.TransactionFeeRateEstimation {
-	return estimateTransactionGasPriceFromTxpool(c.Mempool, uint64(gWei))
+	return estimateTransactionGasPriceFromTxpool(c.Mempool, uint64(2*gWei))
 }
 
 func estimateTransactionGasPriceFromTxpool(mempool *sync.Map, minReturnValue uint64) common.TransactionFeeRateEstimation {

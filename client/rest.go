@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
+	ethcommon "github.com/Multy-io/Multy-back/common/eth"
 	"github.com/Multy-io/Multy-back/currencies"
 	"github.com/Multy-io/Multy-back/eth"
 	"github.com/Multy-io/Multy-back/store"
-	ethcommon "github.com/Multy-io/Multy-back/types/eth"
 	"github.com/jekabolt/slf"
 
 	"github.com/gin-gonic/gin"

@@ -39,18 +39,19 @@ func (self *EthController) GetFeeRate(address ethcommon.Address) (common.Transac
 }
 
 func (self *EthController) SendRawTransaction(rawTransaction ethcommon.RawTransaction) (string, error) {
-	err := self.NSQClient.EmitRawTransactionEvent(rawTransaction)
+	reply, err := self.GRPCClient.SendRawTransaction(context.Background(), &pb.RawTransaction{
+		RawTx: string(rawTransaction),
+	})
+	if err == nil {
+		log.Errorf("send raw transaction from GRPC error: %v", err)
+		return reply.GetMessage(), nil
+	}
+
+	err = self.NSQClient.EmitRawTransactionEvent(rawTransaction)
 	if err != nil {
 		log.Errorf("No push raw transaction to NSQ, error: %v", err)
 		return "", err
 	}
-	log.Infof("raw transaction: %v", rawTransaction)
-	reply, err := self.GRPCClient.SendRawTransaction(context.Background(), &pb.RawTransaction{
-		RawTx: string(rawTransaction),
-	})
-	if err != nil {
-		log.Errorf("send raw transaction from GRPC error: %v", err)
-		return reply.GetMessage(), err
-	}
-	return reply.GetMessage(), nil
+	log.Info("We push Tx to message queue")
+	return "", nil
 }
