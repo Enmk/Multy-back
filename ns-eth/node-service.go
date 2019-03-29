@@ -102,13 +102,8 @@ func (service *NodeService) HandleNewAddress(address eth.Address) error {
 }
 
 func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
-	hash, err := service.nodeClient.SendRawTransaction(string(rawTx))
-	if err != nil {
-		log.Errorf("error send raw tx from NSQ to Node err: %v", err)
-	}
-	log.Infof("Send transaction: %v", hash)
-
-	// TODO: add a TX hash to a pool of monitored transactions
+	hash, err := service.ServerSendRawTransaction(rawTx)
+	log.Infof("Send transaction from NSQ: %v", hash)
 	return err
 }
 
@@ -250,6 +245,16 @@ func (service *NodeService) ServerResyncAddress(address eth.Address) error {
 	}
 
 	return nil
+}
+func (service *NodeService) ServerSendRawTransaction(rawTransaction eth.RawTransaction) (eth.TransactionHash, error) {
+	hash, err := service.nodeClient.SendRawTransaction(string(rawTransaction))
+	if err != nil {
+		log.Errorf("error send raw tx to Node with err: %v", err)
+	}
+	log.Infof("Send transaction: %v", hash)
+	// TODO: add a TX hash to a pool of monitored transactions
+
+	return eth.HexToHash(hash), err
 }
 
 func (service *NodeService) ServerGetServiceInfo() common.ServiceInfo {

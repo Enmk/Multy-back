@@ -19,6 +19,7 @@ type ServerRequestHandler interface {
 
 	ServerSetUserAddresses([]eth.Address) error
 	ServerResyncAddress(eth.Address) error
+	ServerSendRawTransaction(eth.RawTransaction) (eth.TransactionHash, error)
 }
 
 // Server implements streamer interface and is a gRPC server
@@ -199,13 +200,13 @@ func (s *Server) EventInitialAdd(c context.Context, ud *pb.UsersData) (*pb.Reply
 }
 
 func (self *Server) SendRawTransaction(c context.Context, tx *pb.RawTransaction) (*pb.ReplyInfo, error) {
-	hash, err := self.EthCli.SendRawTransaction(tx.GetRawTx())
+	hash, err := self.RequestHandler.ServerSendRawTransaction(eth.RawTransaction(tx.GetRawTx()))
 	if err != nil {
 		return &pb.ReplyInfo{
 			Message: "error: wrong raw tx",
 		}, fmt.Errorf("error: wrong raw tx %v", err)
 	}
 	return &pb.ReplyInfo{
-		Message: hash,
+		Message: hash.Hex(),
 	}, nil
 }

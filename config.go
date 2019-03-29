@@ -23,7 +23,7 @@ type Configuration struct {
 	NSQAddress     string
 	BTCNodeAddress string
 	MultyVerison   store.ServerConfig
-	ServicesInfo   []store.ServiceInfo
+	ServicesInfo   []common.ServiceInfo
 	Secretkey      string
 	store.MobileVersions
 	BrowserDefault store.BrowserDefault
