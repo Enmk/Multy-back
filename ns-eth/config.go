@@ -15,6 +15,7 @@ type Configuration struct {
 	CanaryTest      bool
 	Name            string
 	GrpcPort        string
+	NsqAddress      string
 	EthConf         Conf
 	ServiceInfo     common.ServiceInfo
 	NetworkID       int

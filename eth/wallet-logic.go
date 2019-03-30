@@ -3,37 +3,37 @@ package eth
 import (
 	"context"
 
+	ethcommon "github.com/Multy-io/Multy-back/common/eth"
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
-	typeseth "github.com/Multy-io/Multy-back/common/eth"
 )
 
-func (self *EthController) GetAddressInfo(address typeseth.Address) (typeseth.AddressInfo, error) {
+func (self *EthController) GetAddressInfo(address ethcommon.Address) (ethcommon.AddressInfo, error) {
 	addressInfo, err := self.GRPCClient.GetAddressInfo(context.Background(), &pb.Address{
 		Address: address.Hex(),
 	})
 	if err != nil {
 		log.Errorf("Error on ns-GRPC GetAddressInfo address: %v error: %v ", address, err)
-		return typeseth.AddressInfo{}, err
+		return ethcommon.AddressInfo{}, err
 	}
-	balance, err := typeseth.NewAmountFromString(addressInfo.GetBalance(), 10)
+	balance, err := ethcommon.NewAmountFromString(addressInfo.GetBalance(), 10)
 	if err != nil {
 		log.Errorf("Error on convert amount string to eth.Amount value: %v error: %v ", addressInfo.GetBalance(), err)
-		return typeseth.AddressInfo{}, err
+		return ethcommon.AddressInfo{}, err
 	}
-	pendingBalance, err := typeseth.NewAmountFromString(addressInfo.GetPendingBalance(), 10)
+	pendingBalance, err := ethcommon.NewAmountFromString(addressInfo.GetPendingBalance(), 10)
 	if err != nil {
 		log.Errorf("Error on convert amount string to eth.Amount value: %v error: %v ", addressInfo.GetBalance(), err)
-		return typeseth.AddressInfo{}, err
+		return ethcommon.AddressInfo{}, err
 	}
 
-	return typeseth.AddressInfo{
+	return ethcommon.AddressInfo{
 		TotalBalance:   *balance,
 		PendingBalance: *pendingBalance,
-		Nonce:          typeseth.TransactionNonce(addressInfo.Nonce),
+		Nonce:          ethcommon.TransactionNonce(addressInfo.Nonce),
 	}, nil
 }
 
-func (self *EthController) ResyncAddress(address typeseth.Address) error {
+func (self *EthController) ResyncAddress(address ethcommon.Address) error {
 	_, err := self.GRPCClient.ResyncAddress(context.Background(), &pb.Address{
 		Address: address.Hex(),
 	})

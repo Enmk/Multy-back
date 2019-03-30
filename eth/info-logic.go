@@ -3,8 +3,8 @@ package eth
 import (
 	"context"
 
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/common"
+	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 )
 
 // TODO: add this logic with load info from Database and send to this method network id

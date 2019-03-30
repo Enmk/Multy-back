@@ -15,20 +15,20 @@ import (
 	gosocketio "github.com/graarh/golang-socketio"
 	"github.com/jekabolt/slf"
 
+	"github.com/Multy-io/Multy-back/common"
+	ethcommon "github.com/Multy-io/Multy-back/common/eth"
 	"github.com/Multy-io/Multy-back/currencies"
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
-	"github.com/Multy-io/Multy-back/common"
-	ethtypes "github.com/Multy-io/Multy-back/common/eth"
 )
 
 // EthController is a main struct of package
 type EthController struct {
 	FirebaseNsqProducer *nsq.Producer // a producer for sending data to clients
 	// CliTest      pb.NodeCommunicationsClient
-	GRPCClient        pb.NodeCommunicationsClient
-	NSQClient         *EventManager
-	WatchAddress      chan UserAddress
+	GRPCClient   pb.NodeCommunicationsClient
+	NSQClient    *EventManager
+	WatchAddress chan UserAddress
 	// blockHandler      BlockHandler
 	// transactionStatus TransactionStatusHandler
 	// NSQClientTest client.EventManager
@@ -129,12 +129,12 @@ func initGrpcClient(url string) (pb.NodeCommunicationsClient, error) {
 	return client, nil
 }
 
-func (controller *EthController) HandleBlock(block ethtypes.BlockHeader) error {
+func (controller *EthController) HandleBlock(block ethcommon.BlockHeader) error {
 	log.Infof("HandleBlock: %#v", block)
 	return nil
 }
 
-func (controller *EthController) HandleTransactionStatus(txStatus ethtypes.TransactionStatusEvent) error {
+func (controller *EthController) HandleTransactionStatus(txStatus ethcommon.TransactionStatusEvent) error {
 	log.Infof("HandleTransactionStatus: %#v", txStatus)
 	return nil
 }

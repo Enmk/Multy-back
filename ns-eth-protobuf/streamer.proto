@@ -28,6 +28,9 @@ service NodeCommunications {
     // TODO: remove
     rpc EventInitialAdd (UsersData) returns (ReplyInfo){
     }
+
+    rpc SendRawTransaction(RawTransaction) returns (ReplyInfo) {
+    }
 }
 
 message TransactionHash {
@@ -85,6 +88,10 @@ message SmartContractCall {
 
 message Address {
     string address = 1;
+}
+
+message RawTransaction {
+    string rawTx = 1;
 }
 
 message ReplyInfo {
