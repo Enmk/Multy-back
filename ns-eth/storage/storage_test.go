@@ -76,8 +76,7 @@ func TestMain(m *testing.M) {
 	}
 
 	if os.Getenv("DGAMING_BACK_VERBOSE_TESTS") != "" || os.Getenv("DGAMING_BACK_VERBOSE_TESTS_MONGO") != "" {
-		var aLogger *log.Logger
-		aLogger = log.New(os.Stderr, "| mgo | ", log.LstdFlags)
+		var aLogger = log.New(os.Stderr, "| mgo | ", log.LstdFlags)
 		mgo.SetLogger(aLogger)
 		mgo.SetDebug(true)
 	}

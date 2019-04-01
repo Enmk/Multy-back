@@ -965,8 +965,20 @@ func (restClient *RestClient) getWalletTransactionsHistory() gin.HandlerFunc {
 			return
 		}
 
+		// TODO: use c.Bind(&requestParams) to simplify parameters processing:
+		// requestParams := struct {
+		//	walletIndex int `json:"walletindex"`
+		//	currencyId  int `json:"currencyid"`
+		//	networkId   int `json:"networkid"`
+		//	assetType   int `json:"type,omitempty"`
+		//	... etc
+		// }
 		walletIndex, err := strconv.Atoi(c.Param("walletindex"))
 		restClient.log.Debugf("getWalletVerbose [%d] \t[walletindexr=%s]", walletIndex, c.Request.RemoteAddr)
+		if err != nil {
+			restClient.requestFailed(c, http.StatusBadRequest, msgErrDecodeWalletIndexErr, err)
+			return
+		}
 
 		currencyId, err := strconv.Atoi(c.Param("currencyid"))
 		restClient.log.Debugf("getWalletVerbose [%d] \t[currencyId=%s]", currencyId, c.Request.RemoteAddr)
@@ -1207,6 +1219,12 @@ func (restClient *RestClient) resyncWallet() gin.HandlerFunc {
 	}
 }
 
-type brokenWallets struct {
-	Addresses []string `json:"addresses"`
+func (restClient *RestClient) requestFailed(c *gin.Context, responseCode int, responseMessage string, err error) {
+	r := c.Request
+	restClient.log.Errorf("Request '%s %s' from %s failed with error: %+v", r.Method, r.RequestURI, r.RemoteAddr, err)
+
+	c.JSON(responseCode, gin.H{
+		"code":    responseCode,
+		"message": responseMessage,
+	})
 }

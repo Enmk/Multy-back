@@ -290,12 +290,8 @@ func (client *NodeClient) isTransactionOfKnownAddress(transaction *eth.Transacti
 		if method := callInfo.Method; method != nil {
 			if method.Name == erc20TransferName && len(method.Arguments) > 0 {
 				address, ok := method.Arguments[0].Value.(eth.Address)
-				if ok == true {
-					if client.IsAnyKnownAddress(address) {
-						return true
-					}
-				} else {
-					log.Errorf("Unexpected argument 0 type for erc20 `transfer()` method: %#v, expected Address", callInfo)
+				if ok && client.IsAnyKnownAddress(address) {
+					return true
 				}
 			}
 		}

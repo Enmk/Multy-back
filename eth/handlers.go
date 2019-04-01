@@ -27,25 +27,21 @@ func (ethcli *EthController) setGRPCHandlers(networkID int, accuracyRange int) {
 
 	// watch for channel and push to node
 	go func() {
-		for {
-			select {
-			case addr := <-ethcli.WatchAddress:
-				// TODO: split chan and move emit new address to nsq
-				err := ethcli.eventManager.EmitNewAddressEvent(eth.HexToAddress(addr.Address))
-				if err != nil {
-					log.Errorf("NewAddressNode: cli.EventAddNewAddress %s\n", err.Error())
-				}
-				// log.Debugf("EventAddNewррррнAddress Reply %s", rp)
-
-				rp, err := ethcli.GRPCClient.ResyncAddress(context.Background(), &pb.Address{
-					Address: addr.Address,
-				})
-				if err != nil {
-					log.Errorf("EventResyncAddress: cli.EventResyncAddress %s\n", err.Error())
-				}
-				log.Debugf("EventResyncAddress Reply %s", rp)
-
+		for addr := range ethcli.WatchAddress {
+			// TODO: split chan and move emit new address to nsq
+			err := ethcli.eventManager.EmitNewAddressEvent(eth.HexToAddress(addr.Address))
+			if err != nil {
+				log.Errorf("NewAddressNode: cli.EventAddNewAddress %s\n", err.Error())
 			}
+			// log.Debugf("EventAddNewррррнAddress Reply %s", rp)
+
+			rp, err := ethcli.GRPCClient.ResyncAddress(context.Background(), &pb.Address{
+				Address: addr.Address,
+			})
+			if err != nil {
+				log.Errorf("EventResyncAddress: cli.EventResyncAddress %s\n", err.Error())
+			}
+			log.Debugf("EventResyncAddress Reply %s", rp)
 		}
 	}()
 
@@ -220,7 +216,7 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 	result := make([]store.TransactionETH, 0, len(descriptors) * 2) // at max 2 user-transactions per transfer: 1 incoming 1 outgoing
 
 	// For each party in descriptors, find all user/wallet/address tuples, and make corresponding transactions.
-	for d, _ := range descriptors {
+	for d := range descriptors {
 
 		transfers := []struct{
 			address   eth.Address
