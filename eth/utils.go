@@ -354,17 +354,6 @@ func FetchUserAddresses(currencyID, networkID int, user store.User, addreses []s
 	return addresses, nil
 }
 
-func fetchMethod(input string) string {
-	method := input
-	if len(input) < 10 {
-		method = "0x"
-	} else {
-		method = input[:10]
-	}
-
-	return method
-}
-
 func parseSubmitInput(input string) (string, string) {
 	address := ""
 	amount := ""

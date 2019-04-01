@@ -35,7 +35,7 @@ type InitConfig struct {
 type rpcPacket struct {
 	Id      string            `json:"id"`
 	Jsonrpc string            `json:"jsonrpc"`
-	Method  string            `json:"method""`
+	Method  string            `json:"method"`
 	Params  map[string]string `json:"params"`
 }
 

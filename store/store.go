@@ -71,7 +71,7 @@ type QualifiedAddress struct {
 }
 
 type UserStore interface {
-	GetUserByDevice(device bson.M, user *User)
+	GetUserByDevice(device bson.M, user *User) error
 	Update(sel, update bson.M) error
 	Insert(user User) error
 	Close() error
@@ -320,9 +320,8 @@ func (mStore *MongoUserStore) UpdateUser(sel bson.M, user *User) error {
 	return mStore.usersData.Update(sel, user)
 }
 
-func (mStore *MongoUserStore) GetUserByDevice(device bson.M, user *User) { // rename GetUserByToken
-	mStore.usersData.Find(device).One(user)
-	return // why?
+func (mStore *MongoUserStore) GetUserByDevice(device bson.M, user *User) error { // rename GetUserByToken
+	return mStore.usersData.Find(device).One(user)
 }
 
 func (mStore *MongoUserStore) Update(sel, update bson.M) error {
@@ -407,18 +406,17 @@ func (mStore *MongoUserStore) CheckAddWallet(wp *WalletParams, jwt string) error
 			txs := []TransactionETH{}
 			switch wp.NetworkID {
 			case currencies.ETHMain:
-				mStore.ETHMainTxsData.Find(query).All(&txs)
-			case currencies.ETHTest:
-				mStore.ETHTestTxsData.Find(query).All(&txs)
+				err = mStore.ETHMainTxsData.Find(query).All(&txs)
+			// case currencies.ETHTest:
+			// 	err = mStore.ETHTestTxsData.Find(query).All(&txs)
 			}
 			if len(txs) == 0 {
-				return fmt.Errorf("maximum available wallets count")
+				return errors.Errorf("Reached maximum available wallets count")
 			}
-
 		}
 	}
 
-	return nil
+	return err
 }
 
 func (store *MongoUserStore) FindAllUserAddresses(address string) ([]QualifiedAddress, error) {

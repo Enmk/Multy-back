@@ -15,8 +15,7 @@ import (
 	gosocketio "github.com/graarh/golang-socketio"
 	"github.com/jekabolt/slf"
 
-	"github.com/Multy-io/Multy-back/common"
-	ethcommon "github.com/Multy-io/Multy-back/common/eth"
+	// ethcommon "github.com/Multy-io/Multy-back/common/eth"
 	"github.com/Multy-io/Multy-back/currencies"
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"

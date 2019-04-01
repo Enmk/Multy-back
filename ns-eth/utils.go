@@ -17,10 +17,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/jekabolt/slf"
 	"github.com/onrik/ethrpc"
-	"gopkg.in/mgo.v2/bson"
 
 	"github.com/Multy-io/Multy-back/common/eth"
-	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 )
 
 const erc20TransferName = "transfer(address,uint256)"
@@ -271,35 +269,6 @@ func (client *NodeClient) HandleEthTransaction(rawTX ethrpc.Transaction, blockHe
 	}
 
 	return nil
-}
-
-func rawToGenerated(rawTX ethrpc.Transaction) pb.ETHTransaction {
-	return pb.ETHTransaction{
-		Hash:     rawTX.Hash,
-		From:     rawTX.From,
-		To:       rawTX.To,
-		Amount:   rawTX.Value.String(),
-		GasPrice: uint64(rawTX.GasPrice.Int64()),
-		GasLimit: uint64(rawTX.Gas),
-		Nonce:    uint64(rawTX.Nonce),
-		Payload:  rawTX.Input,
-	}
-}
-
-func isMempoolUpdate(mempool bool, status int) bson.M {
-	if mempool {
-		return bson.M{
-			"$set": bson.M{
-				"status": status,
-			},
-		}
-	}
-	return bson.M{
-		"$set": bson.M{
-			"status":    status,
-			"blocktime": time.Now().Unix(),
-		},
-	}
 }
 
 func (client *NodeClient) IsAnyKnownAddress(addresses ...eth.Address) bool {

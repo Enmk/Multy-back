@@ -65,7 +65,5 @@ func NewStorage(config Config) (*Storage, error) {
 }
 
 func (self *Storage) Close() {
-	db := self.db
-	self = &Storage{}
-	db.Session.Close()
+	self.db.Session.Close()
 }
