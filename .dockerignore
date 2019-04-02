@@ -8,3 +8,7 @@
 */logs/*
 .drone.yml
 .drone/
+.env*
+# Exclude docker related files to speedup container stuff rebuild
+Dockerfile*
+docker-compose*

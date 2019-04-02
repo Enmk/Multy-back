@@ -1,0 +1,24 @@
+# Builder image that builds all the multy-back and all node services
+# multyio/multy-back-builder has all dependencies cached
+# Based on golang:1.12-alpine2.9
+FROM multyio/multy-back-builder:dgaming
+WORKDIR $GOPATH/src/github.com/Multy-io/Multy-back
+ARG MULTY_DEBUGGEE="/multy/multy-back"
+ENV MULTY_DEBUGGEE="$MULTY_DEBUGGEE"
+# delve debug port
+EXPOSE 2345
+
+# Getting, build and installing delve and its dependency (libc6-compat)
+# https://github.com/go-delve/delve/issues/1109#issuecomment-361382060
+RUN apk add libc6-compat
+RUN go get -u github.com/derekparker/delve/cmd/dlv
+
+COPY . $GOPATH/src/github.com/Multy-io/Multy-back
+RUN go get -v -d ./...
+RUN make build-debug -B
+
+WORKDIR /multy
+# Copy debugee to the /multy directory to match layout of the release image
+RUN find $GOPATH/src/github.com/Multy-io/Multy-back/cmd -iname `basename ${MULTY_DEBUGGEE}` -type f -exec cp {} /multy \;
+
+ENTRYPOINT dlv exec ${MULTY_DEBUGGEE} -l 0.0.0.0:2345 --headless=true --log=true -- ${MULTY_DEBUGGEE_ARGUMENTS}

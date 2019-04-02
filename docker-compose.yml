@@ -1,6 +1,19 @@
-version: '2.3'
+version: '2.4'
+
+# debug stuff, ignore this
+x-multy-debug: &multy-debug-ref
+  # for debugging with delve
+  ports:
+    - "2345:2345"
+  security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+  cap_add:
+      - SYS_PTRACE
+
+
 services:
-  multy-back:
+  multy-back: &multy-back-ref
     image: multyio/multy-back:${MULTY_BACK_VERSION}
     env_file: .env
     restart: on-failure
@@ -11,16 +24,30 @@ services:
     ports:
       - "${MULTY_REST_PORT}:6778" 
       - "${MULTY_SOCKETIO_PORT}:6780"
+
     depends_on:
       - nsq
       - mongodb
-      - btc-ns-mainnet
-      - btc-ns-testnet
-      - eth-ns-mainnet
-      - eth-ns-testnet
+      - multy-eth-ns-mainnet
     expose:
       - 6778
       - 6780
+    mem_limit: 1G
+    memswap_limit: 2G
+
+
+  multy-eth-ns-mainnet: &multy-eth-ns-mainnet-ref
+    image: multyio/multy-eth-node-service:${MULTY_NS_ETH_VERSION}
+
+    restart: on-failure
+    hostname: multy.local
+    volumes:
+      - "${MULTY_NS_ETH_MAINNET_CONFIG}:/multy/ns-eth.config"
+    expose:
+      - "7744"
+    mem_limit: 2G
+    memswap_limit: 3G
+
 
   mongodb:
     container_name: "mongo_db_dev"
@@ -34,7 +61,8 @@ services:
       - "${MONGO_CONF_DIR}:/mongo"
       - "./mongo_entrypoint.sh:/mongo_entrypoint.sh"
     expose:
-      - "27017"    
+      - "27017"
+
 
   nsqlookup:
     image: nsqio/nsq
@@ -42,6 +70,7 @@ services:
     expose:
       - "4160"
     command: nsqlookupd
+
 
   nsq:
     image: nsqio/nsq
@@ -56,26 +85,26 @@ services:
       - "${NSQD_DATA_DIR}:/data/nsqd"
     command: nsqd --broadcast-address nsq --lookupd-tcp-address=nsqlookup:4160 -data-path=/data
 
-  eth-ns-mainnet:
-    image: multyio/multy-eth-node-service:${MULTY_NS_ETH_VERSION}
 
-    restart: on-failure
-    hostname: multy.local
-    volumes:
-      - "${MULTY_NS_ETH_MAINNET_CONFIG}:/multy/ns-eth.config"
-    expose:
-      - "7744"
-    mem_limit: 2G
-    memswap_limit: 500MB
+############################################################################################################
+# HERE GOES STUFF FOR DEBUGGING both multy-back and node services in docker
+############################################################################################################
+  multy-back-debug:
+    <<: *multy-back-ref
+    <<: *multy-debug-ref
+    image: multy-back:debug
+    build:
+      context: .
+      dockerfile: Dockerfile_debug
+      args:
+        MULTY_DEBUGGEE: /multy/multy-back
 
-
-  eth-ns-testnet:
-    image: multyio/multy-eth-node-service:${MULTY_NS_ETH_VERSION}
-    restart: on-failure
-    hostname: multy.local
-    volumes:
-      - "${MULTY_NS_ETH_TESTNET_CONFIG}:/multy/ns-eth.config"
-    expose:
-      - "6644"
-    mem_limit: 2G
-    memswap_limit: 500MB
+  multy-eth-ns-mainnet-debug:
+    <<: *multy-eth-ns-mainnet-ref
+    <<: *multy-debug-ref
+    image: multy-eth-node-service:debug
+    build:
+      context: .
+      dockerfile: Dockerfile_debug
+      args:
+        MULTY_DEBUGGEE: /multy/ns-eth

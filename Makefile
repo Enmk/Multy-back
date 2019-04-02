@@ -5,7 +5,7 @@ COMMIT = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +%Y-%m-%dT%T%z)
 LASTTAG = $(shell git describe --tags --abbrev=0 --dirty)
 GOPATH = $(shell echo "$$GOPATH")
-LD_OPTS = -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.lasttag=${LASTTAG} -X main.buildtime=${BUILDTIME} -linkmode=external -w -s"
+LD_OPTS = -ldflags="-X main.branch=${BRANCH} -X main.commit=${COMMIT} -X main.lasttag=${LASTTAG} -X main.buildtime=${BUILDTIME} -linkmode=external ${EXTRA_LD_OPTS}"
 
 # List of all binary targets we expect from make to produce
 TARGETS=cmd/multy-back/multy-back  cmd/ns-eth/ns-eth 
@@ -37,12 +37,20 @@ dist: TARGET_OS=linux
 dist: TARGET_ARCH=amd64
 dist: build
 
+# build producess stripped of 'release' build, the one to be deployed to production
+build: EXTRA_LD_OPTS=-w -s
 build: $(TARGETS)
+	ls -lah $(TARGETS)
+
+# build-debug produces binaries with all debug info, debuggable by delve
+build-debug: EXTRA_LD_OPTS=
+build-debug: EXTRA_BUILD_ARGS+=-gcflags "all=-N -l"
+build-debug: $(TARGETS)
 	ls -lah $(TARGETS)
 
 $(TARGETS):
 	cd $(@D) && \
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) go build $(LD_OPTS) -o $(@F) . && \
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) go build $(LD_OPTS) $(EXTRA_BUILD_ARGS) -o $(@F) . && \
 	cd -
 
 .PHONY: test
@@ -132,3 +140,8 @@ docker-retag-builder-image:
 
 docker-push-builder-image:
 	docker push $(DOCKERHUB_ACCOUNT)/multy-back-builder:$(DOCKER_TAG)
+
+# unfortunatelly, depends on MULTY_BACK_VERSION=latest MULTY_NS_ETH_VERSION=latest, event though those containers are not used
+# TODO: consider moving common code to some x-prefixed section in docker-compose.yml
+docker-run-debug:
+	MULTY_BACK_VERSION=latest MULTY_NS_ETH_VERSION=latest docker-compose up --force-recreate --build multy-back-debug
