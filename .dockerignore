@@ -1,14 +1,18 @@
-*/*.cert
-*/*.config
-*/*secret*
-*/*.tar
-*/*.tar.gz
-*/*.zip
-*/*.log
+**/*.cert
+**/*.config
+**/*secret*
+**/*.tar
+**/*.tar.gz
+**/*.zip
+**/*.log
 */logs/*
 .drone.yml
 .drone/
 .env*
+
+**/cmd/multy-back/multy-back
+**/cmd/ns-eth/ns-eth
+
 # Exclude docker related files to speedup container stuff rebuild
 Dockerfile*
 docker-compose*
