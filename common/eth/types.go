@@ -200,7 +200,7 @@ func HexToAmount(hexString string) (Amount, error) {
 
 	value, ok := new(big.Int).SetString(hexString, 16)
 	if !ok {
-		return Amount{}, errors.Errorf("Faield to create eth.Amount from hex string: %s", hexString)
+		return Amount{}, errors.Errorf("Failed to create eth.Amount from hex string: %s", hexString)
 	}
 
 	return Amount{

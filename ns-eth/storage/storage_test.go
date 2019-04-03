@@ -200,7 +200,7 @@ func TestBlockStorageManyBlocks(test *testing.T) {
 	for _, expectedBlock := range blocks {
 		actualBlock, err := storage.BlockStorage.GetBlock(expectedBlock.Hash)
 		if err != nil {
-			test.Fatalf("Faield to get block: %+v", err)
+			test.Fatalf("Failed to get block: %+v", err)
 		}
 
 		AssertEqual(test, expectedBlock, *actualBlock)

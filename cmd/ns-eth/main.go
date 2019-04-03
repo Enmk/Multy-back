@@ -8,7 +8,7 @@ package main
 import (
 	"flag"
 	"fmt"
-
+	"time"
 	"net/http"
 	_ "net/http/pprof"
 
@@ -16,8 +16,9 @@ import (
 	"github.com/jekabolt/slf"
 	_ "github.com/jekabolt/slflog"
 
-	ns "github.com/Multy-io/Multy-back/ns-eth"
 	"github.com/Multy-io/Multy-back/common"
+	ns "github.com/Multy-io/Multy-back/ns-eth"
+	"github.com/Multy-io/Multy-back/ns-eth/storage"
 )
 
 var (
@@ -37,6 +38,9 @@ var globalOpt = ns.Configuration{
 	Name:                "eth-node-service",
 	ImmutableBlockDepth: 50, // with block once 15 seconds, 50 blocks is approx 12.5 minutes
 	NSQURL:              "127.0.0.1:4150",
+	DB: storage.Config {
+		Timeout: 2*time.Second,
+	},
 }
 
 func main() {

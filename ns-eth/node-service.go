@@ -53,6 +53,7 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	service = &NodeService{
 		Config: conf,
 	}
+	log.Infof("Connecting to DB on %s with timeout %s ...", conf.DB.URL, conf.DB.Timeout.String())
 	storageInstance, err := storage.NewStorage(conf.DB)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "Failed to connect to DB")
@@ -82,11 +83,13 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	}
 	service.eventManager = eventManager
 
+	log.Infof("Starting gRPC server on : %s ...", conf.GrpcPort)
 	// Creates a new gRPC server
 	srv, err := NewServer(conf.GrpcPort, service.nodeClient, service)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("gRPC started √")
 
 	service.GRPCserver = srv
 	go service.GRPCserver.Serve()
@@ -110,7 +113,7 @@ func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
 func (service *NodeService) HandleTransaction(transaction eth.Transaction) {
 	err := service.tryHandleTransaction(transaction)
 	if err != nil {
-		log.Errorf("Faield to handle a transaction %s : %+v", transaction.Hash.Hex(), err)
+		log.Errorf("Failed to handle a transaction %x : %+v", transaction.Hash, err)
 	}
 }
 
@@ -144,7 +147,7 @@ func (service *NodeService) tryHandleTransaction(transaction eth.Transaction) er
 func (service *NodeService) HandleBlock(blockHeader eth.BlockHeader) {
 	err := service.tryHandleBlock(blockHeader)
 	if err != nil {
-		log.Errorf("Faield to handle block %s : %+v", blockHeader.Hash.Hex(), err)
+		log.Errorf("Failed to handle block %x : %+v", blockHeader.Hash, err)
 	}
 }
 

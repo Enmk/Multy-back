@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/jekabolt/slf"
 
@@ -66,6 +67,7 @@ func Init(conf *Configuration) (*Multy, error) {
 		config:           conf,
 		ExchangerFactory: &exchanger.FactoryExchanger{},
 	}
+	log.Infof("Connecting to database: %s ...", conf.Database.Address)
 	// DB initialization
 	userStore, err := store.InitUserStore(conf.Database)
 	if err != nil {
@@ -132,7 +134,7 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]c
 	for _, conCred := range ct {
 		usersData, err := userStore.FindUserDataChain(conCred.СurrencyID, conCred.NetworkID)
 		if err != nil {
-			return servicesInfo, fmt.Errorf("SetUserData: userStore.FindUserDataChain: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
+			return servicesInfo, errors.Wrapf(err, "SetUserData: userStore.FindUserDataChain: curID :%d netID :%d", conCred.СurrencyID, conCred.NetworkID)
 		}
 		if len(usersData) == 0 {
 			log.Infof("Empty userdata")
@@ -156,7 +158,7 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]c
 			// case currencies.ETHTest:
 			// 	cli = m.ETH.CliTest
 			default:
-				log.Errorf("setGRPCHandlers: wrong networkID:")
+				log.Fatalf("setGRPCHandlers: wrong networkID: %d", conCred.СurrencyID)
 			}
 
 			//TODO: Restore state
@@ -175,17 +177,19 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]c
 				// } else {
 				// }
 			}
+			log.Infof("Posting %d addresses to node service", len(intialAddresses))
 			resp, err := cli.EventInitialAdd(context.Background(), &ethpb.UsersData{
 				Addresses: intialAddresses,
 			})
 			if err != nil {
-				return servicesInfo, fmt.Errorf("SetUserData: Ether.EventInitialAdd: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
+				log.Errorf("SetUserData: Ether.EventInitialAdd: curID :%d netID :%d\n%+v", conCred.СurrencyID, conCred.NetworkID, err)
+				// return servicesInfo, errors.Wrapf(err, "SetUserData: Ether.EventInitialAdd: curID :%d netID :%d", conCred.СurrencyID, conCred.NetworkID)
 			}
 			log.Debugf("Ether cli.EventInitialAdd: resp: %s", resp.Message)
 
 			sv, err := cli.GetServiceVersion(context.Background(), &ethpb.Empty{})
 			if err != nil {
-				return servicesInfo, fmt.Errorf("SetUserData:  cli.ServiceInfo: curID :%d netID :%d err =%s", conCred.СurrencyID, conCred.NetworkID, err.Error())
+				return servicesInfo, errors.Wrapf(err, "SetUserData: cli.ServiceInfo: curID :%d netID :%d", conCred.СurrencyID, conCred.NetworkID)
 			}
 			servicesInfo = append(servicesInfo, common.ServiceInfo{
 				Branch:    sv.Branch,

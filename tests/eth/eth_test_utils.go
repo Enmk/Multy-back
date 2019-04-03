@@ -34,7 +34,7 @@ func ToArgument(value interface{}) eth.SmartContractMethodArgument {
 func NewBigIntFromHex(hexValue string) *big.Int {
 	result, ok := new(big.Int).SetString(hexValue, 16)
 	if !ok {
-		panic(errors.Errorf("Faield to decode hex-encoded big.Int from  %s", hexValue))
+		panic(errors.Errorf("Failed to decode hex-encoded big.Int from  %s", hexValue))
 	}
 
 	return result

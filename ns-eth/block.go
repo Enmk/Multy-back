@@ -30,7 +30,7 @@ func (c *NodeClient) HandleNewHeadBlock(hash string) {
 	if block.Transactions != nil {
 		txs = block.Transactions
 	} else {
-		log.Infof("No transactions in block: %s", block.Hash)
+		log.Infof("No transactions in block: %x", block.Hash)
 		return
 	}
 

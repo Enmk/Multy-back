@@ -3,6 +3,8 @@ package eth
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	"github.com/Multy-io/Multy-back/common"
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 )
@@ -15,7 +17,10 @@ func (self *EthController) GetBlockHeigth() (int64, error) {
 
 func (self *EthController) GetSeviceInfo() (*common.ServiceInfo, error) {
 	serviceVersion, err := self.GRPCClient.GetServiceVersion(context.Background(), &pb.Empty{})
-	log.Errorf("%v, %v", serviceVersion, err)
+	log.Infof("GetSeviceInfo: %v, %v", serviceVersion, err)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to fetch service info from NS")
+	}
 
 	return &common.ServiceInfo{
 		Branch:    serviceVersion.GetBranch(),

@@ -59,7 +59,7 @@ func (server *Server) Serve() {
 func (server *Server) Stop() error {
 	err := server.listener.Close()
 	if err != nil {
-		return errors.Wrapf(err, "Faield to close listener")
+		return errors.Wrapf(err, "Failed to close listener")
 	}
 
 	server.gRPCserver.Stop()
@@ -179,7 +179,10 @@ func (s *Server) EventInitialAdd(c context.Context, ud *pb.UsersData) (*pb.Reply
 
 	addresses := ud.GetAddresses()
 	if addresses == nil {
-		return nil, errors.Errorf("EventInitialAdd addresses is nil")
+		log.Infof("EventInitialAdd addresses is nil.")
+		return &pb.ReplyInfo{
+			Message: "empty addresses",
+		}, nil
 	}
 
 	log.Debugf("EventInitialAdd total addresses: %d", len(addresses))

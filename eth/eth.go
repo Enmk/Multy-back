@@ -56,7 +56,7 @@ func NewController(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr strin
 	config := nsq.NewConfig()
 	p, err := nsq.NewProducer(nsqAddr, config)
 	if err != nil {
-		return controller, errors.Wrapf(err, "Faield to create nsq producer")
+		return controller, errors.Wrapf(err, "Failed to create nsq producer")
 	}
 
 	controller.FirebaseNsqProducer = p

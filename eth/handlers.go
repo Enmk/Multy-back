@@ -61,18 +61,18 @@ func (controller *EthController) HandleTransactionStatus(txStatusEvent eth.Trans
 	transaction, err := controller.fetchAndUpdateTransaction(txStatusEvent)
 	if err != nil || transaction == nil {
 		if err == nil {
-			err = fmt.Errorf("Failed to fetch corresponding transaction for %s", txStatusEvent.TransactionHash)
+			err = fmt.Errorf("Failed to fetch corresponding transaction for %x", txStatusEvent.TransactionHash)
 		}
 		return err
 	}
 
 	userTransactions, err := controller.splitTransactionToUserTransactions(transaction)
-	log.Debugf("Split transaction %s into %#v with error: %+v", txStatusEvent.TransactionHash, userTransactions, err)
+	log.Debugf("Split transaction %x into %#v with error: %+v", txStatusEvent.TransactionHash, userTransactions, err)
 	// TODO: save all transactions, update wallets balances and notify all corresponding users.
 
 	// Save every transaction to the DB and send notifications to clients.
 	for _, tx := range userTransactions {
-		log.WithField("tx", fmt.Sprintf("[%s (%s => %s | %s)]", tx.Hash, tx.From, tx.To, tx.Token))
+		log.WithField("tx", fmt.Sprintf("[%x (%x => %x | %x)]", tx.Hash, tx.From, tx.To, tx.Token))
 		err := saveTransaction(tx, controller.coinType.NetworkID, false)
 		if err != nil {
 			log.Debugf("!!! Failed to save tx with err: %+v", err)
@@ -98,7 +98,7 @@ func (controller *EthController) fetchAndUpdateTransaction(txStatusEvent eth.Tra
 	cachedTransaction, err := controller.transactionStorage.GetTransaction(txStatusEvent.TransactionHash)
 	if err != nil || cachedTransaction == nil {
 		// Don't care about errors, since we can re-write transaction to DB later.
-		log.Infof("Faield to load transaction from DB: %#v, %+v", cachedTransaction, err)
+		log.Infof("Failed to load transaction from DB: %#v, %v", cachedTransaction, err)
 	}
 
 	if cachedTransaction != nil {
@@ -176,7 +176,7 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 		transaction.Amount.Int.Text(10)}] = dummy
 
 	if callInfo := transaction.CallInfo; callInfo != nil {
-		d, err := controller.getTransferDescriptor(callInfo.Method)
+		d, err := controller.getTransferDescriptor(transaction.Sender, callInfo.Method)
 		if err != nil || d == nil {
 			log.Infof("can't get transaction descriptor for method call: %+v", err)
 		}
@@ -185,7 +185,7 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 		}
 
 		for i, event := range callInfo.Events {
-			d, err := controller.getTransferDescriptor(&event)
+			d, err := controller.getTransferDescriptor(transaction.Sender, &event)
 			if err != nil || d == nil {
 				log.Infof("can't get transaction descriptor for event #%d: %+v", i, err)
 				continue
@@ -245,7 +245,7 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 	return result, nil
 }
 
-func (controller *EthController) getTransferDescriptor(call *eth.SmartContractMethodInfo) (*transferDescriptor, error) {
+func (controller *EthController) getTransferDescriptor(txSender eth.Address, call *eth.SmartContractMethodInfo) (*transferDescriptor, error) {
 	if call == nil {
 		return nil, nil
 	}
@@ -254,9 +254,26 @@ func (controller *EthController) getTransferDescriptor(call *eth.SmartContractMe
 		return nil, errors.Errorf("Unsuported contract address %s for method call %s", call.Address.Hex(), call.Name)
 	}
 
-	if call.Name == eth.Erc20TransferName || call.Name == eth.TransferEventName {
+	if call.Name == eth.Erc20TransferName {
 		var arguments struct {
-			Sender   eth.Address
+			Receiver eth.Address
+			Amount   big.Int
+		}
+		err := call.UnpackArguments(&arguments)
+		if err != nil {
+			return nil, err
+		}
+
+		return &transferDescriptor{
+			from:  txSender,
+			to:    arguments.Receiver,
+			token: call.Address,
+			value: arguments.Amount.Text(16),
+		}, nil
+	}
+	if call.Name == eth.TransferEventName {
+		var arguments struct {
+			Sender eth.Address
 			Receiver eth.Address
 			Amount   big.Int
 		}

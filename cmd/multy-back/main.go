@@ -71,11 +71,11 @@ func main() {
 
 	mu, err := multy.Init(&globalOpt)
 	if err != nil {
-		log.Fatalf("Server initialization: %s\n", err.Error())
+		log.Fatalf("Server initialization failed: %+v", err)
 	}
 
 	if err = mu.Run(); err != nil {
-		log.Fatalf("Server running: %s\n", err.Error())
+		log.Fatalf("Server terminated: %+v", err)
 	}
 
 }

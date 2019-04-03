@@ -197,7 +197,7 @@ func sendNotifyToClients(tx store.TransactionETH, nsqProducer *nsq.Producer, net
 		return sendNotify(&txMsq, nsqProducer)
 	}
 
-	log.Errorf("!!! TX %s NOTIFICATION WAS NOT SENT TO USER (unknown tx status: %d)", tx.Hash, tx.Status)
+	log.Errorf("!!! TX %x NOTIFICATION WAS NOT SENT TO USER (unknown tx status: %d)", tx.Hash, tx.Status)
 	return nil
 }
 

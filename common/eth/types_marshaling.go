@@ -12,7 +12,7 @@ func (a *Amount) SetBSON(raw bson.Raw) error {
 	var amountString string
 	err := raw.Unmarshal(&amountString)
 	if err != nil {
-		return errors.Wrap(err, "Faield to parse amount from BSON")
+		return errors.Wrap(err, "Failed to parse amount from BSON")
 	}
 
 	amount, err := HexToAmount(amountString)
@@ -112,7 +112,7 @@ func (a *SmartContractMethodArgument) SetBSON(raw bson.Raw) error {
 	var doc bson.M
 	err := raw.Unmarshal(&doc)
 	if err != nil {
-		return errors.Wrapf(err, "Faield to unmarshal []byte from BSON")
+		return errors.Wrapf(err, "Failed to unmarshal []byte from BSON")
 	}
 
 	v, ok := doc["value"]

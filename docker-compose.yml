@@ -38,7 +38,6 @@ services:
 
   multy-eth-ns-mainnet: &multy-eth-ns-mainnet-ref
     image: multyio/multy-eth-node-service:${MULTY_NS_ETH_VERSION}
-
     restart: on-failure
     hostname: multy.local
     volumes:
@@ -50,16 +49,14 @@ services:
 
 
   mongodb:
-    container_name: "mongo_db_dev"
     image: mongo:3.6.2
     env_file: .env
     restart: on-failure
-    command: mongod --smallfiles --config /mongo/mongod.conf
+    command: mongod --smallfiles --noauth
     volumes:
       - "${MONGO_DATA_DIR}:/data/db"
       - "${MONGO_LOG_DIR}:/data/logs"
       - "${MONGO_CONF_DIR}:/mongo"
-      - "./mongo_entrypoint.sh:/mongo_entrypoint.sh"
     expose:
       - "27017"
 

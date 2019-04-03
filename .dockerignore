@@ -9,6 +9,10 @@
 .drone.yml
 .drone/
 .env*
+.env
+
+# You should put all persistent docker data in this dir.
+docker-persistent-data/*
 
 **/cmd/multy-back/multy-back
 **/cmd/ns-eth/ns-eth
