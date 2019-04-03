@@ -32,6 +32,8 @@ FROM base as multy-back
 LABEL org.label-schema.name = "Multy Back"
 WORKDIR /multy
 COPY --from=builder /go/src/github.com/Multy-io/Multy-back/cmd/multy-back/multy-back /multy/multy-back
+# the config file, create an empty file to prevent docker from creating a directory with the same name
+RUN touch /multy/multy-back.config
 RUN ["/multy/multy-back", "--CanaryTest=true"]
 ENTRYPOINT ["/multy/multy-back"]
 
@@ -40,5 +42,7 @@ FROM base as multy-eth-node-service
 LABEL org.label-schema.name = "Multy ETH Node service"
 WORKDIR /multy
 COPY --from=builder /go/src/github.com/Multy-io/Multy-back/cmd/ns-eth/ns-eth /multy/ns-eth
+# the config file, create an empty file to prevent docker from creating a directory with the same name
+RUN touch /multy/ns-eth.config
 RUN ["/multy/ns-eth", "--CanaryTest=true"]
 ENTRYPOINT ["/multy/ns-eth"]

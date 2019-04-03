@@ -141,7 +141,12 @@ docker-retag-builder-image:
 docker-push-builder-image:
 	docker push $(DOCKERHUB_ACCOUNT)/multy-back-builder:$(DOCKER_TAG)
 
-# unfortunatelly, depends on MULTY_BACK_VERSION=latest MULTY_NS_ETH_VERSION=latest, event though those containers are not used
+
+docker-run: docker-build-images
+	MULTY_BACK_VERSION=$(DOCKER_BUILD_TAG) MULTY_NS_ETH_VERSION=$(DOCKER_BUILD_TAG) docker-compose up --force-recreate multy-back
+
+# unfortunatelly depends on MULTY_BACK_VERSION=latest MULTY_NS_ETH_VERSION=latest, 
+# event though those containers are not used.
 # TODO: consider moving common code to some x-prefixed section in docker-compose.yml
 docker-run-debug:
 	MULTY_BACK_VERSION=latest MULTY_NS_ETH_VERSION=latest docker-compose up --force-recreate --build multy-back-debug
