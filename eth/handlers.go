@@ -178,7 +178,7 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 	if callInfo := transaction.CallInfo; callInfo != nil {
 		d, err := controller.getTransferDescriptor(transaction.Sender, callInfo.Method)
 		if err != nil || d == nil {
-			log.Infof("can't get transaction descriptor for method call: %+v", err)
+			log.Infof("can't get transaction descriptor for method call: %v", err)
 		}
 		if d != nil {
 			descriptors[*d] = dummy
@@ -187,7 +187,7 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 		for i, event := range callInfo.Events {
 			d, err := controller.getTransferDescriptor(transaction.Sender, &event)
 			if err != nil || d == nil {
-				log.Infof("can't get transaction descriptor for event #%d: %+v", i, err)
+				log.Infof("can't get transaction descriptor for event #%d: %v", i, err)
 				continue
 			}
 
@@ -329,7 +329,7 @@ func convertStatus(status eth.TransactionStatus, direction transferDirection) in
 }
 
 func (controller *EthController) isSupportedContractAddress(address eth.Address) bool {
-	// TODO: check with whitelist of tokens
+	// TODO: check with whitelist/blacklist of tokens
 	return true
 }
 

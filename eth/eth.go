@@ -7,9 +7,12 @@ package eth
 
 import (
 	"fmt"
+	"time"
 	"github.com/pkg/errors"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	mgo "gopkg.in/mgo.v2"
 	nsq "github.com/bitly/go-nsq"
 	gosocketio "github.com/graarh/golang-socketio"
@@ -68,6 +71,7 @@ func NewController(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr strin
 		Addrs:    addr,
 		Username: dbConf.Username,
 		Password: dbConf.Password,
+		Timeout:  dbConf.Timeout,
 	}
 
 	db, err := mgo.DialWithInfo(mongoDBDial)
@@ -121,7 +125,22 @@ func NewController(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr strin
 }
 
 func initGrpcClient(url string) (pb.NodeCommunicationsClient, error) {
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	backoff := grpc_retry.BackoffExponential(100 * time.Millisecond)
+	opts := []grpc_retry.CallOption{
+		grpc_retry.WithCodes(codes.Unavailable, codes.DataLoss),
+		grpc_retry.WithMax(10),
+		grpc_retry.WithBackoff(func(attempt uint) time.Duration {
+			duration := backoff(attempt)
+			log.Infof("GRPC retry attempt %d : waiting %s", attempt, duration.String())
+			return duration
+		}),
+	}
+
+	conn, err := grpc.Dial(url,
+		grpc.WithInsecure(),
+		grpc.WithStreamInterceptor(grpc_retry.StreamClientInterceptor(opts...)),
+		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(opts...)))
+
 	if err != nil {
 		log.Errorf("initGrpcClient: grpc.Dial: %s", err.Error())
 		return nil, err

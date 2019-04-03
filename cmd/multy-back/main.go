@@ -6,14 +6,17 @@ See LICENSE for details
 package main
 
 import (
+	"time"
+
+	_ "github.com/swaggo/gin-swagger"              // gin-swagger middleware
+	_ "github.com/swaggo/gin-swagger/swaggerFiles" // swagger embed files
+
 	"github.com/jekabolt/config"
 	_ "github.com/jekabolt/slflog"
+	"github.com/jekabolt/slf"
 
 	multy "github.com/Multy-io/Multy-back"
 	"github.com/Multy-io/Multy-back/store"
-	"github.com/jekabolt/slf"
-	_ "github.com/swaggo/gin-swagger"              // gin-swagger middleware
-	_ "github.com/swaggo/gin-swagger/swaggerFiles" // swagger embed files
 )
 
 var (
@@ -31,6 +34,8 @@ var (
 		Name:       "my-test-back",
 		Database: store.Conf{
 			Address:             "localhost:27017",
+			Timeout:             100*time.Millisecond,
+			MaxRetries:          3,
 			DBUsers:             "userDB-test",
 			DBFeeRates:          "BTCMempool-test",
 			DBTx:                "DBTx-test",

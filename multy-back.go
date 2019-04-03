@@ -71,7 +71,7 @@ func Init(conf *Configuration) (*Multy, error) {
 	// DB initialization
 	userStore, err := store.InitUserStore(conf.Database)
 	if err != nil {
-		return nil, fmt.Errorf("DB initialization: %s on port %s", err.Error(), conf.Database.Address)
+		return nil, errors.Wrapf(err, "Failed to connect to DB : %s", conf.Database.Address)
 	}
 	multy.userStore = userStore
 	log.Infof("UserStore initialization done on %s √", conf.Database)
@@ -183,7 +183,7 @@ func (m *Multy) SetUserData(userStore store.UserStore, ct []store.CoinType) ([]c
 			})
 			if err != nil {
 				log.Errorf("SetUserData: Ether.EventInitialAdd: curID :%d netID :%d\n%+v", conCred.СurrencyID, conCred.NetworkID, err)
-				// return servicesInfo, errors.Wrapf(err, "SetUserData: Ether.EventInitialAdd: curID :%d netID :%d", conCred.СurrencyID, conCred.NetworkID)
+				return servicesInfo, errors.Wrapf(err, "SetUserData: Ether.EventInitialAdd: curID :%d netID :%d", conCred.СurrencyID, conCred.NetworkID)
 			}
 			log.Debugf("Ether cli.EventInitialAdd: resp: %s", resp.Message)
 

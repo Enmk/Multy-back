@@ -31,6 +31,8 @@ const (
 // Conf is a struct for database configuration
 type Conf struct {
 	Address             string
+	Timeout             time.Duration
+	MaxRetries          int
 	DBUsers             string
 	DBFeeRates          string
 	DBTx                string
@@ -137,10 +139,17 @@ func InitUserStore(conf Conf) (UserStore, error) {
 		Addrs:    addr,
 		Username: conf.Username,
 		Password: conf.Password,
-		Timeout:  1 * time.Second,
+		Timeout:  100*time.Millisecond,
 	}
 
-	session, err := mgo.DialWithInfo(mongoDBDial)
+	var session *mgo.Session
+	var err error
+	for i := 0; i <= conf.MaxRetries; i++ {
+		session, err = mgo.DialWithInfo(mongoDBDial)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
