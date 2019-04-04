@@ -211,19 +211,21 @@ func (multy *Multy) initHttpRoutes(conf *Configuration) error {
 	router := gin.Default()
 	multy.route = router
 	gin.SetMode(gin.DebugMode)
+	
+	tokenList := store.VerifiedTokenList{}
 
 	f, err := os.OpenFile("../currencies/erc20tokens.json", os.O_RDONLY, os.FileMode(0644))
-	// f, err := os.OpenFile("/currencies/erc20tokens.json")
 	if err != nil {
-		return err
+		log.Errorf("Failed to load tokens: %v", err)
 	}
 
-	bs, err := ioutil.ReadAll(f)
-	if err != nil {
-		return err
+	if err == nil {
+		bs, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		_ = json.Unmarshal(bs, &tokenList)	
 	}
-	tokenList := store.VerifiedTokenList{}
-	_ = json.Unmarshal(bs, &tokenList)
 
 	restClient, err := client.SetRestHandlers(
 		multy.userStore,
@@ -265,8 +267,8 @@ func (multy *Multy) initHttpRoutes(conf *Configuration) error {
 
 // Run runs service
 func (multy *Multy) Run() error {
-	log.Debugf("Listening Rest address: %d", multy.config.RestAddress)
-	log.Debugf("Listening Socketio address %v", multy.config.SocketioAddr)
+	log.Debugf("Listening Rest address: %s", multy.config.RestAddress)
+	log.Debugf("Listening Socketio address %s", multy.config.SocketioAddr)
 	log.Info("Running server")
 	multy.route.Run(multy.config.RestAddress)
 	return nil

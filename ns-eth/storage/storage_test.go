@@ -401,4 +401,8 @@ func TestTransactionStorageTransactionStatus(test *testing.T) {
 	if transaction.Status != newExpectedStatus {
 		test.Fatalf("Transaction.Status: %+v (expected) != %+v(actual)", newExpectedStatus, transaction.Status)
 	}
+
+	// Check that setting transaction status doesn't erase rest of transaction info
+	expectedTx.Status = newExpectedStatus
+	AssertEqual(test, expectedTx, *transaction)
 }

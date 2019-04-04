@@ -104,6 +104,8 @@ func NewController(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr strin
 	if err != nil {
 		return nil, fmt.Errorf("fetchCoinType: %s", err.Error())
 	}
+	controller.coinType = coinType
+
 	grpcClient, err := initGrpcClient(coinType.GRPCUrl)
 	if err != nil {
 		return nil, fmt.Errorf("initGrpcClient: %s", err.Error())
@@ -125,10 +127,12 @@ func NewController(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr strin
 }
 
 func initGrpcClient(url string) (pb.NodeCommunicationsClient, error) {
+	log := log.WithField("url", url)
+
 	backoff := grpc_retry.BackoffExponential(100 * time.Millisecond)
 	opts := []grpc_retry.CallOption{
 		grpc_retry.WithCodes(codes.Unavailable, codes.DataLoss),
-		grpc_retry.WithMax(10),
+		grpc_retry.WithMax(3),
 		grpc_retry.WithBackoff(func(attempt uint) time.Duration {
 			duration := backoff(attempt)
 			log.Infof("GRPC retry attempt %d : waiting %s", attempt, duration.String())
@@ -136,6 +140,7 @@ func initGrpcClient(url string) (pb.NodeCommunicationsClient, error) {
 		}),
 	}
 
+	log.Infof("Connecting to gRPC...")
 	conn, err := grpc.Dial(url,
 		grpc.WithInsecure(),
 		grpc.WithStreamInterceptor(grpc_retry.StreamClientInterceptor(opts...)),

@@ -8,9 +8,6 @@ package eth
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -352,45 +349,6 @@ func FetchUserAddresses(currencyID, networkID int, user store.User, addreses []s
 	}
 
 	return addresses, nil
-}
-
-func parseSubmitInput(input string) (string, string) {
-	address := ""
-	amount := ""
-	// 266 is minimal length of valid input for this kind of transactions
-	if len(input) >= 266 {
-		// crop method name from input data
-		in := input[10:]
-		re := regexp.MustCompile(`.{64}`) // Every 64 chars
-		parts := re.FindAllString(in, -1) // Split the string into 64 chars blocks.
-
-		// 4 is minimal count of parts for correct method invocation
-		if len(parts) >= 4 {
-			address = strings.ToLower("0x" + parts[0][24:])
-			a, _ := new(big.Int).SetString(parts[1], 16)
-			amount = a.String()
-		}
-	}
-
-	return address, amount
-}
-
-func parseRevokeInput(input string) (int64, error) {
-	in := input[10:]
-	re := regexp.MustCompile(`.{64}`) // Every 64 chars
-	parts := re.FindAllString(in, -1) // Split the string into 64 chars blocks.
-
-	if len(parts) > 0 {
-		i, ok := new(big.Int).SetString(input, 16)
-		if !ok {
-			return 0, fmt.Errorf("bad input %v", input)
-		} else {
-			return i.Int64(), nil
-		}
-
-	}
-
-	return 0, fmt.Errorf("low len input %v", input)
 }
 
 func msToUserData(addresses []string, usersData *mgo.Collection) map[string]store.User {

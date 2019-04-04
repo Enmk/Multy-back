@@ -149,6 +149,7 @@ func (s *Server) GetTransaction(c context.Context, transactionHash *pb.Transacti
 	if err != nil {
 		return nil, err
 	}
+	
 
 	return pb.TransactionToProtobuf(*transaction)
 }

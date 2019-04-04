@@ -198,7 +198,7 @@ func (service *NodeService) ServerGetTransaction(transactionHash eth.Transaction
 		result = &transactionWithStatus.Transaction
 	}
 
-	return result, nil
+	return result, err
 }
 
 func (service *NodeService) ServerResyncAddress(address eth.Address) error {
