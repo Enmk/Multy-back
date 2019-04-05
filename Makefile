@@ -141,12 +141,20 @@ docker-retag-builder-image:
 docker-push-builder-image:
 	docker push $(DOCKERHUB_ACCOUNT)/multy-back-builder:$(DOCKER_TAG)
 
+.PHONY: docker-build
+docker-build: docker-build-images
 
-docker-run: docker-build-images
+docker-rerun:
 	docker-compose down
 	docker-compose kill
 	docker-compose rm
+	make docker-run
+
+docker-run:
 	MULTY_BACK_VERSION=$(DOCKER_BUILD_TAG) MULTY_NS_ETH_VERSION=$(DOCKER_BUILD_TAG) docker-compose up --force-recreate --build multy-back
+
+docker-run-ns:
+	MULTY_BACK_VERSION=$(DOCKER_BUILD_TAG) MULTY_NS_ETH_VERSION=$(DOCKER_BUILD_TAG) docker-compose up --force-recreate --build multy-eth-ns-mainnet
 
 # unfortunatelly depends on MULTY_BACK_VERSION=latest MULTY_NS_ETH_VERSION=latest, 
 # event though those containers are not used.
