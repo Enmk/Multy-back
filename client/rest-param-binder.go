@@ -4,16 +4,26 @@ import (
 	"reflect"
 	"strconv"
 	"unsafe"
+	"strings"
 	"github.com/pkg/errors"
 
 	"github.com/gin-gonic/gin"
 )
 
+func splitTag(tagVal string) []string {
+	return strings.Split(tagVal, ",")
+}
+
 func getNameFromTag(tagVal string) string {
-	return tagVal
+	return splitTag(tagVal)[0]
 }
 
 func canOmmit(tagVal string) bool {
+	for _, t := range splitTag(tagVal) {
+		if t == "omitempty" {
+			return true
+		}
+	}
 	return false
 }
 
