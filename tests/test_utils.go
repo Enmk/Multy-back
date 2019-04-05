@@ -4,9 +4,19 @@ import (
 	"reflect"
 	"os"
 	"testing"
+	"runtime"
 
 	"github.com/davecgh/go-spew/spew"
 )
+
+func getCaller() runtime.Frame {
+	pc := make([]uintptr, 15)
+	n := runtime.Callers(3, pc) // 3 is to skip runtime.Callers(), getCaller(), and  caller of getCaller()
+	frames := runtime.CallersFrames(pc[:n])
+	frame, _ := frames.Next()
+	// fmt.Printf("!!! %s,:%d %s\n", frame.File, frame.Line, frame.Function)
+	return frame
+}
 
 // Utility to deeply complare values and provide string dump if they are not equal.
 func TestEqual(left, right interface{}) (eq bool, leftS, rightS string) {
@@ -21,7 +31,9 @@ func TestEqual(left, right interface{}) (eq bool, leftS, rightS string) {
 
 func AssertEqual(test *testing.T, left, right interface{}) bool {
 	if equal, l, r := TestEqual(left, right); !equal {
-		test.Errorf("Assertion failed: expected != actual\nexpected:\n%s\nactual:\n%s", l, r)
+		caller := getCaller()
+		test.Errorf("%s:%d (%s) : Assertion failed: expected != actual\nexpected:\n%s\nactual:\n%s",
+				caller.File, caller.Line, caller.Function, l, r)
 		return false
 	}
 
