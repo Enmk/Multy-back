@@ -89,7 +89,7 @@ type UserStore interface {
 	FindAllUserAddresses(address string) ([]QualifiedAddress, error)
 
 	//TODo update this method by eth
-	GetAllWalletEthTransactions(userid string, currencyID, networkID int, walletTxs *[]TransactionETH) error
+	GetAllWalletEthTransactions(userid string, currencyID, networkID, walletID int, token string, walletTxs *[]TransactionETH) error
 
 	DeleteWallet(userid, address string, walletindex, currencyID, networkID, assetType int) error
 
@@ -369,21 +369,20 @@ func (mStore *MongoUserStore) GetExchangeRatesDay() ([]RatesAPIBitstamp, error) 
 	return nil, nil
 }
 
-func (mStore *MongoUserStore) GetAllWalletEthTransactions(userid string, currencyID, networkID int, walletTxs *[]TransactionETH) error {
+func (mStore *MongoUserStore) GetAllWalletEthTransactions(userid string, currencyID, networkID, walletID int, token string, walletTxs *[]TransactionETH) error {
 	switch currencyID {
 	case currencies.Ether:
-		query := bson.M{"userid": userid}
-		if networkID == currencies.ETHMain {
-			err := mStore.ETHMainTxsData.Find(query).All(walletTxs)
-			return err
-		}
+		// query := bson.M{"userid": userid, "token": token, "walletindex": walletID}
+
+		collection := mStore.ETHMainTxsData
 		if networkID == currencies.ETHTest {
-			err := mStore.ETHTestTxsData.Find(query).All(walletTxs)
-			return err
+			collection = mStore.ETHTestTxsData
 		}
 
+		return collection.Find(nil).All(walletTxs)
 	}
-	return nil
+
+	return errors.Errorf("Unsupported currency: %d", currencyID)
 }
 
 func (mStore *MongoUserStore) Close() error {

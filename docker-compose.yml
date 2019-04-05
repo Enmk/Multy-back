@@ -18,9 +18,9 @@ services:
     env_file: .env
     restart: on-failure
     volumes:
-      - "${MULTY_BACK_LOGS}:/go/src/github.com/Multy-io/Multy-back/cmd/logs"
+      - "${MULTY_BACK_LOGS}:/multy/logs"
       - "${MULTY_BACK_CONF}:/multy/multy-back.config"
-      - "${MULTY_BACK_CURRENCIES}:/currencies"
+      - "${MULTY_BACK_CURRENCIES}:/multy/currencies"
     ports:
       - "${MULTY_REST_PORT}:6778" 
       - "${MULTY_SOCKETIO_PORT}:6780"
@@ -81,6 +81,16 @@ services:
     volumes:
       - "${NSQD_DATA_DIR}:/data/nsqd"
     command: nsqd --broadcast-address nsq --lookupd-tcp-address=nsqlookup:4160 -data-path=/data
+
+  nsqadmin:
+    image: nsqio/nsq
+    hostname: nsq
+    restart: on-failure
+    ports:
+      - "4161:4171"
+    links:
+      - nsqlookup
+    command: nsqadmin --lookupd-http-address=nsqlookup:4161
 
 
 ############################################################################################################

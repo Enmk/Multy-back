@@ -9,11 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Multy-io/Multy-back/currencies"
-	ethpb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
 	"github.com/Multy-io/Multy-back/store"
 	nsq "github.com/bitly/go-nsq"
 	_ "github.com/jekabolt/slflog"
@@ -213,38 +211,6 @@ func sendNotify(txMsq *store.TransactionWithUserID, nsqProducer *nsq.Producer) e
 	return nil
 }
 
-func generatedTxDataToStore(tx *ethpb.ETHTransaction, TransactionStatus int) store.TransactionETH {
-	sel := bson.M{"wallets.addresses.address": tx.GetFrom()}
-	user := store.User{}
-	usersData.Find(sel).One(&user)
-	var walletIndex, addressIndex int
-	for _, wallet := range user.Wallets {
-		for _, address := range wallet.Adresses {
-			if tx.GetFrom() == address.Address {
-				walletIndex = wallet.WalletIndex
-				addressIndex = address.AddressIndex
-			}
-		}
-	}
-
-	return store.TransactionETH{
-		UserID:       user.UserID,  // tx.GetUserID(),
-		WalletIndex:  walletIndex,  //int(tx.GetWalletIndex()),
-		AddressIndex: addressIndex, // int(tx.GetAddressIndex()),
-		Hash:         tx.GetHash(),
-		From:         tx.GetFrom(),
-		To:           tx.GetTo(),
-		Amount:       tx.GetAmount(),
-		GasPrice:     tx.GetGasPrice(),
-		GasLimit:     tx.GetGasLimit(),
-		Nonce:        tx.GetNonce(),
-		Status:       TransactionStatus, // int(tx.GetStatus()),
-		BlockTime:    tx.GetBlockTime(),
-		PoolTime:     tx.GetTxpoolTime(),
-		BlockHeight:  tx.GetBlockHeight(),
-	}
-}
-
 func saveTransaction(tx store.TransactionETH, networtkID int, resync bool) error {
 
 	txStore := &mgo.Collection{}
@@ -349,18 +315,4 @@ func FetchUserAddresses(currencyID, networkID int, user store.User, addreses []s
 	}
 
 	return addresses, nil
-}
-
-func msToUserData(addresses []string, usersData *mgo.Collection) map[string]store.User {
-	users := map[string]store.User{} // ms attached address to user
-	for _, address := range addresses {
-		user := store.User{}
-		err := usersData.Find(bson.M{"wallets.addresses.address": strings.ToLower(address)}).One(&user)
-		if err != nil {
-			break
-		}
-		// attachedAddress = strings.ToLower(address)
-		users[strings.ToLower(address)] = user
-	}
-	return users
 }

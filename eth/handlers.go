@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	pb "github.com/Multy-io/Multy-back/ns-eth-protobuf"
+	"github.com/Multy-io/Multy-back/ns-eth/storage"
 	"github.com/Multy-io/Multy-back/common/eth"
 	"github.com/Multy-io/Multy-back/store"
 	// "github.com/Multy-io/Multy-back/ns-eth/storage"
@@ -67,8 +68,9 @@ func (controller *EthController) HandleTransactionStatus(txStatusEvent eth.Trans
 	}
 
 	userTransactions, err := controller.splitTransactionToUserTransactions(transaction)
-	log.Debugf("Split transaction %x into %#v with error: %+v", txStatusEvent.TransactionHash, userTransactions, err)
-	// TODO: save all transactions, update wallets balances and notify all corresponding users.
+	if err != nil || len(userTransactions) > 0 {
+		log.Debugf("Split transaction %x into %d with error: %+v", txStatusEvent.TransactionHash, len(userTransactions), err)
+	}
 
 	// Save every transaction to the DB and send notifications to clients.
 	for _, tx := range userTransactions {
@@ -97,8 +99,10 @@ func (controller *EthController) fetchAndUpdateTransaction(txStatusEvent eth.Tra
 
 	cachedTransaction, err := controller.transactionStorage.GetTransaction(txStatusEvent.TransactionHash)
 	if err != nil || cachedTransaction == nil {
-		// Don't care about errors, since we can re-write transaction to DB later.
-		log.Infof("Failed to load transaction from DB: %#v, %v", cachedTransaction, err)
+		if _, ok := err.(storage.ErrorNotFound); !ok {
+			// Don't care about errors, since we can re-write transaction to DB later.
+			log.Infof("Failed to load transaction from DB: %#v, %v", cachedTransaction, err)
+		}
 	}
 
 	if cachedTransaction != nil {
@@ -154,7 +158,8 @@ type transferDescriptor struct {
 	from   eth.Address
 	to     eth.Address
 	token  eth.Address // smart contract address or empty for ETH
-	value  string      // erc20: value transferred, erc721: id of token
+	amount string      // erc20 & erc721 : decimal number of tokens transferred (always 1 for erc721)
+	tokenId eth.Hash   // erc721: tokenId
 }
 
 type transferDirection int
@@ -167,31 +172,35 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 	// to exclude duplicates we arrange all those transfers in a 'set'
 	// in a way that transfer(a, b, c) call and corresponding Transfer(a, b, c) event on ERC20 token
 	// have same descriptor, and hence do not produce duplicate transactions.
-	descriptors := make(map[transferDescriptor]struct{})
-	dummy := struct{}{}
+
+	descriptors := make(map[transferDescriptor]bool) // transferDescriptor => isInternal
 	descriptors[transferDescriptor{
-		transaction.Sender,
-		transaction.Receiver,
-		eth.Address{},
-		transaction.Amount.Int.Text(10)}] = dummy
+		from:    transaction.Sender,
+		to:      transaction.Receiver,
+		token:   eth.Address{},
+		amount:  transaction.Amount.Int.Text(10),
+		tokenId: eth.Hash{},
+	}] = false
 
 	if callInfo := transaction.CallInfo; callInfo != nil {
-		d, err := controller.getTransferDescriptor(transaction.Sender, callInfo.Method)
-		if err != nil || d == nil {
-			log.Infof("can't get transaction descriptor for method call: %v", err)
-		}
-		if d != nil {
-			descriptors[*d] = dummy
-		}
-
-		for i, event := range callInfo.Events {
-			d, err := controller.getTransferDescriptor(transaction.Sender, &event)
-			if err != nil || d == nil {
-				log.Infof("can't get transaction descriptor for event #%d: %v", i, err)
-				continue
+		// processing events first so internal transfers will be overwritten by explict method calls later.
+		for _, event := range callInfo.Events {
+			d, _ := controller.getTransferDescriptor(transaction.Sender, &event)
+			// if err != nil || d == nil {
+			// 	log.Infof("can't get transaction descriptor for event #%d: %v", i, err)
+			// 	continue
+			// }
+			if d != nil {
+				descriptors[*d] = true
 			}
+		}
 
-			descriptors[*d] = dummy
+		d, _ := controller.getTransferDescriptor(transaction.Sender, callInfo.Method)
+		// if err != nil || d == nil {
+		// 	log.Infof("can't get transaction descriptor for method call: %v", err)
+		// }
+		if d != nil {
+			descriptors[*d] = false
 		}
 	}
 
@@ -200,7 +209,7 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 		Hash:       transaction.Hash.Hex(),
 		From:       transaction.Sender.Hex(),
 		To:         transaction.Receiver.Hex(),
-		Amount:     transaction.Amount.Hex(),
+		Amount:     transaction.Amount.Text(10),
 		GasPrice:   uint64(transaction.Fee.GasLimit),
 		GasLimit:   uint64(transaction.Fee.GasPrice),
 		Nonce:      uint64(transaction.Nonce),
@@ -215,8 +224,10 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 
 	result := make([]store.TransactionETH, 0, len(descriptors) * 2) // at max 2 user-transactions per transfer: 1 incoming 1 outgoing
 
+	emptyAddress := eth.Address{}
+
 	// For each party in descriptors, find all user/wallet/address tuples, and make corresponding transactions.
-	for d := range descriptors {
+	for d, isInternal := range descriptors {
 
 		transfers := []struct{
 			address   eth.Address
@@ -235,7 +246,13 @@ func (controller *EthController) splitTransactionToUserTransactions(transaction 
 				tx.UserID = addr.UserID
 				tx.WalletIndex = addr.WalletIndex
 				tx.AddressIndex = addr.AddressIndex
+				tx.Amount = d.amount
+				tx.IsInternal = isInternal
 				tx.Status = convertStatus(transaction.Status, transfer.direction)
+				if d.token != emptyAddress {
+					tx.Token = d.token.Hex()
+				}
+				// TODO: handle tokenId
 
 				result = append(result, tx)
 			}
@@ -268,7 +285,8 @@ func (controller *EthController) getTransferDescriptor(txSender eth.Address, cal
 			from:  txSender,
 			to:    arguments.Receiver,
 			token: call.Address,
-			value: arguments.Amount.Text(16),
+			amount: arguments.Amount.Text(10),
+			tokenId: eth.Hash{},
 		}, nil
 	}
 	if call.Name == eth.TransferEventName {
@@ -286,7 +304,8 @@ func (controller *EthController) getTransferDescriptor(txSender eth.Address, cal
 			from:  arguments.Sender,
 			to:    arguments.Receiver,
 			token: call.Address,
-			value: arguments.Amount.Text(16),
+			amount: "1",
+			tokenId: eth.BytesToHash(arguments.Amount.Bytes()),
 		}, nil
 	}
 

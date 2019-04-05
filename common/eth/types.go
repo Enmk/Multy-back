@@ -182,9 +182,18 @@ func HexToHash(hexString string) Hash {
 	return geth.HexToHash(hexString)
 }
 
+func BytesToHash(data []byte) Hash {
+	return geth.BytesToHash(data)
+}
+
 // HexToAddress converts hex-encoded string (it may be prefixed with 0x) to Address.
 func HexToAddress(hexString string) Address {
 	return Address(geth.HexToAddress(hexString))
+}
+
+// invalid hex-string, or empty address (0x0000...000) are both considered invalid.
+func IsValidHexAddress(hexString string) bool {
+	return HexToAddress(hexString) != Address{}
 }
 
 // HexToAmount converts hex-encoded string (it may be prefixed with 0x) to Amount.

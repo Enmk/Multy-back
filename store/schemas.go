@@ -327,7 +327,8 @@ type TransactionETH struct {
 	PoolTime          int64                 `json:"mempooltime"`
 	Token             string                `json:"token"` // empty if ETH, contract address if ERC20/721 token
 	Confirmations     int                   `json:"confirmations"` // we shouldn't keep that in DB
-	// IsInternal        bool                  `json:"isinternal"`
+	IsInternal        bool                  `json:"isinternal"`
+	
 	// ERC20Token        *ERC20Tx              `json:"erc20Token,omitempty"`
 	StockExchangeRate []ExchangeRatesRecord `json:"stockexchangerate"`
 }

@@ -6,7 +6,7 @@ See LICENSE for details
 package client
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 
 	"github.com/Multy-io/Multy-back/exchanger"
 
@@ -953,145 +953,69 @@ func (restClient *RestClient) getAllWalletsVerbose() gin.HandlerFunc {
 	}
 }
 
+func (restClient *RestClient) getWalletTokenTransactionsHistory() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		restClient.handleGetTransactionHistory(c, true)
+	}
+}
+
+func (restClient *RestClient) handleGetTransactionHistory(c *gin.Context, useTokens bool) {
+	user, err := restClient.GetUserByContext(c)
+
+	if err != nil {
+		restClient.requestFailed(c, http.StatusNotFound, "Unknown user", err)
+		return
+	}
+
+	params := struct {
+		walletIndex int    `json:"walletindex"`
+		currencyId  int    `json:"currencyid"`
+		networkId   int    `json:"networkid"`
+		assetType   int    `json:"type,omitempty"`
+		token       string `json:"token,omitempty"`
+	}{
+		assetType: store.AssetTypeMultyAddress,
+	}
+
+	err = BindParams(c.Params, &params)
+	if err != nil {
+		restClient.requestFailed(c, http.StatusBadRequest, "InvalidParameters", err)
+		return
+	}
+
+	var token *ethcommon.Address
+	if useTokens {
+		if ethcommon.IsValidHexAddress(params.token) {
+			t := ethcommon.HexToAddress(params.token)
+			token = &t
+		}
+	}
+	if useTokens && token == nil {
+		restClient.requestFailed(c, http.StatusBadRequest, "InvalidParameters", errors.New("token is not set or invalid"))
+		return
+	}
+
+	history, err := restClient.ETH.GetUserTransactions(user, params.walletIndex, params.currencyId, params.networkId, token)
+	if err != nil {
+		restClient.requestFailed(c, http.StatusBadRequest, "Failed to get user transactions.", err)
+		return
+	}
+
+	if params.assetType == store.AssetTypeMultyAddress {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    http.StatusOK,
+			"message": http.StatusText(http.StatusOK),
+			"history": history,
+		})
+		return
+	}
+
+	restClient.requestFailed(c, http.StatusBadRequest, "InvalidParameters", errors.Errorf("Invalid type"))
+}
+
 func (restClient *RestClient) getWalletTransactionsHistory() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var walletTxs []store.MultyTX
-		token, err := getToken(c)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    http.StatusBadRequest,
-				"message": msgErrHeaderError,
-			})
-			return
-		}
-
-		// TODO: use c.Bind(&requestParams) to simplify parameters processing:
-		// requestParams := struct {
-		//	walletIndex int `json:"walletindex"`
-		//	currencyId  int `json:"currencyid"`
-		//	networkId   int `json:"networkid"`
-		//	assetType   int `json:"type,omitempty"`
-		//	... etc
-		// }
-		walletIndex, err := strconv.Atoi(c.Param("walletindex"))
-		restClient.log.Debugf("getWalletVerbose [%d] \t[walletindexr=%s]", walletIndex, c.Request.RemoteAddr)
-		if err != nil {
-			restClient.requestFailed(c, http.StatusBadRequest, msgErrDecodeWalletIndexErr, err)
-			return
-		}
-
-		currencyId, err := strconv.Atoi(c.Param("currencyid"))
-		restClient.log.Debugf("getWalletVerbose [%d] \t[currencyId=%s]", currencyId, c.Request.RemoteAddr)
-		if err != nil {
-			restClient.log.Errorf("getWalletVerbose: non int currency id:[%d] %s \t[addr=%s]", currencyId, err.Error(), c.Request.RemoteAddr)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    http.StatusBadRequest,
-				"message": msgErrDecodeCurIndexErr,
-			})
-			return
-		}
-
-		networkid, err := strconv.Atoi(c.Param("networkid"))
-		restClient.log.Debugf("getWalletVerbose [%d] \t[networkid=%s]", networkid, c.Request.RemoteAddr)
-		if err != nil {
-			restClient.log.Errorf("getWalletVerbose: non int networkid index:[%d] %s \t[addr=%s]", networkid, err.Error(), c.Request.RemoteAddr)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    http.StatusBadRequest,
-				"message": msgErrDecodenetworkidErr,
-			})
-			return
-		}
-
-		assetType := store.AssetTypeMultyAddress
-		if len(c.Param("type")) > 0 {
-			assetType, err = strconv.Atoi(c.Param("type")[1:])
-			restClient.log.Debugf("getWalletVerbose [%d] \t[networkID=%s]", assetType, c.Request.RemoteAddr)
-			if err != nil {
-				restClient.log.Errorf("getWalletVerbose: non int networkid:[%d] %s \t[addr=%s]", assetType, err.Error(), c.Request.RemoteAddr)
-				c.JSON(http.StatusBadRequest, gin.H{
-					"code":    http.StatusBadRequest,
-					"message": msgErrDecodeTypeErr,
-				})
-				return
-			}
-		}
-
-		user := store.User{}
-		sel := bson.M{"devices.JWT": token}
-		err = restClient.userStore.FindUser(sel, &user)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    http.StatusUnauthorized,
-				"message": msgErrUserNotFound,
-				"history": walletTxs,
-			})
-			return
-		}
-
-		switch currencyId {
-
-		case currencies.Ether:
-			var blockHeight int64
-
-			// tokenHistory := []*ethpb.ERC20History
-			switch networkid {
-			case currencies.ETHMain:
-				blockHeight, err = restClient.ETH.GetBlockHeigth()
-				if err != nil {
-					restClient.log.Errorf("getWalletTransactionsHistory: restClient.ETH.CliTest.EventGetBlockHeight %s \t[addr=%s]", err.Error(), c.Request.RemoteAddr)
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"code":    http.StatusInternalServerError,
-						"message": http.StatusText(http.StatusInternalServerError),
-					})
-					return
-				}
-			}
-
-			//history for ether wallet
-			userTxs := []store.TransactionETH{}
-			if assetType == store.AssetTypeMultyAddress {
-				err = restClient.userStore.GetAllWalletEthTransactions(user.UserID, currencyId, networkid, &userTxs)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{
-						"code":    http.StatusBadRequest,
-						"message": msgErrTxHistory,
-						"history": walletTxs,
-					})
-					return
-				}
-
-				for i := 0; i < len(userTxs); i++ {
-					if userTxs[i].BlockTime == 0 {
-						userTxs[i].Confirmations = 0
-					} else if userTxs[i].BlockTime != 0 {
-						userTxs[i].Confirmations = int(blockHeight-userTxs[i].BlockHeight) + 1
-					}
-				}
-
-				history := []store.TransactionETH{}
-				for _, tx := range userTxs {
-					if tx.WalletIndex == walletIndex {
-						history = append(history, tx)
-					}
-				}
-
-				c.JSON(http.StatusOK, gin.H{
-					"code":    http.StatusOK,
-					"message": http.StatusText(http.StatusOK),
-					"history": history,
-				})
-				return
-			}
-
-		default:
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    http.StatusBadRequest,
-				"message": msgErrChainIsNotImplemented,
-				"history": walletTxs,
-			})
-			return
-		}
-
+		restClient.handleGetTransactionHistory(c, false)
 	}
 }
 
@@ -1224,7 +1148,8 @@ func (restClient *RestClient) requestFailed(c *gin.Context, responseCode int, re
 	restClient.log.Errorf("Request '%s %s' from %s failed with error: %+v", r.Method, r.RequestURI, r.RemoteAddr, err)
 
 	c.JSON(responseCode, gin.H{
-		"code":    responseCode,
-		"message": responseMessage,
+		"code":     responseCode,
+		"message":  responseMessage,
+		"error":    err.Error(),
 	})
 }

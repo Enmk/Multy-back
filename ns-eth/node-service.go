@@ -180,7 +180,7 @@ func (service *NodeService) getImmutibleBlockHeight() uint64 {
 }
 
 func (service *NodeService) ServerGetTransaction(transactionHash eth.TransactionHash) (result *eth.Transaction, err error) {
-
+	// Get transaction from DB or from Node (and save to DB)
 	transactionWithStatus, err := service.storage.TransactionStorage.GetTransaction(transactionHash)
 	if _, ok := err.(storage.ErrorNotFound); ok {
 		transaction, err := service.nodeClient.FetchTransaction(transactionHash)

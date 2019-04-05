@@ -74,7 +74,7 @@ func (client *NodeClient) GetAddressPendingBalance(address string) (big.Int, err
 		log.Errorf("GetAddressPendingBalance:rpc.EthGetBalance: %s", err.Error())
 		return balance, err
 	}
-	log.Debugf("GetAddressPendingBalance %v", balance.String())
+	log.Debugf("GetAddressPendingBalance %s => %s", address, balance.String())
 	return balance, err
 }
 
