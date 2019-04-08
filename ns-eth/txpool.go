@@ -82,7 +82,7 @@ func (c *NodeClient) ReloadTxPool() error {
 	var mempoolTx map[string]map[string]map[string]*RPCTransaction
 	err = json.Unmarshal(mp, &mempoolTx)
 	if err != nil {
-		log.Errorf("can'not unmarshal err: %v", err)
+		log.Errorf("Failed to unmarshal mempool: %v", err)
 	}
 	var mempool *sync.Map = &sync.Map{}
 	var length uint64 = 0

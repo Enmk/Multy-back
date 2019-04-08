@@ -27,7 +27,6 @@ type Server struct {
 	EthCli     *NodeClient
 	gRPCserver *grpc.Server
 	listener   net.Listener
-	ReloadChan chan struct{}
 
 	RequestHandler ServerRequestHandler
 }
@@ -44,7 +43,6 @@ func NewServer(grpcPort string, nodeClient *NodeClient, requestHandler ServerReq
 		EthCli:         nodeClient,
 		gRPCserver:     gRPCserver,
 		listener:       lis,
-		ReloadChan:     make(chan struct{}),
 		RequestHandler: requestHandler,
 	}
 	pb.RegisterNodeCommunicationsServer(gRPCserver, result)

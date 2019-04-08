@@ -41,6 +41,7 @@ var globalOpt = ns.Configuration{
 	DB: storage.Config {
 		Timeout: 2*time.Second,
 	},
+	MaxBlockDelay:  time.Minute,
 }
 
 func main() {

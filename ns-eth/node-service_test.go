@@ -6,8 +6,6 @@ import (
 	"flag"
 	"os"
 	l "log"
-	"time"
-	// "math/big"
 
 	"github.com/jekabolt/config"
 	// "github.com/onrik/ethrpc"
@@ -29,15 +27,14 @@ func (*mockAddressLookup) IsKnownAddress(eth.Address) bool {
 type mockHandler struct{}
 func (*mockHandler) HandleBlock(eth.BlockHeader) {}
 func (*mockHandler) HandleTransaction(eth.Transaction) {}
+func (*mockHandler) RequestReconnect(error) {}
 
 func newNodeClient() *NodeClient {
 
-	client := NewClient(&conf.EthConf, &mockAddressLookup{}, &mockHandler{}, &mockHandler{})
-	select {
-	case <- client.ready:
-		break;
-	case <- time.After(1 * time.Second):
-		l.Fatalf("NewClient timed out")
+	mockHandler := mockHandler{}
+	client, err := NewClient(&conf.EthConf, &mockAddressLookup{}, &mockHandler, &mockHandler, &mockHandler)
+	if err != nil {
+		l.Fatalf("failed to create a NodeClient: %+v", err)
 	}
 
 	return client

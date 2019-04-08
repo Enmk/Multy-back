@@ -34,7 +34,7 @@ func (c *NodeClient) HandleNewHeadBlock(hash string) {
 		return
 	}
 
-	log.Debugf("New block with %d transactions", len(txs))
+	log.Debugf("New block #%d (%x) with %d transactions", block.Number, block.Hash, len(txs))
 
 	if (c.MempoolReloadBlock + blockLengthForReloadTxpool) < block.Number {
 		go c.ReloadTxPool()

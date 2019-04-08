@@ -6,6 +6,8 @@ See LICENSE for details
 package nseth
 
 import (
+	"time"
+
 	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/ns-eth/storage"
 )
@@ -17,7 +19,7 @@ type Configuration struct {
 	GrpcPort        string
 	NsqAddress      string
 	EthConf         Conf
-	ServiceInfo     common.ServiceInfo
+	ServiceInfo     common.ServiceInfo // why in config?
 	NetworkID       int
 	ResyncUrl       string
 	AbiClientUrl    string
@@ -27,4 +29,6 @@ type Configuration struct {
 	ImmutableBlockDepth uint
 	DB              storage.Config
 	NSQURL          string
+	// Delay between blocks bigger than this would case reconnecting to node.
+	MaxBlockDelay   time.Duration
 }

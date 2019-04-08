@@ -9,11 +9,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/onrik/ethrpc"
 	_ "github.com/jekabolt/slflog"
-	
+	"github.com/onrik/ethrpc"
+
 	"github.com/Multy-io/Multy-back/common/eth"
 )
 
@@ -29,7 +31,11 @@ type BlockHandler interface {
 	HandleBlock(eth.BlockHeader)
 }
 
-// TODO: rename to NodeClient
+type Reconnector interface {
+	RequestReconnect(error)
+}
+
+
 type NodeClient struct {
 	Rpc                 *ethrpc.EthRPC
 	Client              *rpc.Client
@@ -39,10 +45,10 @@ type NodeClient struct {
 	subscriptionsStream chan interface{}
 	Done                <-chan interface{}
 	Stop                chan struct{}
-	ready               chan struct{} // signalled once when the client is ready
 	AbiClient           *ethclient.Client
 	Mempool             *sync.Map
 	MempoolReloadBlock  int
+	reconnector         Reconnector
 
 	addressLookup      AddressLookup
 	transactionHandler TransactionHandler
@@ -56,7 +62,8 @@ type Conf struct {
 	WsOrigin string
 }
 
-func NewClient(conf *Conf, addressLookup AddressLookup, txHandler TransactionHandler, blockHandler BlockHandler) *NodeClient {
+func NewClient(conf *Conf, addressLookup AddressLookup, txHandler TransactionHandler,
+		blockHandler BlockHandler, reconnector Reconnector) (*NodeClient, error) {
 
 	c := &NodeClient{
 		config:             conf,
@@ -64,29 +71,39 @@ func NewClient(conf *Conf, addressLookup AddressLookup, txHandler TransactionHan
 		blockStream:        make(chan eth.BlockHeader, 10),
 		Done:               make(chan interface{}),
 		Stop:               make(chan struct{}),
-		ready:              make(chan struct{}, 1), // writing a single event shouldn't block even if nobody listens.
 		Mempool:            &sync.Map{},
 		addressLookup:      addressLookup,
 		transactionHandler: txHandler,
 		blockHandler:       blockHandler,
+		reconnector:        reconnector,
 	}
 
-	go c.RunProcess()
-	return c
+	err := c.StartProcess()
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 func (c *NodeClient) Shutdown() {
 	log.Info("Closing connection to ETH Node.")
-	c.Client.Close()
+	if c.Client != nil {
+		c.Client.Close()
+	}
+	if c.subscriptionsStream != nil {
+		close(c.subscriptionsStream)
+	}
 }
 
-func waitForSubCancellation(sub *rpc.ClientSubscription, name string) error {
+func (c *NodeClient) waitForSubCancellation(sub *rpc.ClientSubscription, name string) {
 	err, _ := <-sub.Err()
 	log.Warnf("Got a subscription error on %s: %+v", name, err)
-	return err
+
+	c.reconnector.RequestReconnect(err)
 }
 
-func (c *NodeClient) RunProcess() error {
+func (c *NodeClient) StartProcess() error {
 	log.Info("Run ETH Process")
 
 	go c.processBlocks()
@@ -95,12 +112,21 @@ func (c *NodeClient) RunProcess() error {
 	c.Rpc = ethrpc.NewEthRPC("http" + c.config.Address + c.config.RpcPort)
 	log.Infof("ETH RPC Connection %s", "http"+c.config.Address+c.config.RpcPort)
 
-	// TODO: why are we even do that? to check connectibility?
-	_, err := c.Rpc.EthNewPendingTransactionFilter()
+	// TODO: !!! why do we do that? to check connectibility?
+	// _, err := c.Rpc.EthNewPendingTransactionFilter()
+	// if err != nil {
+	// 	log.Errorf("NewClient:EthNewPendingTransactionFilter: %s", err.Error())
+	// 	return err
+	// }
+
+	client, err := rpc.DialWebsocket(context.TODO(), "ws"+c.config.Address+c.config.WsPort, c.config.WsOrigin)
 	if err != nil {
-		log.Errorf("NewClient:EthNewPendingTransactionFilter: %s", err.Error())
+		log.Errorf("Dial err: %s", err.Error())
 		return err
 	}
+	c.Client = client
+	log.Infof("ETH RPC Connection %s", "ws"+c.config.Address+c.config.WsPort)
+
 	height, err := c.GetBlockHeight()
 	if err != nil {
 		log.Errorf("get block Height err: %v", err)
@@ -108,14 +134,6 @@ func (c *NodeClient) RunProcess() error {
 	}
 	c.MempoolReloadBlock = height
 	go c.ReloadTxPool()
-	client, err := rpc.DialWebsocket(context.TODO(), "ws"+c.config.Address+c.config.WsPort, c.config.WsOrigin)
-
-	if err != nil {
-		log.Errorf("Dial err: %s", err.Error())
-		return err
-	}
-	c.Client = client
-	log.Infof("ETH RPC Connection %s", "ws"+c.config.Address+c.config.WsPort)
 
 	c.subscriptionsStream = make(chan interface{})
 
@@ -133,32 +151,32 @@ func (c *NodeClient) RunProcess() error {
 		return err
 	}
 
-	// done := or(c.fanIn(ch)...)
+	go c.waitForSubCancellation(sub1, "newHeads")
+	go c.waitForSubCancellation(sub2, "newPendingTransactions")
 
-	// c.Done = done
-
-	go waitForSubCancellation(sub1, "newHeads")
-	go waitForSubCancellation(sub2, "newPendingTransactions")
-	c.ready <- struct{}{}
-
-	for {
-		switch v := (<-c.subscriptionsStream).(type) {
-		default:
-			log.Errorf("Not found type: %v", v)
-		case string:
-			go c.AddTransactionToTxpool(v)
-		case map[string]interface{}:
-			// Here in `v` we have a block, but with no transaction hashes.
-			go c.HandleNewHeadBlock(v["hash"].(string))
-		case nil:
-			// defer func() {
-			// 	c.Stop <- struct{}{}
-			// }()
-			defer client.Close()
-			log.Debugf("RPC stream closed")
-			return nil
+	go func() {
+		for {
+			switch v := (<-c.subscriptionsStream).(type) {
+			default:
+				log.Errorf("Not found type: %v", v)
+			case string:
+				go c.AddTransactionToTxpool(v)
+			case map[string]interface{}:
+				// Here in `v` we have a block, but with no transaction hashes.
+				go c.HandleNewHeadBlock(v["hash"].(string))
+			case nil:
+				// defer func() {
+				// 	c.Stop <- struct{}{}
+				// }()
+				defer client.Close()
+				log.Debugf("RPC stream closed")
+				c.reconnector.RequestReconnect(errors.New("Node RPC stream closed"))
+				return
+			}
 		}
-	}
+	}()
+
+	return nil
 }
 
 func (nodeClient *NodeClient) processTransactions() {

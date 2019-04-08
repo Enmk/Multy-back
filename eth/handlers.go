@@ -128,7 +128,7 @@ func (controller *EthController) fetchAndUpdateTransaction(txStatusEvent eth.Tra
 			if err != nil {
 				err = fmt.Errorf("Transaction is NIL")
 			}
-			return nil, errors.Wrapf(err, "Failed to get transaction from node-service by hash %s: %+v", txStatusEvent.TransactionHash.Hex(), err)
+			return nil, errors.Wrapf(err, "Failed to get transaction from node-service by hash %s", txStatusEvent.TransactionHash.Hex())
 		}
 
 		cachedTransactionNoStatus, err := pb.TransactionFromProtobuf(*newTransactionPb)

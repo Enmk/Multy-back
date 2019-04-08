@@ -7,28 +7,32 @@ package nseth
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/jekabolt/slf"
+	"github.com/pkg/errors"
+
 	"github.com/Multy-io/Multy-back/common"
 	"github.com/Multy-io/Multy-back/common/eth"
 	"github.com/Multy-io/Multy-back/ns-eth/storage"
-	"github.com/jekabolt/slf"
-	"github.com/pkg/errors"
 )
 
 var log = slf.WithContext("NodeService").WithCaller(slf.CallerShort)
 
 // NodeService is a main struct of service, handles all events and all logics
 type NodeService struct {
-	Config       *Configuration
-	nodeClient   *NodeClient
-	GRPCserver   *Server
-	storage      *storage.Storage
-	eventManager *EventManager
+	Config        *Configuration
+	nodeClient    *NodeClient
+	GRPCserver    *Server
+	storage       *storage.Storage
+	eventManager  *EventManager
+	// channel to receive reconnect requests, with error as the reason to reconnect.
+	reconnectChan chan error
+	// Last time we've seen any block, used for detection of stale node connection.
+	lastBlockReceiveTime time.Time
 
 	lastSeenBlockHeader *eth.BlockHeader
 }
@@ -51,7 +55,8 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 	resyncUrl := getResyncUrl(conf.NetworkID)
 	conf.ResyncUrl = resyncUrl
 	service = &NodeService{
-		Config: conf,
+		Config:        conf,
+		reconnectChan: make(chan error, 100), // shouldn't block caller
 	}
 	log.Infof("Connecting to DB on %s with timeout %s ...", conf.DB.URL, conf.DB.Timeout.String())
 	storageInstance, err := storage.NewStorage(conf.DB)
@@ -65,10 +70,11 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 		addressStorage:  nil, //service.storage.AddressStorage,
 		defaultResponse: true,
 	}
-	service.nodeClient = NewClient(&conf.EthConf, &addressLookup, service, service)
+	nodeClient, err := NewClient(&conf.EthConf, &addressLookup, service, service, service)
 	if err != nil {
-		return nil, fmt.Errorf("eth.NewClient initialization: %s", err.Error())
+		return nil, errors.Wrap(err, "eth.NewClient initialization failed")
 	}
+	service.nodeClient = nodeClient
 	log.Infof("ETH client initialization done")
 
 	// // Dial to abi client to reach smart contracts methods
@@ -93,27 +99,29 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 
 	service.GRPCserver = srv
 	go service.GRPCserver.Serve()
-
-	go WatchReload(srv.ReloadChan, service)
+	go service.reconnectOnNoBlocks()
+	go service.watchReconnect()
 
 	return service, nil
 }
 
 // Event Manager Handlers:
 func (service *NodeService) HandleNewAddress(address eth.Address) error {
-	return service.storage.AddressStorage.AddAddress(address)
+	err := service.storage.AddressStorage.AddAddress(address)
+	return dieIfFatal(err)
 }
 
 func (service *NodeService) HandleSendRawTx(rawTx eth.RawTransaction) error {
 	hash, err := service.ServerSendRawTransaction(rawTx)
 	log.Infof("Send transaction from NSQ: %v", hash)
-	return err
+	return dieIfFatal(err)
 }
 
 func (service *NodeService) HandleTransaction(transaction eth.Transaction) {
 	err := service.tryHandleTransaction(transaction)
 	if err != nil {
 		log.Errorf("Failed to handle a transaction %x : %+v", transaction.Hash, err)
+		dieIfFatal(err)
 	}
 }
 
@@ -123,6 +131,7 @@ func (service *NodeService) tryHandleTransaction(transaction eth.Transaction) er
 	// save TX to DB
 	// emit TX update event (TXID, BlockHash, Status)
 	newStatus := decideTransactionStatus(transaction, service.getImmutibleBlockHeight())
+	// TODO: update transaction so when we can't get the receipt from node, we still retain call info.
 	err := service.storage.TransactionStorage.AddTransaction(
 		eth.TransactionWithStatus{
 			Transaction: transaction,
@@ -148,10 +157,13 @@ func (service *NodeService) HandleBlock(blockHeader eth.BlockHeader) {
 	err := service.tryHandleBlock(blockHeader)
 	if err != nil {
 		log.Errorf("Failed to handle block %x : %+v", blockHeader.Hash, err)
+		dieIfFatal(err)
 	}
 }
 
 func (service *NodeService) tryHandleBlock(blockHeader eth.BlockHeader) error {
+	service.lastBlockReceiveTime = time.Now()
+
 	err := service.storage.BlockStorage.AddBlock(eth.Block{
 		BlockHeader: blockHeader,
 	})
@@ -307,28 +319,61 @@ func getResyncUrl(networkid int) string {
 	}
 }
 
-func WatchReload(reload chan struct{}, service *NodeService) {
-	// func WatchReload(reload chan struct{}, s *grpc.Server, srv *streamer.Server, lis net.Listener, conf *Configuration) {
+func (service *NodeService) reconnectOnNoBlocks() {
+	ticker := time.NewTicker(service.Config.MaxBlockDelay)
+	for range ticker.C {
+		now := time.Now()
+		delay := now.Sub(service.lastBlockReceiveTime)
+		if service.lastBlockReceiveTime.Unix() != 0 && delay > service.Config.MaxBlockDelay {
+			service.RequestReconnect(errors.Errorf("Block delay is too big: %s, expecting it to be under: %s",
+				delay.String(), service.Config.MaxBlockDelay.String()))
+			return
+		}
+	}
+}
+
+func (service *NodeService) RequestReconnect(err error) {
+	defer func() {
+		if recover() != nil {
+			log.Debugf("Requested reconnect while reconnecting... %+v", err)
+		}
+	}()
+
+	service.reconnectChan <- err
+}
+
+func (service *NodeService) watchReconnect() {
 	for {
 		select {
-		case _ = <-reload:
+		case reason := <-service.reconnectChan:
+			log.Debugf("Reconnecting due to error: %+v", reason)
+			// close this channel so we are not going to have multiple consequent reconnects 
+			close(service.reconnectChan)
+
 			ticker := time.NewTicker(1000 * time.Millisecond)
 			err := service.GRPCserver.Stop()
 			if err != nil {
-				log.Errorf("WatchReload:server.Stop() : %+v", err)
+				log.Errorf("watchReconnect:server.Stop() : %+v", err)
 			}
-			log.Debugf("WatchReload:Successfully stopped")
+			log.Debugf("watchReconnect:Successfully stopped")
 
 			for range ticker.C {
-				close(service.nodeClient.subscriptionsStream)
+				service.nodeClient.Shutdown()
 				_, err := service.Init(service.Config)
 				if err != nil {
-					log.Errorf("WatchReload:Init error: %+v", err)
+					log.Errorf("watchReconnect:Init error: %+v", err)
 					continue
 				}
-				log.Debugf("WatchReload:Successfully reloaded")
+				log.Debugf("watchReconnect:Successfully reloaded")
 				return
 			}
 		}
 	}
+}
+
+// Some errors, like i/o timeout to DB mean that something went
+// incredibly wrong and there might be no way to fix it,
+// so we terminate the current process.
+func dieIfFatal(err error) error {
+	return err
 }
