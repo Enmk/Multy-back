@@ -1,13 +1,14 @@
 package storage
 
 import (
-	mgo "gopkg.in/mgo.v2"
 	"time"
+
+	mgo "gopkg.in/mgo.v2"
 )
 
 const (
-	addressCollectionName = "addresses"
-	blockCollectionName = "blocks"
+	addressCollectionName     = "addresses"
+	blockCollectionName       = "blocks"
 	transactionCollectionName = "transactions"
 )
 

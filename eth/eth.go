@@ -84,7 +84,7 @@ func NewController(dbConf *store.Conf, coinTypes []store.CoinType, nsqAddr strin
 	// HACK: this made to acknowledge that queried data has already inserted to db
 	db.SetSafe(&mgo.Safe{
 		W:        1,
-		WTimeout: 100,
+		WTimeout: 200,
 		J:        true,
 	})
 

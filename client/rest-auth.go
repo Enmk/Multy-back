@@ -74,10 +74,11 @@ func (restClient *RestClient) LoginHandler() gin.HandlerFunc {
 			newUser := createUser(loginVals.UserID, devices, wallet, loginVals.SeedPhraseType)
 			err = restClient.userStore.Insert(newUser)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"token":  "",
-					"expire": "",
-				})
+				restClient.requestFailed(c, http.StatusInternalServerError, "intial auth failed ", err)
+				// c.JSON(http.StatusInternalServerError, gin.H{
+				// 	"token":  "",
+				// 	"expire": "",
+				// })
 			} else {
 				c.JSON(http.StatusOK, gin.H{
 					"token":  tokenString,
@@ -96,14 +97,18 @@ func (restClient *RestClient) LoginHandler() gin.HandlerFunc {
 			// userID and deviceID existed in DB
 			if concreteDevice.DeviceID == loginVals.DeviceID {
 				restClient.log.Infof("update token for device %s", loginVals.DeviceID)
+
 				sel := bson.M{"userID": user.UserID, "devices.JWT": concreteDevice.JWT}
 				update := bson.M{"$set": bson.M{"devices.$.JWT": tokenString}}
 				err = restClient.userStore.Update(sel, update)
+
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"token":  "",
-						"expire": "",
-					})
+					restClient.log.Debugf("Error updating auth token in DB: %+v", err)
+					restClient.requestFailed(c, http.StatusInternalServerError, "Failed to save token", err)
+					// c.JSON(http.StatusInternalServerError, gin.H{
+					// 	"token":  "",
+					// 	"expire": "",
+					// })
 				} else {
 					c.JSON(http.StatusOK, gin.H{
 						"token":  tokenString,

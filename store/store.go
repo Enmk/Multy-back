@@ -67,8 +67,8 @@ type Conf struct {
 }
 
 type QualifiedAddress struct {
-	UserID string
-	WalletIndex int
+	UserID       string
+	WalletIndex  int
 	AddressIndex int
 }
 
@@ -139,7 +139,7 @@ func InitUserStore(conf Conf) (UserStore, error) {
 		Addrs:    addr,
 		Username: conf.Username,
 		Password: conf.Password,
-		Timeout:  100*time.Millisecond,
+		Timeout:  100 * time.Millisecond,
 	}
 
 	var session *mgo.Session
@@ -157,7 +157,7 @@ func InitUserStore(conf Conf) (UserStore, error) {
 	// HACK: this made to acknowledge that queried data has already inserted to db
 	session.SetSafe(&mgo.Safe{
 		W:        1,
-		WTimeout: 100,
+		WTimeout: 200,
 		J:        true,
 	})
 
@@ -416,8 +416,6 @@ func (mStore *MongoUserStore) CheckAddWallet(wp *WalletParams, jwt string) error
 			switch wp.NetworkID {
 			case currencies.ETHMain:
 				err = mStore.ETHMainTxsData.Find(query).All(&txs)
-			// case currencies.ETHTest:
-			// 	err = mStore.ETHTestTxsData.Find(query).All(&txs)
 			}
 			if len(txs) == 0 {
 				return errors.Errorf("Reached maximum available wallets count")
@@ -443,8 +441,8 @@ func (store *MongoUserStore) FindAllUserAddresses(address string) ([]QualifiedAd
 			for _, a := range w.Adresses {
 				if a.Address == address {
 					result = append(result, QualifiedAddress{
-						UserID: user.UserID,
-						WalletIndex: w.WalletIndex,
+						UserID:       user.UserID,
+						WalletIndex:  w.WalletIndex,
 						AddressIndex: a.AddressIndex,
 					})
 				}
