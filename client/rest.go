@@ -976,7 +976,7 @@ func (restClient *RestClient) handleGetTransactionHistory(c *gin.Context, useTok
 
 	err = BindParams(c.Params, &params)
 	if err != nil {
-		restClient.requestFailed(c, http.StatusBadRequest, "InvalidParameters", err)
+		restClient.requestFailed(c, http.StatusBadRequest, "Invalid parameters", err)
 		return
 	}
 
@@ -988,7 +988,7 @@ func (restClient *RestClient) handleGetTransactionHistory(c *gin.Context, useTok
 		}
 	}
 	if useTokens && token == nil {
-		restClient.requestFailed(c, http.StatusBadRequest, "InvalidParameters", errors.New("token is not set or invalid"))
+		restClient.requestFailed(c, http.StatusBadRequest, "Invalid parameters", errors.New("token is not set or invalid"))
 		return
 	}
 

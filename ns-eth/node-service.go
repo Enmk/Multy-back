@@ -67,8 +67,8 @@ func (service *NodeService) Init(conf *Configuration) (*NodeService, error) {
 
 	// New session to the node
 	addressLookup := addressLookup{
-		addressStorage:  nil, //service.storage.AddressStorage,
-		defaultResponse: true,
+		addressStorage:  service.storage.AddressStorage,
+		defaultResponse: false,
 	}
 	nodeClient, err := NewClient(&conf.EthConf, &addressLookup, service, service, service)
 	if err != nil {
